@@ -1,0 +1,543 @@
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    Integer,
+    Numeric,
+    String,
+    text,
+)
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.sql.sqltypes import NullType
+
+Base = declarative_base()
+metadata = Base.metadata
+
+
+class mi_wayne(Base):
+    __tablename__ = "mi_wayne"
+    __table_args__ = {"schema": "address_lookup"}
+
+    ogc_fid = Column(
+        Integer,
+        primary_key=True,
+        server_default=text("nextval('address_lookup.mi_wayne_ogc_fid_seq'::regclass)"),
+    )
+    wkb_geometry = Column(NullType, index=True)
+    geoid = Column(String)
+    parcelnumb = Column(String)
+    parcelnumb_no_formatting = Column(String)
+    state_parcelnumb = Column(String)
+    account_number = Column(String)
+    tax_id = Column(String)
+    alt_parcelnumb1 = Column(String)
+    alt_parcelnumb2 = Column(String)
+    alt_parcelnumb3 = Column(String)
+    usecode = Column(String)
+    usedesc = Column(String)
+    zoning = Column(String)
+    zoning_description = Column(String)
+    zoning_type = Column(String)
+    zoning_subtype = Column(String)
+    zoning_code_link = Column(String)
+    zoning_id = Column(Integer)
+    struct = Column(Boolean)
+    structno = Column(Integer)
+    yearbuilt = Column(Integer)
+    numstories = Column(Float(53))
+    numunits = Column(Integer)
+    numrooms = Column(Float(53))
+    structstyle = Column(String)
+    parvaltype = Column(String)
+    improvval = Column(Float(53))
+    landval = Column(Float(53))
+    parval = Column(Float(53))
+    agval = Column(Float(53))
+    homestead_exemption = Column(String)
+    saleprice = Column(Float(53))
+    saledate = Column(Date)
+    taxamt = Column(Float(53))
+    taxyear = Column(String)
+    owntype = Column(String)
+    owner = Column(String)
+    ownfrst = Column(String)
+    ownlast = Column(String)
+    owner2 = Column(String)
+    owner3 = Column(String)
+    owner4 = Column(String)
+    previous_owner = Column(String)
+    mailadd = Column(String)
+    mail_address2 = Column(String)
+    careof = Column(String)
+    mail_addno = Column(String)
+    mail_addpref = Column(String)
+    mail_addstr = Column(String)
+    mail_addsttyp = Column(String)
+    mail_addstsuf = Column(String)
+    mail_unit = Column(String)
+    mail_city = Column(String)
+    mail_state2 = Column(String)
+    mail_zip = Column(String)
+    mail_country = Column(String)
+    mail_urbanization = Column(String)
+    address = Column(String)
+    address2 = Column(String)
+    saddno = Column(String)
+    saddpref = Column(String)
+    saddstr = Column(String)
+    saddsttyp = Column(String)
+    saddstsuf = Column(String)
+    sunit = Column(String)
+    scity = Column(String)
+    original_address = Column(String)
+    city = Column(String)
+    county = Column(String)
+    state2 = Column(String)
+    szip = Column(String)
+    szip5 = Column(String)
+    urbanization = Column(String)
+    ll_address_count = Column(Integer)
+    location_name = Column(String)
+    address_source = Column(String)
+    legaldesc = Column(String)
+    plat = Column(String)
+    book = Column(String)
+    page = Column(String)
+    block = Column(String)
+    lot = Column(String)
+    neighborhood = Column(String)
+    subdivision = Column(String)
+    lat = Column(String)
+    lon = Column(String)
+    fema_flood_zone = Column(String)
+    fema_flood_zone_subtype = Column(String)
+    fema_flood_zone_raw = Column(String)
+    fema_flood_zone_data_date = Column(Date)
+    qoz = Column(String)
+    qoz_tract = Column(String)
+    census_tract = Column(String)
+    census_block = Column(String)
+    census_blockgroup = Column(String)
+    census_zcta = Column(String)
+    census_elementary_school_district = Column(String)
+    census_secondary_school_district = Column(String)
+    census_unified_school_district = Column(String)
+    ll_last_refresh = Column(Date)
+    sourceurl = Column(String)
+    recrdareatx = Column(String)
+    recrdareano = Column(Integer)
+    gisacre = Column(Float(53))
+    sqft = Column(Float(53))
+    ll_gisacre = Column(Float(53))
+    ll_gissqft = Column(BigInteger)
+    ll_bldg_footprint_sqft = Column(Integer)
+    ll_bldg_count = Column(Integer)
+    cdl_raw = Column(String)
+    cdl_majority_category = Column(String)
+    cdl_majority_percent = Column(Float(53))
+    cdl_date = Column(String)
+    plss_township = Column(String)
+    plss_section = Column(String)
+    plss_range = Column(String)
+    reviseddate = Column(Date)
+    path = Column(String)
+    ll_stable_id = Column(String)
+    ll_uuid = Column(UUID)
+    ll_stack_uuid = Column(String)
+    ll_row_parcel = Column(String)
+    ll_updated_at = Column(DateTime(True))
+    placekey = Column(String)
+    dpv_status = Column(String)
+    dpv_codes = Column(String)
+    dpv_notes = Column(String)
+    dpv_type = Column(String)
+    cass_errorno = Column(String)
+    rdi = Column(String)
+    usps_vacancy = Column(String)
+    usps_vacancy_date = Column(Date)
+    padus_public_access = Column(String)
+    lbcs_activity = Column(Float(53))
+    lbcs_activity_desc = Column(String)
+    lbcs_function = Column(Float(53))
+    lbcs_function_desc = Column(String)
+    lbcs_structure = Column(Float(53))
+    lbcs_structure_desc = Column(String)
+    lbcs_site = Column(Float(53))
+    lbcs_site_desc = Column(String)
+    lbcs_ownership = Column(Float(53))
+    lbcs_ownership_desc = Column(String)
+    sourceagent = Column(String)
+    multistruct = Column(Boolean)
+    subsurfown = Column(String)
+    subowntype = Column(String)
+    sourceref = Column(String)
+    sourcedate = Column(Date)
+    join_parcelnumb = Column(String)
+    land_acres_0 = Column(Float(53))
+    land_acres_1 = Column(Float(53))
+    frontage = Column(Float(53))
+    land_front_0 = Column(Float(53))
+    land_front_1 = Column(Float(53))
+    land_front_2 = Column(Float(53))
+    land_depth_0 = Column(Float(53))
+    land_depth_1 = Column(Float(53))
+    land_depth_2 = Column(Float(53))
+    vacant = Column(Boolean)
+    exemptcode = Column(String)
+    oldprop = Column(String)
+    propstatus = Column(String)
+    extrazoning_0 = Column(String)
+    extrazoning_1 = Column(String)
+    extrazoning_2 = Column(String)
+    extrazoning_3 = Column(String)
+    county_usecode = Column(String)
+    dateoflastsplit = Column(Date)
+    schooldist = Column(String)
+    hometaxyear = Column(Integer)
+    agb_numagb = Column(Integer)
+    agb_calcvalue = Column(Float(53))
+    cib_stories = Column(Float(53))
+    cib_value = Column(Float(53))
+    cib_bldgclass_string = Column(String)
+    cib_numcib = Column(Float(53))
+    cib_floorarea = Column(Float(53))
+    cib_occ_string = Column(String)
+    cib_yearbuilt = Column(Integer)
+    cib_pricefloor = Column(Float(53))
+    cib_calcvalue = Column(Float(53))
+    resb_bldgclass_string = Column(String)
+    resb_plusminus = Column(String)
+    resb_numresb = Column(Float(53))
+    resb_floorarea = Column(Float(53))
+    resb_groundarea = Column(Float(53))
+    resb_occ_string = Column(String)
+    resb_yearbuilt = Column(Integer)
+    resb_pricefloor = Column(Float(53))
+    resb_calcvalue = Column(Float(53))
+    resb_priceground = Column(Float(53))
+    resb_garagearea = Column(Float(53))
+    resb_basementarea = Column(Float(53))
+    resb_effage = Column(Integer)
+    resb_exterior_string = Column(String)
+    resb_fireplaces = Column(Integer)
+    resb_fullbaths = Column(Integer)
+    resb_gartype_string = Column(String)
+    resb_halfbaths = Column(Integer)
+    resb_heat_string = Column(String)
+    resb_styhgt = Column(Integer)
+    resb_nbed = Column(Integer)
+    resb_avestyht = Column(Float(53))
+    resb_depr = Column(String)
+    r_or_p = Column(Float(53))
+    isexempt = Column(Boolean)
+    landivalue = Column(Float(53))
+    bldass_1 = Column(Float(53))
+    bldass_2 = Column(Float(53))
+    bldass_3 = Column(Float(53))
+    landass_1 = Column(Float(53))
+    landass_2 = Column(Float(53))
+    landass_3 = Column(Float(53))
+    mborsev_1 = Column(Float(53))
+    mborsev_2 = Column(Float(53))
+    mborsev_3 = Column(Float(53))
+    adjsev_0_3 = Column(Float(53))
+    adjsev_1_3 = Column(Float(53))
+    adjsev_2_3 = Column(Float(53))
+    mbortax_1 = Column(Float(53))
+    mbortax_2 = Column(Float(53))
+    mbortax_3 = Column(Float(53))
+    tax_2 = Column(Float(53))
+    tax_3 = Column(Float(53))
+    adjtax_1_3 = Column(Float(53))
+    adjtax_2_3 = Column(Float(53))
+    adjass_1_3 = Column(Float(53))
+    adjass_2_3 = Column(Float(53))
+    ass_3 = Column(Float(53))
+    secondaryunit = Column(String)
+    homedate = Column(Date)
+    publ_0 = Column(String)
+    publ_1 = Column(String)
+    publ_2 = Column(String)
+    publ_3 = Column(String)
+    publ_4 = Column(String)
+    publ_5 = Column(String)
+    publ_6 = Column(String)
+    publ_7 = Column(String)
+    publ_8 = Column(String)
+    publ_9 = Column(String)
+    publ_10 = Column(String)
+    publ_11 = Column(String)
+    publ_12 = Column(String)
+    refid_uniq_parcelnumb = Column(Boolean)
+    tax_status = Column(String(255))
+    tax_due = Column(Numeric(20, 2))
+    tax_details = Column(String)
+    tax_payments = Column(String)
+
+
+# metadata = MetaData()
+
+
+# mi_wayne = Table(
+#     "mi_wayne",
+#     metadata,
+#     Column("geoid", BigInteger),
+#     Column("sourceagent", Text),
+#     Column("parcelnumb", Text),
+#     Column("parcelnumb_no_formatting", Text),
+#     Column("state_parcelnumb", Text),
+#     Column("account_number", Text),
+#     Column("tax_id", Text),
+#     Column("alt_parcelnumb1", Text),
+#     Column("alt_parcelnumb2", Text),
+#     Column("alt_parcelnumb3", Text),
+#     Column("usecode", BigInteger),
+#     Column("usedesc", Text),
+#     Column("zoning", Text),
+#     Column("zoning_description", Text),
+#     Column("struct", Text),
+#     Column("multistruct", Text),
+#     Column("structno", Text),
+#     Column("yearbuilt", Text),
+#     Column("numstories", Text),
+#     Column("numunits", Text),
+#     Column("numrooms", Text),
+#     Column("structstyle", Text),
+#     Column("parvaltype", Text),
+#     Column("improvval", Text),
+#     Column("landval", Text),
+#     Column("parval", Text),
+#     Column("agval", Text),
+#     Column("homestead_exemption", Text),
+#     Column("saleprice", BigInteger),
+#     Column("saledate", Text),
+#     Column("taxamt", BigInteger),
+#     Column("taxyear", Text),
+#     Column("owntype", Text),
+#     Column("owner", Text),
+#     Column("ownfrst", Text),
+#     Column("ownlast", Text),
+#     Column("owner2", Text),
+#     Column("owner3", Text),
+#     Column("owner4", Text),
+#     Column("previous_owner", Text),
+#     Column("subsurfown", Text),
+#     Column("subowntype", Text),
+#     Column("mailadd", Text),
+#     Column("mail_address2", Text),
+#     Column("careof", Text),
+#     Column("mail_addno", Text),
+#     Column("mail_addpref", Text),
+#     Column("mail_addstr", Text),
+#     Column("mail_addsttyp", Text),
+#     Column("mail_addstsuf", Text),
+#     Column("mail_unit", Text),
+#     Column("mail_city", Text),
+#     Column("mail_state2", Text),
+#     Column("mail_zip", Text),
+#     Column("mail_country", Text),
+#     Column("mail_urbanization", Text),
+#     Column("address", Text),
+#     Column("address2", Text),
+#     Column("saddno", BigInteger),
+#     Column("saddpref", Text),
+#     Column("saddstr", Text),
+#     Column("saddsttyp", Text),
+#     Column("saddstsuf", Text),
+#     Column("sunit", Text),
+#     Column("scity", Text),
+#     Column("original_address", JSONB),
+#     Column("city", Text),
+#     Column("county", Text),
+#     Column("state2", Text),
+#     Column("szip", Text),
+#     Column("szip5", BigInteger),
+#     Column("urbanization", Text),
+#     Column("ll_address_count", BigInteger),
+#     Column("location_name", Text),
+#     Column("address_source", Text),
+#     Column("legaldesc", Text),
+#     Column("plat", Text),
+#     Column("book", Text),
+#     Column("page", Text),
+#     Column("block", Text),
+#     Column("lot", Text),
+#     Column("neighborhood", Text),
+#     Column("subdivision", Text),
+#     Column("lat", Double(53)),
+#     Column("lon", Double(53)),
+#     Column("fema_flood_zone", Text),
+#     Column("fema_flood_zone_subtype", Text),
+#     Column("fema_flood_zone_raw", JSONB),
+#     Column("fema_flood_zone_data_date", Text),
+#     Column("qoz", Text),
+#     Column("qoz_tract", Text),
+#     Column("census_tract", BigInteger),
+#     Column("census_block", BigInteger),
+#     Column("census_blockgroup", BigInteger),
+#     Column("census_zcta", BigInteger),
+#     Column("census_elementary_school_district", Text),
+#     Column("census_secondary_school_district", Text),
+#     Column("census_unified_school_district", Text),
+#     Column("sourceref", Text),
+#     Column("sourcedate", Text),
+#     Column("ll_last_refresh", Text),
+#     Column("sourceurl", Text),
+#     Column("recrdareatx", Text),
+#     Column("recrdareano", Text),
+#     Column("gisacre", Text),
+#     Column("sqft", Text),
+#     Column("ll_gisacre", Double(53)),
+#     Column("ll_gissqft", BigInteger),
+#     Column("ll_bldg_footprint_sqft", BigInteger),
+#     Column("ll_bldg_count", BigInteger),
+#     Column("cdl_raw", Text),
+#     Column("cdl_majority_category", Text),
+#     Column("cdl_majority_percent", Text),
+#     Column("cdl_date", Text),
+#     Column("plss_township", Text),
+#     Column("plss_section", Text),
+#     Column("plss_range", Text),
+#     Column("reviseddate", Text),
+#     Column("path", Text),
+#     Column("ll_stable_id", Text),
+#     Column("ll_uuid", Text),
+#     Column("ll_stack_uuid", Text),
+#     Column("ll_row_parcel", Text),
+#     Column("ll_updated_at", DateTime(True)),
+#     Column("dpv_status", Text),
+#     Column("dpv_codes", Text),
+#     Column("dpv_notes", Text),
+#     Column("dpv_type", Text),
+#     Column("cass_errorno", Text),
+#     Column("rdi", Text),
+#     Column("usps_vacancy", Text),
+#     Column("usps_vacancy_date", Text),
+#     Column("padus_public_access", Text),
+#     Column("lbcs_activity", Text),
+#     Column("lbcs_activity_desc", Text),
+#     Column("lbcs_function", Text),
+#     Column("lbcs_function_desc", Text),
+#     Column("lbcs_structure", Text),
+#     Column("lbcs_structure_desc", Text),
+#     Column("lbcs_site", Text),
+#     Column("lbcs_site_desc", Text),
+#     Column("lbcs_ownership", Text),
+#     Column("lbcs_ownership_desc", Text),
+#     Column("join_parcelnumb", Text),
+#     Column("land_acres_0", Text),
+#     Column("land_acres_1", Text),
+#     Column("frontage", Double(53)),
+#     Column("land_front_0", Double(53)),
+#     Column("land_front_1", Text),
+#     Column("land_front_2", Text),
+#     Column("land_depth_0", Double(53)),
+#     Column("land_depth_1", Text),
+#     Column("land_depth_2", Text),
+#     Column("vacant", Text),
+#     Column("exemptcode", Text),
+#     Column("oldprop", BigInteger),
+#     Column("propstatus", Text),
+#     Column("extrazoning_0", Text),
+#     Column("extrazoning_1", Text),
+#     Column("extrazoning_2", Text),
+#     Column("extrazoning_3", Text),
+#     Column("county_usecode", Text),
+#     Column("dateoflastsplit", Text),
+#     Column("schooldist", BigInteger),
+#     Column("hometaxyear", Text),
+#     Column("agb_numagb", Text),
+#     Column("agb_calcvalue", Text),
+#     Column("cib_stories", Text),
+#     Column("cib_value", Text),
+#     Column("cib_bldgclass_string", Text),
+#     Column("cib_numcib", Text),
+#     Column("cib_floorarea", Text),
+#     Column("cib_occ_string", Text),
+#     Column("cib_yearbuilt", Text),
+#     Column("cib_pricefloor", Text),
+#     Column("cib_calcvalue", Text),
+#     Column("resb_bldgclass_string", Text),
+#     Column("resb_plusminus", Text),
+#     Column("resb_numresb", Text),
+#     Column("resb_floorarea", Text),
+#     Column("resb_groundarea", Text),
+#     Column("resb_occ_string", Text),
+#     Column("resb_yearbuilt", Text),
+#     Column("resb_pricefloor", Text),
+#     Column("resb_calcvalue", Text),
+#     Column("resb_priceground", Text),
+#     Column("resb_garagearea", Text),
+#     Column("resb_basementarea", Text),
+#     Column("resb_effage", Text),
+#     Column("resb_exterior_string", Text),
+#     Column("resb_fireplaces", Text),
+#     Column("resb_fullbaths", Text),
+#     Column("resb_gartype_string", Text),
+#     Column("resb_halfbaths", Text),
+#     Column("resb_heat_string", Text),
+#     Column("resb_styhgt", Text),
+#     Column("resb_nbed", Text),
+#     Column("resb_avestyht", Text),
+#     Column("resb_depr", Text),
+#     Column("r_or_p", Text),
+#     Column("isexempt", Text),
+#     Column("landivalue", Text),
+#     Column("bldass_1", Text),
+#     Column("bldass_2", Text),
+#     Column("bldass_3", Text),
+#     Column("landass_1", BigInteger),
+#     Column("landass_2", BigInteger),
+#     Column("landass_3", BigInteger),
+#     Column("mborsev_1", BigInteger),
+#     Column("mborsev_2", BigInteger),
+#     Column("mborsev_3", BigInteger),
+#     Column("adjsev_0_3", BigInteger),
+#     Column("adjsev_1_3", BigInteger),
+#     Column("adjsev_2_3", BigInteger),
+#     Column("mbortax_1", BigInteger),
+#     Column("mbortax_2", BigInteger),
+#     Column("mbortax_3", BigInteger),
+#     Column("tax_2", BigInteger),
+#     Column("tax_3", BigInteger),
+#     Column("adjtax_1_3", BigInteger),
+#     Column("adjtax_2_3", BigInteger),
+#     Column("adjass_1_3", BigInteger),
+#     Column("adjass_2_3", BigInteger),
+#     Column("ass_3", BigInteger),
+#     Column("secondaryunit", BigInteger),
+#     Column("homedate", Text),
+#     Column("publ_0", Text),
+#     Column("publ_1", Text),
+#     Column("publ_2", Text),
+#     Column("publ_3", Text),
+#     Column("publ_4", Text),
+#     Column("publ_5", Text),
+#     Column("publ_6", Text),
+#     Column("publ_7", Text),
+#     Column("publ_8", Text),
+#     Column("publ_9", Text),
+#     Column("publ_10", Text),
+#     Column("publ_11", Text),
+#     Column("publ_12", Text),
+#     Column("refid_uniq_parcelnumb", BigInteger),
+#     Column("tax_status", Text),
+#     Column("tax_due", Text),
+#     Column("tax_details", Text),
+#     Column("tax_payments", Text),
+#     # Column(
+#     #     "id",
+#     #     Integer,
+#     #     Identity(
+#     #         start=1, increment=1, minvalue=1, maxvalue=2147483647, cycle=False, cache=1
+#     #     ),
+#     #     primary_key=True,
+#     # ),
+#     # PrimaryKeyConstraint("id", name="mi_wayne_pkey"),
+#     # UniqueConstraint("id", name="mi_wayne_id_key"),
+#     schema="address_lookup",
+# )
