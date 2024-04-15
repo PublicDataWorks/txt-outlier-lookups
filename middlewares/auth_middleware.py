@@ -1,7 +1,7 @@
-import os
-import hmac
 import hashlib
+import hmac
 import json
+import os
 
 from flask import request
 
@@ -18,8 +18,10 @@ class AuthMiddleware:
 
         data = json.dumps(request_body).encode()
 
-        key_prefix = 'sha256='
-        cleaned_header_sig = hash[len(key_prefix):] if hash.startswith(key_prefix) else hash
+        key_prefix = "sha256="
+        cleaned_header_sig = (
+            hash[len(key_prefix) :] if hash.startswith(key_prefix) else hash
+        )
         decoded_signature = bytes.fromhex(cleaned_header_sig)
 
         hmac_obj = hmac.new(secret.encode(), data, digestmod=hashlib.sha256)
@@ -36,9 +38,12 @@ class AuthMiddleware:
         if not self.verify(hash, request.json):
             raise APIException("Unauthorized", 401)
 
+
 def require_authentication(func):
     def wrapper(*args, **kwargs):
         AuthMiddleware().authenticate()
         return func(*args, **kwargs)
+
+    wrapper.__name__ = func.__name__
 
     return wrapper

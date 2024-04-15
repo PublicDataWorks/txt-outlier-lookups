@@ -4,10 +4,9 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 
 from configs.query_config import query_engine
-from models import mi_wayne
+from constants import ADDRESS_FOUND_MESSAGE, NO_INFO_MESSAGE
+from middlewares.auth_middleware import require_authentication
 from services.services import search_service
-from auth_middleware import require_authentication  
-from constants import NO_INFO_MESSAGE, ADDRESS_FOUND_MESSAGE
 
 load_dotenv()
 
@@ -49,4 +48,4 @@ def health_check():
 
 
 if __name__ == "__main__":
-    app.run(port=8000, debug=True)
+    app.run(port=8080, host="0.0.0.0")
