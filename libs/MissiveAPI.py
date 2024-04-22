@@ -59,21 +59,3 @@ class MissiveAPI:
         except requests.exceptions.RequestException as e:
             print(str(e))
             return None
-
-    def retrieve_label_id_by_name(self, label_name):
-        try:
-            response = requests.get(LIST_LABELS_URL, headers=self.headers)
-            response.raise_for_status()  # Raise exception if not a 2xx response
-            labels = response.json()
-
-            for label in labels["shared_labels"]:
-                if label["name"] == label_name:
-                    return label["id"]
-            return None
-
-        except requests.exceptions.RequestException as e:
-            print(str(e))
-            return None
-        except KeyError as e:
-            print(f"Missing key in response: {str(e)}")
-            return None

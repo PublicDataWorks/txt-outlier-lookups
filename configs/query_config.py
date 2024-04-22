@@ -21,6 +21,7 @@ city_stats_text = (
     "This table gives information regarding the properties and owners of a "
     "given city where owner is the address of the owner as OWNER NAME, RENTAL STATUS, taxamt is TAX DEBT in outstanding taxes according to the Wayne County Treasurer"
     "and tax_status listed as COMPLIANT/IN FORFEITURE/FORECLOSED by the Treasurer."
+    "Always return owner, taxamt, tax_status columns"
 )
 table_node_mapping = SQLTableNodeMapping(sql_database)
 table_schema_objs = [

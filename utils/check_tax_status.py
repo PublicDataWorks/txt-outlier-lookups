@@ -8,4 +8,4 @@ def check_tax_status(response):
             return "NO_TAX_DEBT"
         else:
             return "TAX_DEBT"
-    return None
+    return "NO_INFORMATION"

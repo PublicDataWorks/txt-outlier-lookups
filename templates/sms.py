@@ -4,6 +4,11 @@ sms_templates = {
       "us what kind of resources you might need. You can always text REPORTER and we'll follow up with you. "
       "Text UPDATES if you want to see what kind of weekly updates we offer."
   ),
+  "no_match": (
+    "We don’t have info for {address}. If you’re sure the address is in Detroit and you entered it correctly text "
+    "REPORTER. We’ll get back to you and see what’s going on. If you want to try again just enter an address in "
+    "this format “1111 E. Jefferson” or “231 Main St.”"
+),
   "closest_match": (
       "This is the address we think is correct: {address}. Type YES if "
       "that's right. If this doesn't look right enter the address again in this format 1111 E. "

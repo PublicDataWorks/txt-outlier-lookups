@@ -3,9 +3,12 @@ import hmac
 import json
 import os
 
+from dotenv import load_dotenv
 from flask import request
 
 from exceptions import APIException
+
+load_dotenv()
 
 
 class AuthMiddleware:
