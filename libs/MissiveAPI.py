@@ -8,7 +8,6 @@ from constants.urls import CREATE_MESSAGE_URL, LIST_LABELS_URL
 
 load_dotenv()
 
-
 import json
 import os
 
@@ -25,7 +24,14 @@ class MissiveAPI:
         }
         self.organization = os.environ.get("MISSIVE_ORGANIZATION")
 
-    def send_sms(self, message, to_phone, conversation_id=None, label_list=[]):
+    def send_sms(
+        self,
+        message,
+        to_phone,
+        conversation_id=None,
+        add_label_list=[],
+        remove_label_list=[],
+    ):
         try:
             body = {
                 "drafts": {
@@ -33,9 +39,10 @@ class MissiveAPI:
                     "from_field": {
                         "phone_number": self.phone_number,
                     },
-                    "organization": "7deec8a7-439a-414c-a10a-059142216786",
+                    "organization": self.organization,
                     "to_fields": [{"phone_number": to_phone}],
-                    "add_shared_labels": label_list,
+                    "add_shared_labels": add_label_list,
+                    "remove_shared_labels": remove_label_list,
                     "send": True,  # Send right away
                 },
             }
