@@ -1,5 +1,7 @@
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
+from werkzeug.middleware.proxy_fix import ProxyFix
+
 from libs.MissiveAPI import MissiveAPI
 from middlewares.auth_middleware import require_authentication
 from services.services import search_service
@@ -7,7 +9,9 @@ from services.services import search_service
 load_dotenv()
 
 app = Flask(__name__)
-missiveAPI = MissiveAPI()
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
+missive_client = MissiveAPI()
 
 
 @app.route("/", methods=["GET"])
