@@ -7,7 +7,6 @@ from sqlalchemy.orm import sessionmaker
 load_dotenv()
 # set up database
 db_url = os.environ.get("DATABASE_URL")
-key = os.environ.get("OPENAI_API_KEY")
 
 engine = create_engine(db_url)
 

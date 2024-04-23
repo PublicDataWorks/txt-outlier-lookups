@@ -19,7 +19,8 @@ sql_database = SQLDatabase(
 function_llm = OpenAI(temperature=0.5, model="gpt-3.5-turbo", api_key=key)
 city_stats_text = (
     "This table gives information regarding the properties and owners of a "
-    "given city where owner is the address of the owner as OWNER NAME, RENTAL STATUS, taxamt is TAX DEBT in outstanding taxes according to the Wayne County Treasurer"
+    "given city where owner is the address of the owner as OWNER NAME, RENTAL STATUS, taxamt is TAX DEBT in "
+    "outstanding taxes according to the Wayne County Treasurer"
     "and tax_status listed as COMPLIANT/IN FORFEITURE/FORECLOSED by the Treasurer."
     "Always return owner, taxamt, tax_status columns"
 )
