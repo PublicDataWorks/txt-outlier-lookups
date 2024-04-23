@@ -1,2 +1,4 @@
 CREATE_MESSAGE_URL = "https://public.missiveapp.com/v1/drafts"
-LIST_LABELS_URL = "https://public.missiveapp.com/v1/shared_labels"
+CONVERSATION_MESSAGES_URL = (
+    "https://public.missiveapp.com/v1/conversations/{conversation_id}/messages"
+)

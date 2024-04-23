@@ -58,3 +58,12 @@ sms_templates = {
       "all set you can just text ALL SET."
   ),
 }
+
+def get_message(tax_status):
+    tax_status_mapping = {
+        "TAX_DEBT": sms_templates["has_tax_debt"],
+        "NO_TAX_DEBT": sms_templates["no_tax_debt"],
+        "NO_INFORMATION": "There is no information about this location"
+    }
+
+    return tax_status_mapping.get(tax_status, "Invalid tax status")
