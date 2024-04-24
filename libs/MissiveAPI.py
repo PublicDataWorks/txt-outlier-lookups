@@ -9,11 +9,6 @@ from constants.urls import CONVERSATION_MESSAGES_URL, CREATE_MESSAGE_URL
 
 load_dotenv()
 
-import json
-import os
-
-import requests
-
 
 class MissiveAPI:
     def __init__(self):
@@ -37,11 +32,11 @@ class MissiveAPI:
             body = {
                 "drafts": {
                     "body": str(message),
-                    "from_field": {"phone_number": self.phone_number, "type": "twilio"},
+                    "from_field": {"phone_number": self.phone_number},
                     "organization": self.organization,
                     "to_fields": [{"phone_number": to_phone}],
-                    # "add_shared_labels": add_label_list,
-                    # "remove_shared_labels": remove_label_list,
+                    "add_shared_labels": add_label_list,
+                    "remove_shared_labels": remove_label_list,
                     "send": True,  # Send right away
                 },
             }

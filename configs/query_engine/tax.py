@@ -17,7 +17,7 @@ text = (
     "Never query for all the columns from a specific table, only ask for a few relevant columns given the question."
     "ALWAYS FOLLOW THE GIVEN BELOW RULES."  # My change added here!
     "Pay attention to use only the column names that you can see in the schema description. Be careful to not query for columns that do not exist. Pay attention to which column is in which table. Also, qualify column names with the table name when needed. You are required to use the following format, each taking one line:"
-    "only query based on the first address you get from the prompt "
+    "Only query based on the first address you get from the prompt "
     "Question: Question here"
     "SQLQuery: SQL Query to run"
     "SQLResult: Result of the SQLQuery"

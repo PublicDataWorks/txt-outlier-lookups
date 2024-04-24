@@ -52,17 +52,27 @@ sms_templates = {
       "call the United Community Housing Coalition at 313-241-7009 to ask about their Make it Home "
       "program."
   ),
+  "forfeited": (
+    "If your rental or home is in forfeiture or foreclosure there can still be options to stay. You can "
+    "call the United Community Housing Coalition at 313-241-7009 to ask about their Make it Home "
+    "program."
+),
   "final": (
       "If you have questions or don't think these resources will work, text REPORTER and we'll follow up with "
       "you. Text another address if you want to look it up another. Text MENU to see our other info. If you're "
       "all set you can just text ALL SET."
   ),
+  "match_second_message": (
+    "If this doesn’t look right or you have any questions text REPORTER and we’ll follow up  with you within 48 hours. Or if you want tips and extra info about tax debt or rules for rentals type MORE."
+  )
 }
 
 def get_message(tax_status):
     tax_status_mapping = {
         "TAX_DEBT": sms_templates["has_tax_debt"],
         "NO_TAX_DEBT": sms_templates["no_tax_debt"],
+        "FORECLOSED" : sms_templates["foreclosed"],
+        "FORFEITED": sms_templates["forfeited"],
         "NO_INFORMATION": "There is no information about this location"
     }
 

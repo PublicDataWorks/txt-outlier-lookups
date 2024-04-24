@@ -38,7 +38,7 @@ function_llm = OpenAI(temperature=0.5, model="gpt-3.5-turbo", api_key=key)
 
 city_stats_text = (
     "This table gives information regarding the properties and owners of a "
-    "given city where owner is the address of the owner as OWNER NAME"
+    "given city where owner is the address of the owner as OWNER NAME AND taxdue is the tax due amount"
     "Always return owner column"
 )
 table_node_mapping = SQLTableNodeMapping(sql_database)

@@ -37,18 +37,17 @@ def test_map_keys_to_result_with_empty_result():
 
 def test_check_tax_status_no_debt():
     response = Mock()
-    response.metadata = {"result": [["OK"]], "col_keys": ["tax_status"]}
-    assert check_tax_status(response) == "NO_TAX_DEBT"
+    response.metadata = {"result": [["FORFEITED"]], "col_keys": ["tax_status"]}
+    assert check_tax_status(response) == "FORFEITED"
 
 
 def test_check_tax_status_with_debt():
     response = Mock()
-    response.metadata = {"result": [["NOT OK"]], "col_keys": ["tax_status"]}
-    assert check_tax_status(response) == "TAX_DEBT"
+    response.metadata = {"result": [["FORECLOSED"]], "col_keys": ["tax_status"]}
+    assert check_tax_status(response) == "FORECLOSED"
 
 
 def test_check_tax_status_no_tax_status():
     response = Mock()
     response.metadata = {"result": [["John Doe"]], "col_keys": ["name"]}
-    assert check_tax_status(response) is None
-    assert check_tax_status(response) is None
+    assert check_tax_status(response) == "NO_INFORMATION"

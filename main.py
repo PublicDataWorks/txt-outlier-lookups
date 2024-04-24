@@ -1,3 +1,5 @@
+import os
+
 from dotenv import load_dotenv
 from flask import Flask, g, jsonify, request
 from llama_index.core import PromptTemplate
@@ -31,12 +33,12 @@ def search():
     # @require_authentication
     data = request.get_json()
     conversation_id = data.get("conversation", {}).get("id")
-    phone = data.get("message", {}).get("to_fields", [{}])[0].get("id")
-    preview = data.get("message", {}).get("preview")
+    phone = data.get("message", {}).get("from_field", {}).get("id")
+    message = data.get("message", {}).get("preview")
 
-    print(f"Conversation ID: {conversation_id}, Phone: {phone}, Preview: {preview}")
-
-    response, status = search_service(preview, conversation_id, phone)
+    response, status = search_service(
+        message=message, conversation_id=conversation_id, to_phone=phone
+    )
     return jsonify(response), status
 
 
@@ -44,36 +46,21 @@ def search():
 def more():
     data = request.get_json()
     conversation_id = data.get("conversation", {}).get("id")
-    to_fields = data.get("latest_message", {}).get("to_fields", [{}])
-    to_phone = to_fields[0].get("phone") if to_fields else None
+    phone = data.get("message", {}).get("from_field", {}).get("id")
+    shared_labels = data.get("conversation", {}).get("shared_labels", [])
+    shared_label_ids = [label.get("id") for label in shared_labels]
 
-    messages = missive_client.extract_preview_content(conversation_id)
-    tax_status = check_tax_status(str(messages))
+    if shared_label_ids and os.environ.get("MISSIVE_LOOKUP_TAG_ID") in shared_label_ids:
+        messages = missive_client.extract_preview_content(conversation_id)
+        query_result = tax_query_engine.query(str(messages))
+        tax_status = check_tax_status(query_result)
 
-    missive_client.send_sms(get_message(tax_status), to_phone, conversation_id)
+        missive_client.send_sms(
+            get_message(tax_status), conversation_id=conversation_id, to_phone=phone
+        )
+        return jsonify(tax_status), 200
 
-    return jsonify(tax_status), 200
-
-
-@app.route("/test", methods=["POST"])
-def test():
-    conversation_messages = [
-        "34657 CHESTNUT ST",
-        "You can save this number in your phone and text us anytime. Text REPORTER to let us know you want to talk to one or MENU to see popular reso",
-        "459 CALVIN AVE",
-        "Hello! This is TXT OUTLIER, a free info service from Detroit's Outlier Media. Text a word like LANDLORD or DTE to get an automatic reply or",
-        "You can save this number in your phone and text us anytime. Text REPORTER to let us know you want to talk to one or MENU to see popular reso",
-        "Detroit",
-        "Thanks! Did not know you were going to get that... -KAL",
-        "We don't have a quick answer for you. A reporter will follow up within 48 hours. Do you want to tell us a little more in the meantime? You c",
-        "We'll follow up with you about that. Thanks for your patience.",
-        "4138 BROOKSTONE DR",
-        "You can save this number in your phone and text us anytime. Text REPORTER to let us know you want to talk to one or MENU to see popular reso",
-        "Hey Kate 👋🏾 received ",
-    ]
-
-    response = tax_query_engine.query(str(conversation_messages))
-    return {"result": conversation_messages}, 200
+    return "This request don't have LOOK_UP labels", 400
 
 
 if __name__ == "__main__":
