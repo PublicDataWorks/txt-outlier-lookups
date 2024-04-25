@@ -2,15 +2,10 @@ import os
 
 from dotenv import load_dotenv
 from flask import Flask, g, jsonify, request
-from llama_index.core import PromptTemplate
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from configs.query_config import query_engine
-from configs.query_engine.owner import owner_query_engine
 from configs.query_engine.tax import tax_query_engine
 from libs.MissiveAPI import MissiveAPI
-from middlewares.auth_middleware import require_authentication
-from middlewares.extract_data import extract_data
 from services.services import search_service
 from templates.sms import get_message
 from utils.check_tax_status import check_tax_status

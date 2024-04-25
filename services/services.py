@@ -6,7 +6,7 @@ from flask import g
 from configs.database import Session
 from configs.query_engine.owner import owner_query_engine
 from libs.MissiveAPI import MissiveAPI
-from models import mi_wayne  # import the model
+from models import mi_wayne
 from templates.sms import sms_templates
 
 load_dotenv()
