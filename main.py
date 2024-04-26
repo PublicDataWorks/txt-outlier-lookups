@@ -5,7 +5,9 @@ from flask import Flask, g, jsonify, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from configs.query_engine.tax import tax_query_engine
+from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
+from middlewares.auth_middleware import require_authentication
 from services.services import search_service
 from templates.sms import get_message
 from utils.check_tax_status import check_tax_status
@@ -13,6 +15,15 @@ from utils.check_tax_status import check_tax_status
 load_dotenv()
 
 app = Flask(__name__)
+
+
+@app.errorhandler(APIException)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
+
+
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 missive_client = MissiveAPI()
@@ -24,15 +35,15 @@ def health_check():
 
 
 @app.route("/search", methods=["POST"])
+@require_authentication
 def search():
-    # @require_authentication
     data = request.get_json()
     conversation_id = data.get("conversation", {}).get("id")
     phone = data.get("message", {}).get("from_field", {}).get("id")
     message = data.get("message", {}).get("preview")
 
     response, status = search_service(
-        message=message, conversation_id=conversation_id, to_phone=phone
+        query=message, conversation_id=conversation_id, to_phone=phone
     )
     return jsonify(response), status
 

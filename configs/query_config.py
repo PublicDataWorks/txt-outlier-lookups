@@ -16,7 +16,7 @@ metadata = MetaData(schema="address_lookup")
 sql_database = SQLDatabase(
     engine, schema="address_lookup", include_tables=["mi_wayne"], metadata=metadata
 )
-function_llm = OpenAI(temperature=0.5, model="gpt-3.5-turbo", api_key=key)
+function_llm = OpenAI(temperature=0.2, model="gpt-3.5-turbo", api_key=key)
 city_stats_text = (
     "This table gives information regarding the properties and owners of a "
     "given city where owner is the address of the owner as OWNER NAME, RENTAL STATUS, taxamt is TAX DEBT in "
