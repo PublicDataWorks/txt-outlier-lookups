@@ -44,6 +44,8 @@ class MissiveAPI:
             if conversation_id is not None:
                 body["drafts"]["conversation"] = conversation_id
 
+            print("===================================", body)
+
             response = requests.post(
                 CREATE_MESSAGE_URL, headers=self.headers, data=json.dumps(body)
             )

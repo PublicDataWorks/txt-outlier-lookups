@@ -6,7 +6,7 @@ from flask import g
 from configs.database import Session
 from configs.query_engine.owner import owner_query_engine
 from libs.MissiveAPI import MissiveAPI
-from models import mi_wayne
+from models import mi_wayne_detroit
 from templates.sms import sms_templates
 
 load_dotenv()
@@ -16,7 +16,11 @@ missive_client = MissiveAPI()
 
 def search_service(query, conversation_id, to_phone):
     session = Session()
-    results = session.query(mi_wayne).filter(mi_wayne.address.like(f"{query}%")).all()
+    results = (
+        session.query(mi_wayne_detroit)
+        .filter(mi_wayne_detroit.address.like(f"{query}%"))
+        .all()
+    )
 
     if not results:
         return handle_no_match(query, conversation_id, to_phone)

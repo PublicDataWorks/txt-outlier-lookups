@@ -31,7 +31,10 @@ qa_prompt_tmpl = PromptTemplate(text)
 
 metadata = MetaData(schema="address_lookup")
 sql_database = SQLDatabase(
-    engine, schema="address_lookup", include_tables=["mi_wayne"], metadata=metadata
+    engine,
+    schema="address_lookup",
+    include_tables=["mi_wayne_detroit"],
+    metadata=metadata,
 )
 function_llm = OpenAI(temperature=0.5, model="gpt-3.5-turbo", api_key=key)
 city_stats_text = (
@@ -42,7 +45,7 @@ city_stats_text = (
 )
 table_node_mapping = SQLTableNodeMapping(sql_database)
 table_schema_objs = [
-    (SQLTableSchema(table_name="mi_wayne", context_str=city_stats_text))
+    (SQLTableSchema(table_name="mi_wayne_detroit", context_str=city_stats_text))
 ]
 obj_index = ObjectIndex.from_objects(
     table_schema_objs,
