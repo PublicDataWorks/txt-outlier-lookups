@@ -10,7 +10,7 @@ from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from middlewares.auth_middleware import require_authentication
 from services.services import handle_match, search_service
-from templates.sms import get_message, sms_templates
+from templates.sms import get_message
 from utils.check_tax_status import check_tax_status
 
 load_dotenv()
@@ -51,40 +51,50 @@ def search():
 
 @app.route("/yes", methods=["POST"])
 def yes():
-    data = request.get_json()
-    conversation_id = data.get("conversation", {}).get("id")
-    phone = data.get("message", {}).get("from_field", {}).get("id")
-    # shared_labels = data.get("conversation", {}).get("shared_labels", [])
-
-    messages = missive_client.extract_preview_content(conversation_id)
-    lastest_address = owner_query_engine.query(str(messages))
-    handle_match(
-        response=lastest_address, conversation_id=conversation_id, to_phone=phone
-    )
-
-    # Remove tags
-    return {"result": str(lastest_address)}, 200
+    try:
+        data = request.get_json()
+        conversation_id = data.get("conversation", {}).get("id")
+        phone = data.get("message", {}).get("from_field", {}).get("id")
+        messages = missive_client.extract_preview_content(conversation_id)
+        if messages is None:
+            return jsonify({"error": "Can't crawl the messages history"}), 400
+        latest_address = owner_query_engine.query(str(messages))
+        handle_match(
+            response=latest_address, conversation_id=conversation_id, to_phone=phone
+        )
+        return jsonify({"message": "Success"}), 200
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/more", methods=["POST"])
 def more():
-    data = request.get_json()
-    conversation_id = data.get("conversation", {}).get("id")
-    phone = data.get("message", {}).get("from_field", {}).get("id")
-    shared_labels = data.get("conversation", {}).get("shared_labels", [])
-    shared_label_ids = [label.get("id") for label in shared_labels]
+    try:
+        data = request.get_json()
+        conversation_id = data.get("conversation", {}).get("id")
+        phone = data.get("message", {}).get("from_field", {}).get("id")
+        shared_labels = data.get("conversation", {}).get("shared_labels", [])
+        shared_label_ids = [label.get("id") for label in shared_labels]
 
-    if shared_label_ids and os.environ.get("MISSIVE_LOOKUP_TAG_ID") in shared_label_ids:
-        messages = missive_client.extract_preview_content(conversation_id)
-        query_result = tax_query_engine.query(str(messages))
-        tax_status = check_tax_status(query_result)
+        if (
+            shared_label_ids
+            and os.environ.get("MISSIVE_LOOKUP_TAG_ID") in shared_label_ids
+        ):
+            messages = missive_client.extract_preview_content(conversation_id)
+            if messages is None:
+                return jsonify({"error": "Can't crawl the messages history"}), 400
+            query_result = tax_query_engine.query(str(messages))
+            tax_status = check_tax_status(query_result)
 
-        missive_client.send_sms(
-            get_message(tax_status), conversation_id=conversation_id, to_phone=phone
-        )
-        return jsonify(tax_status), 200
+            missive_client.send_sms(
+                get_message(tax_status), conversation_id=conversation_id, to_phone=phone
+            )
+            return jsonify(tax_status), 200
 
-    return "This request don't have LOOK_UP labels", 400
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
