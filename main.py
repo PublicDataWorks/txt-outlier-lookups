@@ -10,7 +10,7 @@ from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from middlewares.auth_middleware import require_authentication
 from services.services import handle_match, search_service
-from templates.sms import get_message
+from templates.sms import get_rental_message, get_tax_message, sms_templates
 from utils.check_tax_status import check_tax_status
 
 load_dotenv()
@@ -85,10 +85,26 @@ def more():
             if messages is None:
                 return jsonify({"error": "Can't crawl the messages history"}), 400
             query_result = tax_query_engine.query(str(messages))
-            tax_status = check_tax_status(query_result)
+            tax_status, rental_status = check_tax_status(query_result)
+
+            if tax_status:
+                missive_client.send_sms(
+                    get_tax_message(tax_status),
+                    conversation_id=conversation_id,
+                    to_phone=phone,
+                )
+
+            if rental_status:
+                missive_client.send_sms(
+                    get_rental_message(rental_status),
+                    conversation_id=conversation_id,
+                    to_phone=phone,
+                )
 
             missive_client.send_sms(
-                get_message(tax_status), conversation_id=conversation_id, to_phone=phone
+                sms_templates["final"],
+                conversation_id=conversation_id,
+                to_phone=phone,
             )
             return jsonify(tax_status), 200
 

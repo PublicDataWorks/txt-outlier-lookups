@@ -67,13 +67,22 @@ sms_templates = {
   )
 }
 
-def get_message(tax_status):
+def get_tax_message(tax_status):
     tax_status_mapping = {
         "TAX_DEBT": sms_templates["has_tax_debt"],
         "NO_TAX_DEBT": sms_templates["no_tax_debt"],
         "FORECLOSED" : sms_templates["foreclosed"],
         "FORFEITED": sms_templates["forfeited"],
-        "NO_INFORMATION": "There is no information about this location"
+        "NO_INFORMATION": None
     }
 
     return tax_status_mapping.get(tax_status, "Invalid tax status")
+
+def get_rental_message(rental_status):
+    rental_status_mapping = {
+        "REGISTERED": sms_templates["registered"],
+        "UNREGISTERED": sms_templates["unregistered"],
+        "NO_INFORMATION": None
+    }
+
+    return rental_status_mapping.get(rental_status, "Invalid rental status")
