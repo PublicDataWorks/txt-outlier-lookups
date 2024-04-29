@@ -25,11 +25,10 @@ def check_tax_status(response):
                 tax_status = "FORFEITED"
                 pass
             case _:
-                if "tax_due" in owner_data:
-                    if owner_data["tax_due"] > 0:
-                        tax_status = "TAX_DEBT"
-                        pass
                 tax_status = None
                 pass
+
+    if "tax_status" in owner_data and owner_data["tax_due"] > 0 and not tax_status:
+        tax_status = "TAX_DEBT"
 
     return tax_status, rental_status

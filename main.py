@@ -119,13 +119,19 @@ def more():
                 sms_templates["final"],
                 conversation_id=conversation_id,
                 to_phone=phone,
+                remove_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
             )
             return jsonify(tax_status), 200
 
         else:
+            missive_client.send_sms(
+                "You are not currently in a lookup session, please initiate one before querying for more infomation.",
+                conversation_id=conversation_id,
+                to_phone=phone,
+            )
             return (
                 jsonify({"error": "There was no ADDRESS_LOOKUP_TAG, try again later"}),
-                400,
+                200,
             )
 
     except Exception as e:
