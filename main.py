@@ -57,7 +57,14 @@ def yes():
         phone = data.get("message", {}).get("from_field", {}).get("id")
         messages = missive_client.extract_preview_content(conversation_id)
         if messages is None:
-            return jsonify({"error": "Can't crawl the messages history"}), 400
+            return (
+                jsonify(
+                    {
+                        "error": "There was a problem getting message history, try again later"
+                    }
+                ),
+                500,
+            )
         latest_address = owner_query_engine.query(str(messages))
         handle_match(
             response=latest_address, conversation_id=conversation_id, to_phone=phone
@@ -83,7 +90,14 @@ def more():
         ):
             messages = missive_client.extract_preview_content(conversation_id)
             if messages is None:
-                return jsonify({"error": "Can't crawl the messages history"}), 400
+                return (
+                    jsonify(
+                        {
+                            "error": "There was a problem getting message history, try again later"
+                        }
+                    ),
+                    500,
+                )
             query_result = tax_query_engine.query(str(messages))
             tax_status, rental_status = check_tax_status(query_result)
 
@@ -107,6 +121,12 @@ def more():
                 to_phone=phone,
             )
             return jsonify(tax_status), 200
+
+        else:
+            return (
+                jsonify({"error": "There was no ADDRESS_LOOKUP_TAG, try again later"}),
+                400,
+            )
 
     except Exception as e:
         print(f"An error occurred: {str(e)}")

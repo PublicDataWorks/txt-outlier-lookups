@@ -45,10 +45,10 @@ city_stats_text = (
     "the only common fields are lat and lon, check if property exist in residential_rental_registrations then rental status will be IS"
     "if not then return rental status as IS NOT"
     "you will also need to convert lat lon as residential_rental_registrations lat lon are float8 and"
-    "mi_wayne_detroit lat lon are varchar, like so a.lat = CAST(b.lat AS float8) AND a.lon = CAST(b.lon AS float8)"
+    "mi_wayne_detroit lat lon are varchar, like so residential_rental_registrations.lat = CAST(mi_wayne_detroit.lat AS float8) AND residential_rental_registrations.lon = CAST(mi_wayne_detroit.lon AS float8)"
     "MUST always add schema address_lookup to residential_rental_registrations when join"
     "like LEFT JOIN address_lookup.residential_rental_registrations"
-    "Always return owner, rental status, tax debt and tax status"
+    "Always return mi_wayne_detroit.owner, rental status, tax debt and tax status"
 )
 table_node_mapping = SQLTableNodeMapping(sql_database)
 table_schema_objs = [
