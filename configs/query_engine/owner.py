@@ -34,15 +34,22 @@ metadata = MetaData(schema="address_lookup")
 sql_database = SQLDatabase(
     engine,
     schema="address_lookup",
-    include_tables=["mi_wayne_detroit"],
+    include_tables=["mi_wayne_detroit", "residential_rental_registrations"],
     metadata=metadata,
 )
-function_llm = OpenAI(temperature=0.5, model="gpt-3.5-turbo", api_key=key)
-
+function_llm = OpenAI(temperature=0.3, model="gpt-3.5-turbo", api_key=key)
 city_stats_text = (
-    "This table gives information regarding the properties and owners of a "
-    "given city where owner is the address of the owner as OWNER NAME AND tax_due is the tax due amount"
-    "Always return owner, tax_due column"
+    "The mi_wayne_detroit table gives information regarding the properties and owners of a "
+    "given city where owner is the name of the owner as OWNER NAME AND tax_due is the tax debt amount"
+    "tax_status is the tax status of the place and rental status is the rental status"
+    "the table residential_rental_registrations contains list of all rental properties in mi_wayne_detroit"
+    "the only common fields are lat and lon, check if property exist in residential_rental_registrations then rental status will be IS"
+    "if not then return rental status as IS NOT"
+    "you will also need to convert lat lon as residential_rental_registrations lat lon are float8 and"
+    "mi_wayne_detroit lat lon are varchar, like so a.lat = CAST(b.lat AS float8) AND a.lon = CAST(b.lon AS float8)"
+    "MUST always add schema address_lookup to residential_rental_registrations when join"
+    "like LEFT JOIN address_lookup.residential_rental_registrations"
+    "Always return owner, rental status, tax debt and tax status"
 )
 table_node_mapping = SQLTableNodeMapping(sql_database)
 table_schema_objs = [
