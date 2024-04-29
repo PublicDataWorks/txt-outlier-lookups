@@ -4,12 +4,13 @@ from dotenv import load_dotenv
 from flask import Flask, g, jsonify, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+from configs.query_engine.owner import owner_query_engine
 from configs.query_engine.tax import tax_query_engine
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from middlewares.auth_middleware import require_authentication
-from services.services import search_service
-from templates.sms import get_message
+from services.services import handle_match, search_service
+from templates.sms import get_message, sms_templates
 from utils.check_tax_status import check_tax_status
 
 load_dotenv()
@@ -46,6 +47,23 @@ def search():
         query=message, conversation_id=conversation_id, to_phone=phone
     )
     return jsonify(response), status
+
+
+@app.route("/yes", methods=["POST"])
+def yes():
+    data = request.get_json()
+    conversation_id = data.get("conversation", {}).get("id")
+    phone = data.get("message", {}).get("from_field", {}).get("id")
+    # shared_labels = data.get("conversation", {}).get("shared_labels", [])
+
+    messages = missive_client.extract_preview_content(conversation_id)
+    lastest_address = owner_query_engine.query(str(messages))
+    handle_match(
+        response=lastest_address, conversation_id=conversation_id, to_phone=phone
+    )
+
+    # Remove tags
+    return {"result": str(lastest_address)}, 200
 
 
 @app.route("/more", methods=["POST"])

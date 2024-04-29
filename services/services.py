@@ -30,7 +30,8 @@ def search_service(query, conversation_id, to_phone):
 
     # Missive API to adding tags
     exact_match = results[0].address
-    return handle_match(exact_match, conversation_id, to_phone)
+    response = owner_query_engine.query(exact_match)
+    return handle_match(response, conversation_id, to_phone)
 
 
 def handle_no_match(query, conversation_id, to_phone):
@@ -54,12 +55,11 @@ def handle_ambiguous(query, conversation_id, to_phone):
 
 
 def handle_match(
-    match_data,
+    response,
     conversation_id,
     to_phone,
 ):
     # Missive API -> Send SMS template
-    response = owner_query_engine.query(match_data)
     missive_client.send_sms(
         response,
         to_phone,
