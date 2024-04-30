@@ -15,11 +15,10 @@ missive_client = MissiveAPI()
 
 
 def search_service(query, conversation_id, to_phone):
-    print("=============================Inside the search service =================")
     session = Session()
     results = (
         session.query(mi_wayne_detroit)
-        .filter(mi_wayne_detroit.address.like(f"{query}%"))
+        .filter(mi_wayne_detroit.address.ilike(f"{query.strip()}%"))
         .all()
     )
 
@@ -31,9 +30,7 @@ def search_service(query, conversation_id, to_phone):
 
     # Missive API to adding tags
     exact_match = results[0].address
-    print("========================= address", exact_match)
     response = owner_query_engine.query(exact_match)
-    print("=========================sql_query", response.metadata["sql_query"])
     return handle_match(response, conversation_id, to_phone)
 
 

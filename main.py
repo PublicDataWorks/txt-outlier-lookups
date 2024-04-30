@@ -101,7 +101,9 @@ def more():
                     500,
                 )
             query_result = tax_query_engine.query(str(messages))
-            print("======================more", query_result)
+            print(
+                "=========================sql_query", query_result.metadata["sql_query"]
+            )
             tax_status, rental_status = check_tax_status(query_result)
 
             if tax_status:
