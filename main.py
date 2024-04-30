@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 from dotenv import load_dotenv
@@ -9,8 +10,7 @@ from configs.query_engine.tax import tax_query_engine
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from middlewares.auth_middleware import require_authentication
-from services.services import handle_match, search_service
-from templates.sms import get_rental_message, get_tax_message, sms_templates
+from services.services import handle_match, process_statuses, search_service
 from utils.check_tax_status import check_tax_status
 
 load_dotenv()
@@ -46,7 +46,6 @@ def search():
     response, status = search_service(
         query=message, conversation_id=conversation_id, to_phone=phone
     )
-    print("==================search", response)
     return jsonify(response), status
 
 
@@ -67,10 +66,8 @@ def yes():
                 500,
             )
         latest_address = owner_query_engine.query(str(messages))
-        print("=======================yes", latest_address)
-        handle_match(
-            response=latest_address, conversation_id=conversation_id, to_phone=phone
-        )
+        print(latest_address.metadata["sql_query"])
+        asyncio.run(handle_match(latest_address, conversation_id, phone))
         return jsonify({"message": "Success"}), 200
     except Exception as e:
         print(f"An error occurred: {str(e)}")
@@ -101,32 +98,12 @@ def more():
                     500,
                 )
             query_result = tax_query_engine.query(str(messages))
-            print(
-                "=========================sql_query", query_result.metadata["sql_query"]
-            )
             tax_status, rental_status = check_tax_status(query_result)
 
-            if tax_status:
-                missive_client.send_sms(
-                    get_tax_message(tax_status),
-                    conversation_id=conversation_id,
-                    to_phone=phone,
-                )
-
-            if rental_status:
-                missive_client.send_sms(
-                    get_rental_message(rental_status),
-                    conversation_id=conversation_id,
-                    to_phone=phone,
-                )
-
-            missive_client.send_sms(
-                sms_templates["final"],
-                conversation_id=conversation_id,
-                to_phone=phone,
-                remove_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
+            asyncio.run(
+                process_statuses(tax_status, rental_status, conversation_id, phone)
             )
-            return jsonify(tax_status), 200
+            return jsonify("Success"), 200
 
         else:
             missive_client.send_sms(

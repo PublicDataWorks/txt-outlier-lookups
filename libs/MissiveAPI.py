@@ -2,6 +2,7 @@ import json
 import os
 import time
 
+import aiohttp
 import requests
 from dotenv import load_dotenv
 
@@ -20,7 +21,7 @@ class MissiveAPI:
         }
         self.organization = os.environ.get("MISSIVE_ORGANIZATION")
 
-    def send_sms(
+    async def send_sms(
         self,
         message,
         to_phone,
@@ -44,11 +45,18 @@ class MissiveAPI:
             if conversation_id is not None:
                 body["drafts"]["conversation"] = conversation_id
 
-            response = requests.post(
-                CREATE_MESSAGE_URL, headers=self.headers, data=json.dumps(body)
-            )
-            response.raise_for_status()  # Raise exception if not a 2xx response
-            return response
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    CREATE_MESSAGE_URL,
+                    headers=self.headers,
+                    data=json.dumps(body),
+                ) as response:
+                    return await response.text()
+            # response = requests.post(
+            #     CREATE_MESSAGE_URL, headers=self.headers, data=json.dumps(body)
+            # )
+            # response.raise_for_status()  # Raise exception if not a 2xx response
+            # return response
 
         except requests.exceptions.RequestException as e:
             return None
