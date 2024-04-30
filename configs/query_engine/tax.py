@@ -48,7 +48,8 @@ city_stats_text = (
     "mi_wayne_detroit lat lon are varchar, like so residential_rental_registrations.lat = CAST(mi_wayne_detroit.lat AS float8) AND residential_rental_registrations.lon = CAST(mi_wayne_detroit.lon AS float8)"
     "MUST always add schema address_lookup to residential_rental_registrations when join"
     "like LEFT JOIN address_lookup.residential_rental_registrations"
-    "Always return mi_wayne_detroit.owner, rental status, tax debt and tax status"
+    "Always return mi_wayne_detroit.owner, mi_wayne_detroit.tax debt and mi_wayne_detroit.tax status. rental_status "
+    "does not belong to any table so return it by itself"
 )
 table_node_mapping = SQLTableNodeMapping(sql_database)
 table_schema_objs = [

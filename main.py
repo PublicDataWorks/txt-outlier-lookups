@@ -46,6 +46,7 @@ def search():
     response, status = search_service(
         query=message, conversation_id=conversation_id, to_phone=phone
     )
+    print("==================search", response)
     return jsonify(response), status
 
 
@@ -66,6 +67,7 @@ def yes():
                 500,
             )
         latest_address = owner_query_engine.query(str(messages))
+        print("=======================yes", latest_address)
         handle_match(
             response=latest_address, conversation_id=conversation_id, to_phone=phone
         )
@@ -99,6 +101,7 @@ def more():
                     500,
                 )
             query_result = tax_query_engine.query(str(messages))
+            print("======================more", query_result)
             tax_status, rental_status = check_tax_status(query_result)
 
             if tax_status:
