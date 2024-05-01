@@ -8,6 +8,6 @@ load_dotenv()
 # set up database
 db_url = os.environ.get("DATABASE_URL")
 
-engine = create_engine(db_url, pool_size=15, max_overflow=0)
+engine = create_engine(db_url, pool_size=15, max_overflow=0, pool_pre_ping=True)
 
 Session = sessionmaker(bind=engine)

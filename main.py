@@ -10,7 +10,12 @@ from configs.query_engine.tax import tax_query_engine
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from middlewares.auth_middleware import require_authentication
-from services.services import handle_match, process_statuses, search_service
+from services.services import (
+    handle_match,
+    process_statuses,
+    search_service,
+    warning_not_in_session,
+)
 from utils.check_tax_status import check_tax_status
 
 load_dotenv()
@@ -79,7 +84,7 @@ def more():
     try:
         data = request.get_json()
         conversation_id = data.get("conversation", {}).get("id")
-        phone = data.get("message", {}).get("from_field", {}).get("id")
+        to_phone = data.get("message", {}).get("from_field", {}).get("id")
         shared_labels = data.get("conversation", {}).get("shared_labels", [])
         shared_label_ids = [label.get("id") for label in shared_labels]
 
@@ -101,15 +106,15 @@ def more():
             tax_status, rental_status = check_tax_status(query_result)
 
             asyncio.run(
-                process_statuses(tax_status, rental_status, conversation_id, phone)
+                process_statuses(tax_status, rental_status, conversation_id, to_phone)
             )
             return jsonify("Success"), 200
 
         else:
-            missive_client.send_sms(
-                "You are not currently in a lookup session, please initiate one before querying for more infomation.",
-                conversation_id=conversation_id,
-                to_phone=phone,
+            asyncio.run(
+                warning_not_in_session(
+                    conversation_id=conversation_id, to_phone=to_phone
+                )
             )
             return (
                 jsonify({"error": "There was no ADDRESS_LOOKUP_TAG, try again later"}),

@@ -99,3 +99,11 @@ async def process_statuses(tax_status, rental_status, conversation_id, phone):
         to_phone=phone,
         remove_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
     )
+
+
+async def warning_not_in_session(conversation_id, to_phone):
+    await missive_client.send_sms(
+        "You are not currently in a lookup session, please initiate one before querying for more infomation.",
+        conversation_id=conversation_id,
+        to_phone=to_phone,
+    )
