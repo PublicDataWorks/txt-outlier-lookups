@@ -16,7 +16,8 @@ from services.services import (
     search_service,
     warning_not_in_session,
 )
-from utils.check_tax_status import check_tax_status
+from utils.address_normalizer import get_first_valid_normalized_address
+from utils.check_house_status import check_house_status
 
 load_dotenv()
 
@@ -59,20 +60,38 @@ def yes():
     try:
         data = request.get_json()
         conversation_id = data.get("conversation", {}).get("id")
-        phone = data.get("message", {}).get("from_field", {}).get("id")
+        to_phone = data.get("message", {}).get("from_field", {}).get("id")
         messages = missive_client.extract_preview_content(conversation_id)
         if messages is None:
+            missive_client.send_sms_sync(
+                "There was a problem getting message history, try again later",
+                conversation_id=conversation_id,
+                to_phone=to_phone,
+            )
+
             return (
                 jsonify(
                     {
-                        "error": "There was a problem getting message history, try again later"
+                        "message": "There was a problem getting message history, try again later"
                     }
                 ),
-                500,
+                200,
             )
-        latest_address = owner_query_engine.query(str(messages))
-        print(latest_address.metadata["sql_query"])
-        asyncio.run(handle_match(latest_address, conversation_id, phone))
+        address = get_first_valid_normalized_address(messages)
+
+        if address is None:
+            missive_client.send_sms_sync(
+                "Can't parse address from history messages",
+                conversation_id=conversation_id,
+                to_phone=to_phone,
+            )
+            return (
+                jsonify({"message": "Can't parse address from history messages"}),
+                200,
+            )
+
+        query_result = owner_query_engine.query(address.get("address_line_1"))
+        asyncio.run(handle_match(query_result, conversation_id, to_phone))
         return jsonify({"message": "Success"}), 200
     except Exception as e:
         print(f"An error occurred: {str(e)}")
@@ -94,16 +113,35 @@ def more():
         ):
             messages = missive_client.extract_preview_content(conversation_id)
             if messages is None:
+                missive_client.send_sms_sync(
+                    "There was a problem getting message history, try again later",
+                    conversation_id=conversation_id,
+                    to_phone=to_phone,
+                )
+
                 return (
                     jsonify(
                         {
-                            "error": "There was a problem getting message history, try again later"
+                            "message": "There was a problem getting message history, try again later"
                         }
                     ),
-                    500,
+                    200,
                 )
-            query_result = tax_query_engine.query(str(messages))
-            tax_status, rental_status = check_tax_status(query_result)
+            address = get_first_valid_normalized_address(messages)
+
+            if address is None:
+                missive_client.send_sms_sync(
+                    "Can't parse address from history messages",
+                    conversation_id=conversation_id,
+                    to_phone=to_phone,
+                )
+                return (
+                    jsonify({"message": "Can't parse address from history messages"}),
+                    200,
+                )
+
+            query_result = owner_query_engine.query(address.get("address_line_1"))
+            tax_status, rental_status = check_house_status(query_result)
 
             asyncio.run(
                 process_statuses(tax_status, rental_status, conversation_id, to_phone)
@@ -111,10 +149,10 @@ def more():
             return jsonify("Success"), 200
 
         else:
-            asyncio.run(
-                warning_not_in_session(
-                    conversation_id=conversation_id, to_phone=to_phone
-                )
+            missive_client.send_sms_sync(
+                "You are not currently in a lookup session, please initiate one before querying for more infomation.",
+                conversation_id=conversation_id,
+                to_phone=to_phone,
             )
             return (
                 jsonify({"error": "There was no ADDRESS_LOOKUP_TAG, try again later"}),

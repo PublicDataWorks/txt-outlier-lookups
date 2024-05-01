@@ -25,7 +25,9 @@ Flask==2.3.3
 fonttools==4.50.0
 frozenlist==1.4.1
 fsspec==2024.3.1
+future==1.0.0
 GeoAlchemy2==0.15.0
+geocoder==1.38.1
 greenlet==3.0.3
 h11==0.14.0
 httpcore==1.0.5
@@ -73,6 +75,7 @@ parso==0.8.3
 pexpect==4.9.0
 pillow==10.2.0
 pluggy==1.5.0
+probableparsing==0.0.1
 prompt-toolkit==3.0.43
 psycopg2-binary==2.9.9
 ptyprocess==0.7.0
@@ -86,10 +89,12 @@ PyMuPDFb==1.24.0
 pyparsing==3.1.2
 pypdf==4.1.0
 pytest==8.1.1
+python-crfsuite==0.9.10
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 pytz==2024.1
 PyYAML==6.0.1
+ratelim==0.1.6
 regex==2023.12.25
 requests==2.31.0
 six==1.16.0
@@ -107,8 +112,10 @@ typing-inspect==0.9.0
 typing_extensions==4.10.0
 tzdata==2024.1
 urllib3==2.2.1
+usaddress-scourgify==0.6.0
 wcwidth==0.2.13
 Werkzeug==3.0.1
 wrapt==1.16.0
+yaml-config==0.1.5
 yarl==1.9.4
 zipp==3.18.1

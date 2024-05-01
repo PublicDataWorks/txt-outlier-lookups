@@ -13,15 +13,19 @@ load_dotenv()
 key = os.environ.get("OPENAI_API_KEY")
 
 text = (
-    "Given an input question, first create a syntactically correct {dialect} query to run, then look at the results of the query and return the answer. You can order the results by a relevant column to return the most interesting examples in the database."
+    "Given an input question, first create a syntactically correct {dialect} query to run, then look at the results "
+    "of the query and return the answer. You can order the results by a relevant column to return the most "
+    "interesting examples in the database."
     "Never query for all the columns from a specific table, only ask for a few relevant columns given the question."
     "ALWAYS FOLLOW THE GIVEN BELOW RULES."  # My change added here!
-    "Pay attention to use only the column names that you can see in the schema description. Be careful to not query for columns that do not exist. Pay attention to which column is in which table. Also, qualify column names with the table name when needed. You are required to use the following format, each taking one line:"
-    "Only query based on the first address you get from the prompt "
+    "Pay attention to use only the column names that you can see in the schema description. Be careful to not query "
+    "for columns that do not exist. Pay attention to which column is in which table. Also, qualify column names with "
+    "the table name when needed. You are required to use the following format, each taking one line:"
+    "There might be multiple addresses in the query string, extract only the most recent address to use for querying"
+    "Address will follow the format of a number followed by a street name"
     "Question: Question here"
     "SQLQuery: SQL Query to run"
     "SQLResult: Result of the SQLQuery"
-    "Answer: Final answer here"
     "Only use tables listed below."
     "{schema}"
     "Question: {query_str}"
@@ -49,6 +53,9 @@ city_stats_text = (
     "WHERE mi_wayne_detroit.address = query_value"
     "Always return mi_wayne_detroit.owner, mi_wayne_detroit.tax debt and mi_wayne_detroit.tax status and rental_status "
     "does not belong to any table so return it by itself"
+    "Sometimes the query_value include the messages history, extract only the most recent address to query"
+    "Address will follow the format of a number followed by a street name"
+    "Do not use keywords like 'yes' or 'more' as query value"
 )
 table_node_mapping = SQLTableNodeMapping(sql_database)
 table_schema_objs = [

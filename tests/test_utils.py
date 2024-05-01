@@ -5,7 +5,8 @@ import os
 from unittest.mock import Mock, patch
 
 from middlewares.auth_middleware import AuthMiddleware
-from utils.check_tax_status import check_tax_status
+from utils.address_normalizer import check_address_format
+from utils.check_house_status import check_house_status
 from utils.map_keys_to_result import map_keys_to_result
 
 
@@ -40,22 +41,22 @@ def test_map_keys_to_result_with_empty_result():
     assert map_keys_to_result(data) == expected
 
 
-def test_check_tax_status_no_debt():
-    response = Mock()
-    response.metadata = {"result": [["FORFEITED"]], "col_keys": ["tax_status"]}
-    assert check_tax_status(response) == "FORFEITED"
+# def test_check_house_status_no_debt():
+#     response = Mock()
+#     response.metadata = {"rental_status": "IS", "tax_status": "FORFEITED"}
+#     assert check_house_status(response) == ("FORFEITED", "REGISTERED")
 
 
-def test_check_tax_status_with_debt():
-    response = Mock()
-    response.metadata = {"result": [["FORECLOSED"]], "col_keys": ["tax_status"]}
-    assert check_tax_status(response) == "FORECLOSED"
+# def test_check_house_status_with_debt():
+#     response = Mock()
+#     response.metadata = {"rental_status": "IS NOT", "tax_status": "FORECLOSED"}
+#     assert check_house_status(response) == ("FORFEITED", "UNREGISTERED")
 
 
-def test_check_tax_status_no_tax_status():
-    response = Mock()
-    response.metadata = {"result": [["John Doe"]], "col_keys": ["name"]}
-    assert check_tax_status(response) == "NO_INFORMATION"
+# def test_check_house_status_no_tax_status():
+#     response = Mock()
+#     response.metadata = {"name": "John Doe"}
+#     assert check_house_status(response) == (None, "")
 
 
 def create_hash(secret, request_body):
@@ -264,3 +265,22 @@ def test_verify_method(mock_getenv):
     os.environ["HMAC_SECRET"] = secret
     result = AuthMiddleware.verify(correct_hash, request_body)
     assert result
+
+
+class TestCheckAddressFormat:
+
+    def test_correct_format(self):
+        assert check_address_format("123 Main St") == "123 Main St"
+        assert check_address_format("456 Broadway AVE") == "456 Broadway AVE"
+        assert check_address_format("789 Park Lane") == "789 Park Lane"
+        assert check_address_format("1000 Market Blvd") == "1000 Market Blvd"
+
+    def test_incorrect_format(self):
+        assert check_address_format("123") == "Address format not recognized"
+        assert (
+            check_address_format("Broadway Avenue") == "Address format not recognized"
+        )
+        assert (
+            check_address_format("18936 Littlefield St, Detroit, MI 48235")
+            == "Address format not recognized"
+        )

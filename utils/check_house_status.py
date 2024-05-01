@@ -1,7 +1,7 @@
 from utils.map_keys_to_result import map_keys_to_result
 
 
-def check_tax_status(response):
+def check_house_status(response):
     owner_data = map_keys_to_result(response.metadata)
     rental_status = ""
     tax_status = ""
