@@ -9,6 +9,11 @@ sms_templates = {
     "REPORTER. We’ll get back to you and see what’s going on. If you want to try again just enter an address in "
     "this format “1111 E. Jefferson” or “231 Main St.”"
 ),
+    "wrong_format": (
+        "We can't not recognize your address. If you’re sure the address is in Detroit and you entered it correctly text "
+        "REPORTER. We’ll get back to you and see what’s going on. If you want to try again just enter an address in "
+        "this format “1111 E. Jefferson” or “231 Main St.”"
+    ),
   "closest_match": (
       "This is the address we think is correct: {address}. Type YES if "
       "that's right. If this doesn't look right enter the address again in this format 1111 E. "

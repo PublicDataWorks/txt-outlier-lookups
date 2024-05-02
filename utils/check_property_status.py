@@ -1,7 +1,7 @@
 from utils.map_keys_to_result import map_keys_to_result
 
 
-def check_house_status(response):
+def check_property_status(response):
     owner_data = map_keys_to_result(response.metadata)
     rental_status = ""
     tax_status = ""
@@ -21,7 +21,10 @@ def check_house_status(response):
             case "OK":
                 tax_status = "NO_TAX_DEBT"
                 pass
-            case "FORFEITED", "FORECLOSED":
+            case "FORFEITED":
+                tax_status = "FORFEITED"
+                pass
+            case "FORECLOSED":
                 tax_status = "FORFEITED"
                 pass
             case _:

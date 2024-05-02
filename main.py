@@ -1,4 +1,3 @@
-import asyncio
 import os
 
 from dotenv import load_dotenv
@@ -6,7 +5,6 @@ from flask import Flask, g, jsonify, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from configs.query_engine.owner import owner_query_engine
-from configs.query_engine.tax import tax_query_engine
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from middlewares.auth_middleware import require_authentication
@@ -16,8 +14,8 @@ from services.services import (
     search_service,
     warning_not_in_session,
 )
-from utils.address_normalizer import get_first_valid_normalized_address
-from utils.check_house_status import check_house_status
+from utils.address_normalizer import extract_latest_address
+from utils.check_property_status import check_property_status
 
 load_dotenv()
 
@@ -44,15 +42,20 @@ def health_check():
 @app.route("/search", methods=["POST"])
 # @require_authentication
 def search():
-    data = request.get_json()
-    conversation_id = data.get("conversation", {}).get("id")
-    phone = data.get("message", {}).get("from_field", {}).get("id")
-    message = data.get("message", {}).get("preview")
+    try:
+        data = request.get_json()
+        conversation_id = data.get("conversation", {}).get("id")
+        to_phone = data.get("message", {}).get("from_field", {}).get("id")
+        message = data.get("message", {}).get("preview")
 
-    response, status = search_service(
-        query=message, conversation_id=conversation_id, to_phone=phone
-    )
-    return jsonify(response), status
+        response, status = search_service(
+            query=message, conversation_id=conversation_id, to_phone=to_phone
+        )
+        return jsonify(response), status
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/yes", methods=["POST"])
@@ -61,37 +64,25 @@ def yes():
         data = request.get_json()
         conversation_id = data.get("conversation", {}).get("id")
         to_phone = data.get("message", {}).get("from_field", {}).get("id")
-        messages = missive_client.extract_preview_content(conversation_id)
-        if messages is None:
-            missive_client.send_sms_sync(
-                "There was a problem getting message history, try again later",
-                conversation_id=conversation_id,
-                to_phone=to_phone,
-            )
+        messages = missive_client.extract_preview_content(
+            conversation_id=conversation_id
+        )
+        address = extract_latest_address(
+            messages=messages, conversation_id=conversation_id, to_phone=to_phone
+        )
 
+        if not address:
             return (
-                jsonify(
-                    {
-                        "message": "There was a problem getting message history, try again later"
-                    }
-                ),
-                200,
-            )
-        address = get_first_valid_normalized_address(messages)
-
-        if address is None:
-            missive_client.send_sms_sync(
-                "Can't parse address from history messages",
-                conversation_id=conversation_id,
-                to_phone=to_phone,
-            )
-            return (
-                jsonify({"message": "Can't parse address from history messages"}),
+                jsonify({"message": "Couldn't parse address from history messages"}),
                 200,
             )
 
-        query_result = owner_query_engine.query(address.get("address_line_1"))
-        asyncio.run(handle_match(query_result, conversation_id, to_phone))
+        query_result = owner_query_engine.query(address)
+        handle_match(
+            response=query_result,
+            conversation_id=conversation_id,
+            to_phone=to_phone,
+        )
         return jsonify({"message": "Success"}), 200
     except Exception as e:
         print(f"An error occurred: {str(e)}")
@@ -111,49 +102,26 @@ def more():
             shared_label_ids
             and os.environ.get("MISSIVE_LOOKUP_TAG_ID") in shared_label_ids
         ):
-            messages = missive_client.extract_preview_content(conversation_id)
-            if messages is None:
-                missive_client.send_sms_sync(
-                    "There was a problem getting message history, try again later",
-                    conversation_id=conversation_id,
-                    to_phone=to_phone,
-                )
+            messages = missive_client.extract_preview_content(
+                conversation_id=conversation_id
+            )
+            address = extract_latest_address(messages, conversation_id, to_phone)
 
+            if not address:
                 return (
                     jsonify(
-                        {
-                            "message": "There was a problem getting message history, try again later"
-                        }
+                        {"message": "Couldn't parse address from history messages"}
                     ),
                     200,
                 )
-            address = get_first_valid_normalized_address(messages)
+            query_result = owner_query_engine.query(address)
+            tax_status, rental_status = check_property_status(query_result)
 
-            if address is None:
-                missive_client.send_sms_sync(
-                    "Can't parse address from history messages",
-                    conversation_id=conversation_id,
-                    to_phone=to_phone,
-                )
-                return (
-                    jsonify({"message": "Can't parse address from history messages"}),
-                    200,
-                )
-
-            query_result = owner_query_engine.query(address.get("address_line_1"))
-            tax_status, rental_status = check_house_status(query_result)
-
-            asyncio.run(
-                process_statuses(tax_status, rental_status, conversation_id, to_phone)
-            )
+            process_statuses(tax_status, rental_status, conversation_id, to_phone)
             return jsonify("Success"), 200
 
         else:
-            missive_client.send_sms_sync(
-                "You are not currently in a lookup session, please initiate one before querying for more infomation.",
-                conversation_id=conversation_id,
-                to_phone=to_phone,
-            )
+            warning_not_in_session()
             return (
                 jsonify({"error": "There was no ADDRESS_LOOKUP_TAG, try again later"}),
                 200,
@@ -165,4 +133,4 @@ def more():
 
 
 if __name__ == "__main__":
-    app.run(port=8080, host="0.0.0.0", debug=True)
+    app.run(port=8080, host="0.0.0.0")

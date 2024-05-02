@@ -5,8 +5,11 @@ import os
 from unittest.mock import Mock, patch
 
 from middlewares.auth_middleware import AuthMiddleware
-from utils.address_normalizer import check_address_format
-from utils.check_house_status import check_house_status
+from utils.address_normalizer import (
+    check_address_format,
+    get_first_valid_normalized_address,
+)
+from utils.check_property_status import check_property_status
 from utils.map_keys_to_result import map_keys_to_result
 
 
@@ -41,22 +44,48 @@ def test_map_keys_to_result_with_empty_result():
     assert map_keys_to_result(data) == expected
 
 
-# def test_check_house_status_no_debt():
-#     response = Mock()
-#     response.metadata = {"rental_status": "IS", "tax_status": "FORFEITED"}
-#     assert check_house_status(response) == ("FORFEITED", "REGISTERED")
+def test_check_property_status_registered_no_tax_debt():
+    response = Mock()
+    response.metadata = {
+        "result": [["John Doe", "IS", "OK", 0]],
+        "col_keys": ["owner_name", "rental_status", "tax_status", "tax_due"],
+    }
+    tax_status, rental_status = check_property_status(response)
+    assert tax_status == "NO_TAX_DEBT"
+    assert rental_status == "REGISTERED"
 
 
-# def test_check_house_status_with_debt():
-#     response = Mock()
-#     response.metadata = {"rental_status": "IS NOT", "tax_status": "FORECLOSED"}
-#     assert check_house_status(response) == ("FORFEITED", "UNREGISTERED")
+def test_check_property_status_unregistered_forfeited():
+    response = Mock()
+    response.metadata = {
+        "result": [["John Doe", "IS NOT", "FORFEITED", 0]],
+        "col_keys": ["owner_name", "rental_status", "tax_status", "tax_due"],
+    }
+    tax_status, rental_status = check_property_status(response)
+    assert tax_status == "FORFEITED"
+    assert rental_status == "UNREGISTERED"
 
 
-# def test_check_house_status_no_tax_status():
-#     response = Mock()
-#     response.metadata = {"name": "John Doe"}
-#     assert check_house_status(response) == (None, "")
+def test_check_property_status_registered_tax_debt():
+    response = Mock()
+    response.metadata = {
+        "result": [["John Doe", "IS", "UNKNOWN", 100]],
+        "col_keys": ["owner_name", "rental_status", "tax_status", "tax_due"],
+    }
+    tax_status, rental_status = check_property_status(response)
+    assert tax_status == "TAX_DEBT"
+    assert rental_status == "REGISTERED"
+
+
+def test_check_property_status_unknown_no_tax_debt():
+    response = Mock()
+    response.metadata = {
+        "result": [["John Doe", "IS NOT", "OK", 100]],
+        "col_keys": ["owner_name", "rental_status", "tax_status", "tax_due"],
+    }
+    tax_status, rental_status = check_property_status(response)
+    assert tax_status == "NO_TAX_DEBT"
+    assert rental_status is "UNREGISTERED"
 
 
 def create_hash(secret, request_body):
@@ -268,7 +297,6 @@ def test_verify_method(mock_getenv):
 
 
 class TestCheckAddressFormat:
-
     def test_correct_format(self):
         assert check_address_format("123 Main St") == "123 Main St"
         assert check_address_format("456 Broadway AVE") == "456 Broadway AVE"
@@ -276,11 +304,6 @@ class TestCheckAddressFormat:
         assert check_address_format("1000 Market Blvd") == "1000 Market Blvd"
 
     def test_incorrect_format(self):
-        assert check_address_format("123") == "Address format not recognized"
-        assert (
-            check_address_format("Broadway Avenue") == "Address format not recognized"
-        )
-        assert (
-            check_address_format("18936 Littlefield St, Detroit, MI 48235")
-            == "Address format not recognized"
-        )
+        assert check_address_format("123") == None
+        assert check_address_format("Broadway Avenue") == None
+        assert check_address_format("18936 Littlefield St, Detroit, MI 48235") == None
