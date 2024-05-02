@@ -39,6 +39,7 @@ sms_templates = {
       "If you have questions or don't think these resources will work, text REPORTER and we'll follow up "
       "with you. Text another address if you want to look it up another. Text MENU to see our other "
       "info. If you're all set you can just text ALL SET."
+      "---( This is placeholder text for no tax debt )---"
   ),
   "unregistered": (
       "The city requires rentals to be registered and inspected. Here's the city's page on the rules: "

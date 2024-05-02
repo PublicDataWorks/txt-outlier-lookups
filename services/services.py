@@ -77,7 +77,7 @@ def handle_match(
         messages.append(sms_templates["match_second_message"])
 
     missive_client.send_sms_sync(
-        "\n".join(messages),
+        "\n\n".join(messages),
         conversation_id=conversation_id,
         to_phone=to_phone,
         add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
@@ -110,7 +110,7 @@ def process_statuses(tax_status, rental_status, conversation_id, phone):
     message.append(sms_templates["final"])
 
     missive_client.send_sms_sync(
-        "\n".join(message),
+        "\n\n".join(message),
         conversation_id=conversation_id,
         to_phone=phone,
         remove_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
