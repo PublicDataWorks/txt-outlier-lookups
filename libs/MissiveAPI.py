@@ -53,7 +53,7 @@ class MissiveAPI:
                 ) as response:
                     return await response.text()
 
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException:
             return None
 
     def get_conversation_messages(self, conversation_id):
@@ -66,7 +66,7 @@ class MissiveAPI:
             response.raise_for_status()  # Raise exception if not a 2xx response
             return response.json()
 
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException:
             return None
 
     def extract_preview_content(self, conversation_id):
@@ -110,5 +110,5 @@ class MissiveAPI:
             response.raise_for_status()  # Raise exception if not a 2xx response
             return response
 
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException:
             return None

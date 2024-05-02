@@ -7,13 +7,11 @@ from sqlalchemy import (
     DateTime,
     Float,
     Integer,
-    Numeric,
     String,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.sql.sqltypes import NullType
 
 Base = declarative_base()
 metadata = Base.metadata

@@ -1,13 +1,12 @@
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, g, jsonify, request
+from flask import Flask, jsonify, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from configs.query_engine.owner import owner_query_engine
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
-from middlewares.auth_middleware import require_authentication
 from services.services import (
     handle_match,
     process_statuses,
@@ -121,7 +120,7 @@ def more():
             return jsonify("Success"), 200
 
         else:
-            warning_not_in_session()
+            warning_not_in_session(conversation_id=conversation_id,to_phone=to_phone)
             return (
                 jsonify({"error": "There was no ADDRESS_LOOKUP_TAG, try again later"}),
                 200,

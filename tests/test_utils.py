@@ -7,7 +7,6 @@ from unittest.mock import Mock, patch
 from middlewares.auth_middleware import AuthMiddleware
 from utils.address_normalizer import (
     check_address_format,
-    get_first_valid_normalized_address,
 )
 from utils.check_property_status import check_property_status
 from utils.map_keys_to_result import map_keys_to_result
@@ -85,7 +84,7 @@ def test_check_property_status_unknown_no_tax_debt():
     }
     tax_status, rental_status = check_property_status(response)
     assert tax_status == "NO_TAX_DEBT"
-    assert rental_status is "UNREGISTERED"
+    assert rental_status == "UNREGISTERED"
 
 
 def create_hash(secret, request_body):
@@ -304,6 +303,6 @@ class TestCheckAddressFormat:
         assert check_address_format("1000 Market Blvd") == "1000 Market Blvd"
 
     def test_incorrect_format(self):
-        assert check_address_format("123") == None
-        assert check_address_format("Broadway Avenue") == None
-        assert check_address_format("18936 Littlefield St, Detroit, MI 48235") == None
+        assert check_address_format("123") is None
+        assert check_address_format("Broadway Avenue") is None
+        assert check_address_format("18936 Littlefield St, Detroit, MI 48235") is None
