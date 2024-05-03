@@ -1,10 +1,14 @@
 import os
+import sys
 
+import sentry_sdk
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
+from loguru import logger
+from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from configs.query_engine.owner import owner_query_engine
+from configs.query_engine.owner_information import owner_query_engine
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from services.services import (
@@ -17,6 +21,21 @@ from utils.address_normalizer import extract_latest_address
 from utils.check_property_status import check_property_status
 
 load_dotenv(override=True)
+
+sentry_loguru = LoguruIntegration(
+    level=LoggingLevels.INFO.value,        # Capture info and above as breadcrumbs
+    event_level=LoggingLevels.ERROR.value  # Send errors as events
+)
+
+sentry_sdk.init(
+    dsn=os.environ.get("SENTRY_DNS"),
+    enable_tracing=True,
+    integrations=[
+        sentry_loguru
+    ],
+)
+
+logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 
 app = Flask(__name__)
 
@@ -54,6 +73,7 @@ def search():
 
     except Exception as e:
         print(f"An error occurred: {str(e)}")
+        logger.exception(e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -71,12 +91,16 @@ def yes():
         )
 
         if not address:
+            logger.error("Couldn't parse address from history messages", messages)
             return (
                 jsonify({"message": "Couldn't parse address from history messages"}),
                 200,
             )
 
         query_result = owner_query_engine.query(address)
+        if not 'result' in query_result.metadata:
+            logger.error(query_result)
+
         handle_match(
             response=query_result,
             conversation_id=conversation_id,
@@ -85,6 +109,7 @@ def yes():
         return jsonify({"message": "Success"}), 200
     except Exception as e:
         print(f"An error occurred: {str(e)}")
+        logger.exception(e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -107,6 +132,7 @@ def more():
             address = extract_latest_address(messages, conversation_id, to_phone)
 
             if not address:
+                logger.error("Couldn't parse address from history messages", messages)
                 return (
                     jsonify(
                         {"message": "Couldn't parse address from history messages"}
@@ -114,12 +140,15 @@ def more():
                     200,
                 )
             query_result = owner_query_engine.query(address)
+            if not 'result' in query_result.metadata:
+                logger.error(query_result)
             tax_status, rental_status = check_property_status(query_result)
 
             process_statuses(tax_status, rental_status, conversation_id, to_phone)
             return jsonify("Success"), 200
 
         else:
+            logger.error(messages)
             warning_not_in_session(conversation_id=conversation_id,to_phone=to_phone)
             return (
                 jsonify({"error": "There was no ADDRESS_LOOKUP_TAG, try again later"}),
@@ -128,6 +157,7 @@ def more():
 
     except Exception as e:
         print(f"An error occurred: {str(e)}")
+        logger.exception("", e)
         return jsonify({"error": str(e)}), 500
 
 
