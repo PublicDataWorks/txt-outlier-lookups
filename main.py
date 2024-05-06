@@ -83,9 +83,7 @@ def yes():
         data = request.get_json()
         conversation_id = data.get("conversation", {}).get("id")
         to_phone = data.get("message", {}).get("from_field", {}).get("id")
-        messages = missive_client.extract_preview_content(
-            conversation_id=conversation_id
-        )
+        messages = missive_client.extract_preview_content(conversation_id=conversation_id)
         address = extract_latest_address(
             messages=messages, conversation_id=conversation_id, to_phone=to_phone
         )
@@ -122,21 +120,14 @@ def more():
         shared_labels = data.get("conversation", {}).get("shared_labels", [])
         shared_label_ids = [label.get("id") for label in shared_labels]
 
-        if (
-            shared_label_ids
-            and os.environ.get("MISSIVE_LOOKUP_TAG_ID") in shared_label_ids
-        ):
-            messages = missive_client.extract_preview_content(
-                conversation_id=conversation_id
-            )
+        if shared_label_ids and os.environ.get("MISSIVE_LOOKUP_TAG_ID") in shared_label_ids:
+            messages = missive_client.extract_preview_content(conversation_id=conversation_id)
             address = extract_latest_address(messages, conversation_id, to_phone)
 
             if not address:
                 logger.error("Couldn't parse address from history messages", messages)
                 return (
-                    jsonify(
-                        {"message": "Couldn't parse address from history messages"}
-                    ),
+                    jsonify({"message": "Couldn't parse address from history messages"}),
                     200,
                 )
             query_result = owner_query_engine.query(address)

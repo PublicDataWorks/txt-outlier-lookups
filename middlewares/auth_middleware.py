@@ -12,7 +12,6 @@ load_dotenv(override=True)
 
 
 class AuthMiddleware:
-
     @staticmethod
     def verify(hash: str, request_body: dict) -> bool:
         secret = os.getenv("HMAC_SECRET")
@@ -22,9 +21,7 @@ class AuthMiddleware:
         data = json.dumps(request_body).encode()
 
         key_prefix = "sha256="
-        cleaned_header_sig = (
-            hash[len(key_prefix) :] if hash.startswith(key_prefix) else hash
-        )
+        cleaned_header_sig = hash[len(key_prefix) :] if hash.startswith(key_prefix) else hash
         decoded_signature = bytes.fromhex(cleaned_header_sig)
 
         hmac_obj = hmac.new(secret.encode(), data, digestmod=hashlib.sha256)
