@@ -58,9 +58,7 @@ city_stats_text = (
     "Do not use keywords like 'yes' or 'more' as query value"
 )
 table_node_mapping = SQLTableNodeMapping(sql_database)
-table_schema_objs = [
-    (SQLTableSchema(table_name="mi_wayne_detroit", context_str=city_stats_text))
-]
+table_schema_objs = [(SQLTableSchema(table_name="mi_wayne_detroit", context_str=city_stats_text))]
 obj_index = ObjectIndex.from_objects(
     table_schema_objs,
     table_node_mapping,
