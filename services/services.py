@@ -1,8 +1,7 @@
 import os
 
-from dotenv import load_dotenv
-from loguru import logger
 
+from loguru import logger
 from configs.database import Session
 from configs.query_engine.owner_information import owner_query_engine
 from libs.MissiveAPI import MissiveAPI
@@ -12,16 +11,19 @@ from utils.address_normalizer import (
     check_address_format,
     get_first_valid_normalized_address,
 )
+from sqlalchemy import or_
+import time
 
-load_dotenv(override=True)
 
 missive_client = MissiveAPI()
 
 
 def search_service(query, conversation_id, to_phone):
     session = Session()
-    address = check_address_format(query)
+    results = []
 
+    # Run query engine to get address
+    address = get_first_valid_normalized_address([query])
     if not address:
         # Run query engine to get address
         address = get_first_valid_normalized_address([query])
@@ -31,11 +33,25 @@ def search_service(query, conversation_id, to_phone):
                 conversation_id=conversation_id, to_phone=to_phone
             )
 
-    results = (
-        session.query(mi_wayne_detroit)
-        .filter(mi_wayne_detroit.address.ilike(f"{address.strip()}%"))
-        .all()
-    )
+    if ("#" or "APT") in address:
+        results = (
+            session.query(mi_wayne_detroit)
+            .filter(mi_wayne_detroit.address.ilike(f"{address.strip()}%"))
+            .all()
+        )
+    else:
+        address_without_unit = " ".join(address.replace("UNIT", "").split())
+        # search for both original and 'UNIT'-removed address
+        results = (
+            session.query(mi_wayne_detroit)
+            .filter(
+                or_(
+                    mi_wayne_detroit.address.ilike(f"{address}%"),
+                    mi_wayne_detroit.address.ilike(f"{address_without_unit}%"),
+                )
+            )
+            .all()
+        )
 
     if not results:
         return handle_no_match(query, conversation_id, to_phone)
@@ -76,12 +92,17 @@ def handle_match(
     to_phone,
 ):
     # Missive API -> Send SMS template
-    messages = [str(response)]
-    if response.metadata:
-        messages.append(sms_templates["match_second_message"])
+    missive_client.send_sms_sync(
+        str(response),
+        conversation_id=conversation_id,
+        to_phone=to_phone,
+        add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
+    )
+
+    time.sleep(2)
 
     missive_client.send_sms_sync(
-        "\n\n".join(messages),
+        sms_templates["match_second_message"],
         conversation_id=conversation_id,
         to_phone=to_phone,
         add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
@@ -100,21 +121,26 @@ def handle_wrong_format(conversation_id, to_phone):
 
 
 def process_statuses(tax_status, rental_status, conversation_id, phone):
-    message = []
     if tax_status:
-        message.append(
+        missive_client.send_sms_sync(
             get_tax_message(tax_status),
+            conversation_id=conversation_id,
+            to_phone=phone,
+            remove_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
         )
+        time.sleep(2)
 
     if rental_status:
-        message.append(
+        missive_client.send_sms_sync(
             get_rental_message(rental_status),
+            conversation_id=conversation_id,
+            to_phone=phone,
+            remove_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
         )
-
-    message.append(sms_templates["final"])
+        time.sleep(2)
 
     missive_client.send_sms_sync(
-        "\n\n".join(message),
+        sms_templates["final"],
         conversation_id=conversation_id,
         to_phone=phone,
         remove_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
