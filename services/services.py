@@ -123,7 +123,7 @@ def process_statuses(tax_status, rental_status, conversation_id, phone):
 
 def warning_not_in_session(conversation_id, to_phone):
     missive_client.send_sms_sync(
-        sms_templates['not_in_sessions'],
+        sms_templates['not_in_session'],
         conversation_id=conversation_id,
         to_phone=to_phone,
     )
