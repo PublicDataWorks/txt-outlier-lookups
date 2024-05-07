@@ -148,7 +148,6 @@ def more():
             return jsonify("Success"), 200
 
         else:
-            logger.error(messages)
             warning_not_in_session(conversation_id=conversation_id,to_phone=to_phone)
             return (
                 jsonify({"error": "There was no ADDRESS_LOOKUP_TAG, try again later"}),
