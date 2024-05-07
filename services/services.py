@@ -1,9 +1,10 @@
 import os
 
 from dotenv import load_dotenv
+from loguru import logger
 
 from configs.database import Session
-from configs.query_engine.owner import owner_query_engine
+from configs.query_engine.owner_information import owner_query_engine
 from libs.MissiveAPI import MissiveAPI
 from models import mi_wayne_detroit
 from templates.sms import get_rental_message, get_tax_message, sms_templates
@@ -25,6 +26,7 @@ def search_service(query, conversation_id, to_phone):
         # Run query engine to get address
         address = get_first_valid_normalized_address([query])
         if not address:
+            logger.error("Wrong format address", query)
             return handle_wrong_format(
                 conversation_id=conversation_id, to_phone=to_phone
             )
@@ -42,8 +44,10 @@ def search_service(query, conversation_id, to_phone):
 
     # Missive API to adding tags
     exact_match = results[0].address
-    response = owner_query_engine.query(exact_match)
-    return handle_match(response, conversation_id, to_phone)
+    query_result = owner_query_engine.query(exact_match)
+    if not 'result' in query_result.metadata:
+        logger.error(query_result)
+    return handle_match(query_result, conversation_id, to_phone)
 
 
 def handle_no_match(query, conversation_id, to_phone):
@@ -119,7 +123,7 @@ def process_statuses(tax_status, rental_status, conversation_id, phone):
 
 def warning_not_in_session(conversation_id, to_phone):
     missive_client.send_sms_sync(
-        "You are not currently in a lookup session, please initiate one before querying for more infomation.",
+        sms_templates['not_in_sessions'],
         conversation_id=conversation_id,
         to_phone=to_phone,
     )

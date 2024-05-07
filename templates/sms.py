@@ -70,6 +70,9 @@ sms_templates = {
   ),
   "match_second_message": (
     "If this doesn’t look right or you have any questions text REPORTER and we’ll follow up  with you within 48 hours. Or if you want tips and extra info about tax debt or rules for rentals type MORE."
+  ),
+  "not_in_session":(
+    "You are not currently in a lookup session, please initiate one before querying for more infomation."
   )
 }
 
