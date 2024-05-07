@@ -12,7 +12,7 @@ from utils.address_normalizer import (
     get_first_valid_normalized_address,
 )
 
-load_dotenv()
+load_dotenv(override=True)
 
 missive_client = MissiveAPI()
 

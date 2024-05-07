@@ -8,7 +8,7 @@ from flask import request
 
 from exceptions import APIException
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 class AuthMiddleware:

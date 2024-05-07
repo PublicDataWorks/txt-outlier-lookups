@@ -16,7 +16,7 @@ from services.services import (
 from utils.address_normalizer import extract_latest_address
 from utils.check_property_status import check_property_status
 
-load_dotenv()
+load_dotenv(override=True)
 
 app = Flask(__name__)
 

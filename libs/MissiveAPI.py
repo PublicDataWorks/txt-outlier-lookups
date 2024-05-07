@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from constants.urls import CONVERSATION_MESSAGES_URL, CREATE_MESSAGE_URL
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 class MissiveAPI:

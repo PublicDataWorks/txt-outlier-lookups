@@ -9,7 +9,7 @@ from sqlalchemy import MetaData
 
 from configs.database import engine
 
-load_dotenv()
+load_dotenv(override=True)
 key = os.environ.get("OPENAI_API_KEY")
 
 text = (
