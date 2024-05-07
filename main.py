@@ -9,13 +9,13 @@ from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from configs.query_engine.owner_information import owner_query_engine
+from configs.query_engine.owner_information_without_sunit import owner_query_engine_without_sunit
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from services.services import (
     handle_match,
     process_statuses,
     search_service,
-    warning_not_in_session,
 )
 from utils.address_normalizer import extract_latest_address
 from utils.check_property_status import check_property_status
@@ -93,7 +93,7 @@ def yes():
                 200,
             )
 
-        query_result = owner_query_engine.query(address)
+        query_result = owner_query_engine.query(address.get("address_line_1", ""))
         if not "result" in query_result.metadata:
             logger.error(query_result)
 
@@ -117,18 +117,31 @@ def more():
         to_phone = data.get("message", {}).get("from_field", {}).get("id")
         shared_labels = data.get("conversation", {}).get("shared_labels", [])
         shared_label_ids = [label.get("id") for label in shared_labels]
+        query_result = []
 
         if shared_label_ids and os.environ.get("MISSIVE_LOOKUP_TAG_ID") in shared_label_ids:
             messages = missive_client.extract_preview_content(conversation_id=conversation_id)
-            address = extract_latest_address(messages, conversation_id, to_phone)
-
-            if not address:
+            normalized_address = extract_latest_address(messages, conversation_id, to_phone)
+            if not normalized_address:
                 logger.error("Couldn't parse address from history messages", messages)
                 return (
                     jsonify({"message": "Couldn't parse address from history messages"}),
                     200,
                 )
-            query_result = owner_query_engine.query(address)
+
+            address = normalized_address.get("address_line_1", "")
+            sunit = " ".join(
+                normalized_address.get("address_line_2", "").replace("UNIT", "").split()
+            )
+            if sunit:
+                query_result = owner_query_engine.query(
+                    str({"address": {address}, "sunit": sunit})
+                )
+            else:
+                query_result = owner_query_engine_without_sunit.query(
+                    str({"address": {address}})
+                )
+
             if not "result" in query_result.metadata:
                 logger.error(query_result)
             tax_status, rental_status = check_property_status(query_result)
@@ -137,7 +150,6 @@ def more():
             return jsonify("Success"), 200
 
         else:
-            logger.error("There was no ADDRESS_LOOKUP_TAG, try again later")
             return (
                 jsonify({"error": "There was no ADDRESS_LOOKUP_TAG, try again later"}),
                 200,
