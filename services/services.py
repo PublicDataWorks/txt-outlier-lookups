@@ -23,7 +23,10 @@ def search_service(query, conversation_id, to_phone):
     results = []
 
     # Run query engine to get address
-    address = get_first_valid_normalized_address([query])
+    normalize_address = get_first_valid_normalized_address([query])
+    address = getattr(normalize_address, 'address_line_1', "")
+    sunit = " ".join(getattr(normalize_address,'address_line_2',"").replace("UNIT", "").split())
+    
     if not address:
         # Run query engine to get address
         address = get_first_valid_normalized_address([query])
@@ -121,7 +124,7 @@ def handle_wrong_format(conversation_id, to_phone):
 
 
 def process_statuses(tax_status, rental_status, conversation_id, phone):
-    if tax_status:
+    if tax_status and tax_status != 'NO_TAX_DEBT':
         missive_client.send_sms_sync(
             get_tax_message(tax_status),
             conversation_id=conversation_id,
