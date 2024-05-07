@@ -1,3 +1,4 @@
+from geoalchemy2 import Geometry
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -6,28 +7,28 @@ from sqlalchemy import (
     DateTime,
     Float,
     Integer,
-    Numeric,
     String,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.sql.sqltypes import NullType
 
 Base = declarative_base()
 metadata = Base.metadata
 
 
-class mi_wayne(Base):
-    __tablename__ = "mi_wayne"
+class mi_wayne_detroit(Base):
+    __tablename__ = "mi_wayne_detroit"
     __table_args__ = {"schema": "address_lookup"}
 
     ogc_fid = Column(
         Integer,
         primary_key=True,
-        server_default=text("nextval('address_lookup.mi_wayne_ogc_fid_seq'::regclass)"),
+        server_default=text(
+            "nextval('address_lookup.mi_wayne_detroit_ogc_fid_seq'::regclass)"
+        ),
     )
-    wkb_geometry = Column(NullType, index=True)
+    wkb_geometry = Column(Geometry(), index=True)
     geoid = Column(String)
     parcelnumb = Column(String)
     parcelnumb_no_formatting = Column(String)
@@ -176,114 +177,42 @@ class mi_wayne(Base):
     subowntype = Column(String)
     sourceref = Column(String)
     sourcedate = Column(Date)
-    join_parcelnumb = Column(String)
-    land_acres_0 = Column(Float(53))
-    land_acres_1 = Column(Float(53))
+    property_class = Column(String)
+    ward = Column(String)
+    council_district = Column(String)
+    taxable_status = Column(String)
+    tax_status = Column(String)
+    nez = Column(String)
     frontage = Column(Float(53))
-    land_front_0 = Column(Float(53))
-    land_front_1 = Column(Float(53))
-    land_front_2 = Column(Float(53))
-    land_depth_0 = Column(Float(53))
-    land_depth_1 = Column(Float(53))
-    land_depth_2 = Column(Float(53))
-    vacant = Column(Boolean)
-    exemptcode = Column(String)
-    oldprop = Column(String)
-    propstatus = Column(String)
-    extrazoning_0 = Column(String)
-    extrazoning_1 = Column(String)
-    extrazoning_2 = Column(String)
-    extrazoning_3 = Column(String)
-    county_usecode = Column(String)
-    dateoflastsplit = Column(Date)
-    schooldist = Column(String)
-    hometaxyear = Column(Integer)
-    agb_numagb = Column(Integer)
-    agb_calcvalue = Column(Float(53))
-    cib_stories = Column(Float(53))
-    cib_value = Column(Float(53))
-    cib_bldgclass_string = Column(String)
-    cib_numcib = Column(Float(53))
-    cib_floorarea = Column(Float(53))
-    cib_occ_string = Column(String)
-    cib_yearbuilt = Column(Integer)
-    cib_pricefloor = Column(Float(53))
-    cib_calcvalue = Column(Float(53))
-    resb_bldgclass_string = Column(String)
-    resb_plusminus = Column(String)
-    resb_numresb = Column(Float(53))
-    resb_floorarea = Column(Float(53))
-    resb_groundarea = Column(Float(53))
-    resb_occ_string = Column(String)
-    resb_yearbuilt = Column(Integer)
-    resb_pricefloor = Column(Float(53))
-    resb_calcvalue = Column(Float(53))
-    resb_priceground = Column(Float(53))
-    resb_garagearea = Column(Float(53))
-    resb_basementarea = Column(Float(53))
-    resb_effage = Column(Integer)
-    resb_exterior_string = Column(String)
-    resb_fireplaces = Column(Integer)
-    resb_fullbaths = Column(Integer)
-    resb_gartype_string = Column(String)
-    resb_halfbaths = Column(Integer)
-    resb_heat_string = Column(String)
-    resb_styhgt = Column(Integer)
-    resb_nbed = Column(Integer)
-    resb_avestyht = Column(Float(53))
-    resb_depr = Column(String)
-    r_or_p = Column(Float(53))
-    isexempt = Column(Boolean)
-    landivalue = Column(Float(53))
-    bldass_1 = Column(Float(53))
-    bldass_2 = Column(Float(53))
-    bldass_3 = Column(Float(53))
-    landass_1 = Column(Float(53))
-    landass_2 = Column(Float(53))
-    landass_3 = Column(Float(53))
-    mborsev_1 = Column(Float(53))
-    mborsev_2 = Column(Float(53))
-    mborsev_3 = Column(Float(53))
-    adjsev_0_3 = Column(Float(53))
-    adjsev_1_3 = Column(Float(53))
-    adjsev_2_3 = Column(Float(53))
-    mbortax_1 = Column(Float(53))
-    mbortax_2 = Column(Float(53))
-    mbortax_3 = Column(Float(53))
-    tax_2 = Column(Float(53))
-    tax_3 = Column(Float(53))
-    adjtax_1_3 = Column(Float(53))
-    adjtax_2_3 = Column(Float(53))
-    adjass_1_3 = Column(Float(53))
-    adjass_2_3 = Column(Float(53))
-    ass_3 = Column(Float(53))
-    secondaryunit = Column(String)
-    homedate = Column(Date)
-    publ_0 = Column(String)
-    publ_1 = Column(String)
-    publ_2 = Column(String)
-    publ_3 = Column(String)
-    publ_4 = Column(String)
-    publ_5 = Column(String)
-    publ_6 = Column(String)
-    publ_7 = Column(String)
-    publ_8 = Column(String)
-    publ_9 = Column(String)
-    publ_10 = Column(String)
-    publ_11 = Column(String)
-    publ_12 = Column(String)
-    refid_uniq_parcelnumb = Column(Boolean)
-    tax_status = Column(String(255))
-    tax_due = Column(Numeric(20, 2))
+    depth = Column(Float(53))
+    taxable_value = Column(Float(53))
+    landmap = Column(String)
+    related = Column(String)
+    vacant_land_program = Column(String)
+    vacant_land_program_cluster = Column(String)
+    land_bank_inventory_status = Column(String)
+    sale_number = Column(Integer)
+    grantor = Column(String)
+    grantee = Column(String)
+    sale_terms = Column(String)
+    verified_by = Column(String)
+    sale_instrument = Column(String)
+    sale_trans = Column(String)
+    ecf = Column(String)
+    relatedparcel = Column(String)
+    tax_due = Column(Float(53))
     tax_details = Column(String)
     tax_payments = Column(String)
+    refid_uniq_parcelnumb = Column(Boolean)
+    tax_details_bak = Column(String)
+    tax_payments_bak = Column(String)
 
 
 # metadata = MetaData()
 
 
-# mi_wayne = Table(
-#     "mi_wayne",
+# mi_wayne_detroit = Table(
+#     "mi_wayne_detroit",
 #     metadata,
 #     Column("geoid", BigInteger),
 #     Column("sourceagent", Text),
@@ -537,7 +466,7 @@ class mi_wayne(Base):
 #     #     ),
 #     #     primary_key=True,
 #     # ),
-#     # PrimaryKeyConstraint("id", name="mi_wayne_pkey"),
-#     # UniqueConstraint("id", name="mi_wayne_id_key"),
+#     # PrimaryKeyConstraint("id", name="mi_wayne_detroit_pkey"),
+#     # UniqueConstraint("id", name="mi_wayne_detroit_id_key"),
 #     schema="address_lookup",
 # )

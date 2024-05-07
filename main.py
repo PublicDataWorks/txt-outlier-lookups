@@ -2,49 +2,133 @@ import os
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
+from werkzeug.middleware.proxy_fix import ProxyFix
 
-from configs.query_config import query_engine
-from constants import ADDRESS_FOUND_MESSAGE, NO_INFO_MESSAGE
-from middlewares.auth_middleware import require_authentication
-from services.services import search_service
+from configs.query_engine.owner import owner_query_engine
+from exceptions import APIException
+from libs.MissiveAPI import MissiveAPI
+from services.services import (
+    handle_match,
+    process_statuses,
+    search_service,
+    warning_not_in_session,
+)
+from utils.address_normalizer import extract_latest_address
+from utils.check_property_status import check_property_status
 
-load_dotenv()
+load_dotenv(override=True)
 
 app = Flask(__name__)
 
-key = os.environ.get("OPENAI_API_KEY")
+
+@app.errorhandler(APIException)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
 
 
-@app.route("/query", methods=["POST"])
-@require_authentication
-def execute_query():
-    data = request.get_json()
-    query = data.get("query")
-    if not query:
-        return jsonify({"error": "No query provided"}), 400
-    try:
-        response = query_engine.query(query)
-        return jsonify({"result": str(response)})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
-
-@app.route("/search", methods=["POST"])
-@require_authentication
-def search():
-    query = request.json.get("query", "")
-
-    closest_match = search_service(query)
-
-    if not closest_match:
-        return {"message": NO_INFO_MESSAGE.format(query)}, 200
-
-    return {"message": ADDRESS_FOUND_MESSAGE.format(closest_match)}, 200
+missive_client = MissiveAPI()
 
 
 @app.route("/", methods=["GET"])
 def health_check():
-    return "ok"
+    return "OK"
+
+
+@app.route("/search", methods=["POST"])
+# @require_authentication
+def search():
+    try:
+        data = request.get_json()
+        conversation_id = data.get("conversation", {}).get("id")
+        to_phone = data.get("message", {}).get("from_field", {}).get("id")
+        message = data.get("message", {}).get("preview")
+
+        response, status = search_service(
+            query=message, conversation_id=conversation_id, to_phone=to_phone
+        )
+        return jsonify(response), status
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/yes", methods=["POST"])
+def yes():
+    try:
+        data = request.get_json()
+        conversation_id = data.get("conversation", {}).get("id")
+        to_phone = data.get("message", {}).get("from_field", {}).get("id")
+        messages = missive_client.extract_preview_content(
+            conversation_id=conversation_id
+        )
+        address = extract_latest_address(
+            messages=messages, conversation_id=conversation_id, to_phone=to_phone
+        )
+
+        if not address:
+            return (
+                jsonify({"message": "Couldn't parse address from history messages"}),
+                200,
+            )
+
+        query_result = owner_query_engine.query(address)
+        handle_match(
+            response=query_result,
+            conversation_id=conversation_id,
+            to_phone=to_phone,
+        )
+        return jsonify({"message": "Success"}), 200
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/more", methods=["POST"])
+def more():
+    try:
+        data = request.get_json()
+        conversation_id = data.get("conversation", {}).get("id")
+        to_phone = data.get("message", {}).get("from_field", {}).get("id")
+        shared_labels = data.get("conversation", {}).get("shared_labels", [])
+        shared_label_ids = [label.get("id") for label in shared_labels]
+
+        if (
+            shared_label_ids
+            and os.environ.get("MISSIVE_LOOKUP_TAG_ID") in shared_label_ids
+        ):
+            messages = missive_client.extract_preview_content(
+                conversation_id=conversation_id
+            )
+            address = extract_latest_address(messages, conversation_id, to_phone)
+
+            if not address:
+                return (
+                    jsonify(
+                        {"message": "Couldn't parse address from history messages"}
+                    ),
+                    200,
+                )
+            query_result = owner_query_engine.query(address)
+            tax_status, rental_status = check_property_status(query_result)
+
+            process_statuses(tax_status, rental_status, conversation_id, to_phone)
+            return jsonify("Success"), 200
+
+        else:
+            warning_not_in_session(conversation_id=conversation_id,to_phone=to_phone)
+            return (
+                jsonify({"error": "There was no ADDRESS_LOOKUP_TAG, try again later"}),
+                200,
+            )
+
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":

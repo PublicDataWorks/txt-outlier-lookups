@@ -3,9 +3,12 @@ import hmac
 import json
 import os
 
+from dotenv import load_dotenv
 from flask import request
 
 from exceptions import APIException
+
+load_dotenv(override=True)
 
 
 class AuthMiddleware:
@@ -30,13 +33,17 @@ class AuthMiddleware:
         return hmac.compare_digest(decoded_signature, generated_signature)
 
     def authenticate(self):
-        hash = request.headers.get("X-Hook-Signature")
+        header = request.headers.get("X-Hook-Signature")
 
-        if not hash:
+        if not header.startswith("sha256="):
             raise APIException("Unauthorized", 401)
-
-        if not self.verify(hash, request.json):
-            raise APIException("Unauthorized", 401)
+        else:
+            hash = header.split("=")[1]
+            if not hash:
+                raise APIException("Unauthorized", 401)
+            else:
+                if not self.verify(hash, request.json):
+                    raise APIException("Unauthorized", 401)
 
 
 def require_authentication(func):
