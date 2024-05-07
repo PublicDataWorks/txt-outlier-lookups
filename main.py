@@ -23,16 +23,14 @@ from utils.check_property_status import check_property_status
 load_dotenv(override=True)
 
 sentry_loguru = LoguruIntegration(
-    level=LoggingLevels.INFO.value,        # Capture info and above as breadcrumbs
-    event_level=LoggingLevels.ERROR.value  # Send errors as events
+    level=LoggingLevels.INFO.value,  # Capture info and above as breadcrumbs
+    event_level=LoggingLevels.ERROR.value,  # Send errors as events
 )
 
 sentry_sdk.init(
     dsn=os.environ.get("SENTRY_DNS"),
     enable_tracing=True,
-    integrations=[
-        sentry_loguru
-    ],
+    integrations=[sentry_loguru],
 )
 
 logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
@@ -96,7 +94,7 @@ def yes():
             )
 
         query_result = owner_query_engine.query(address)
-        if not 'result' in query_result.metadata:
+        if not "result" in query_result.metadata:
             logger.error(query_result)
 
         handle_match(
@@ -131,7 +129,7 @@ def more():
                     200,
                 )
             query_result = owner_query_engine.query(address)
-            if not 'result' in query_result.metadata:
+            if not "result" in query_result.metadata:
                 logger.error(query_result)
             tax_status, rental_status = check_property_status(query_result)
 
@@ -139,7 +137,7 @@ def more():
             return jsonify("Success"), 200
 
         else:
-            warning_not_in_session(conversation_id=conversation_id,to_phone=to_phone)
+            logger.error("There was no ADDRESS_LOOKUP_TAG, try again later")
             return (
                 jsonify({"error": "There was no ADDRESS_LOOKUP_TAG, try again later"}),
                 200,
