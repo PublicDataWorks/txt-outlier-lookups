@@ -49,7 +49,7 @@ city_stats_text = (
     "tax_status is the tax status of the place and rental status is the rental status"
     "the table residential_rental_registrations contains list of all rental properties in mi_wayne_detroit."
     "Write a query follow exactly this format, DO NOT change anything except for the query value"
-    "SELECT mi_wayne_detroit.owner, CASE WHEN residential_rental_registrations.lat IS NOT NULL THEN 'IS' ELSE false END AS rental_status, "
+    "SELECT mi_wayne_detroit.owner, CASE WHEN residential_rental_registrations.lat IS NOT NULL THEN 'IS' ELSE 'IS NOT' END AS rental_status, "
     "mi_wayne_detroit.tax_due, mi_wayne_detroit.tax_status FROM mi_wayne_detroit"
     "LEFT JOIN address_lookup.residential_rental_registrations ON ST_DWithin( mi_wayne_detroit.wkb_geometry, address_lookup.residential_rental_registrations.wkb_geometry , 0.001) and strict_word_similarity( mi_wayne_detroit.address, residential_rental_registrations.street_num || ' ' || residential_rental_registrations.street_name) > 0.8"
     "WHERE mi_wayne_detroit.address ILIKE 'query_value%'"
