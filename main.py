@@ -9,14 +9,12 @@ from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from configs.query_engine.owner_information import owner_query_engine
-from configs.query_engine.owner_information_without_sunit import owner_query_engine_without_sunit
+from configs.query_engine.owner_information_without_sunit import (
+    owner_query_engine_without_sunit,
+)
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
-from services.services import (
-    handle_match,
-    process_statuses,
-    search_service,
-)
+from services.services import handle_match, process_statuses, search_service
 from utils.address_normalizer import extract_latest_address
 from utils.check_property_status import check_property_status
 
@@ -130,17 +128,16 @@ def more():
                 )
 
             address = normalized_address.get("address_line_1", "")
-            sunit = " ".join(
-                normalized_address.get("address_line_2", "").replace("UNIT", "").split()
-            )
-            if sunit:
-                query_result = owner_query_engine.query(
-                    str({"address": {address}, "sunit": sunit})
-                )
+            address_line_2 = normalized_address.get("address_line_2")
+            if address_line_2 is not None:
+                sunit = " ".join(address_line_2.replace("UNIT", "").replace("#", "").split())
             else:
-                query_result = owner_query_engine_without_sunit.query(
-                    str({"address": {address}})
-                )
+                sunit = ""
+
+            if sunit:
+                query_result = owner_query_engine.query(str({"address": address, "sunit": sunit}))
+            else:
+                query_result = owner_query_engine_without_sunit.query(str({"address": {address}}))
 
             if not "result" in query_result.metadata:
                 logger.error(query_result)
@@ -162,4 +159,4 @@ def more():
 
 
 if __name__ == "__main__":
-    app.run(port=8080, host="0.0.0.0")
+    app.run(port=8080, host="0.0.0.0", debug=True)
