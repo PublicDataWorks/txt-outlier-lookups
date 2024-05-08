@@ -74,7 +74,6 @@ sms_templates = {
 def get_tax_message(tax_status):
     tax_status_mapping = {
         "TAX_DEBT": sms_templates["has_tax_debt"],
-        "NO_TAX_DEBT": sms_templates["no_tax_debt"],
         "FORECLOSED": sms_templates["foreclosed"],
         "FORFEITED": sms_templates["forfeited"],
         "NO_INFORMATION": None,
