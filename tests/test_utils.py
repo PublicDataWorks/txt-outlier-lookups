@@ -273,9 +273,7 @@ def test_verify_method(mock_getenv):
                 "name": "+1 (330) 679-5612",
                 "username": None,
             },
-            "to_fields": [
-                {"id": "+13306795612", "name": "TXT OUTLIER", "username": None}
-            ],
+            "to_fields": [{"id": "+13306795612", "name": "TXT OUTLIER", "username": None}],
             "external_id": "SM46442ca28915953bbc11ce8bc58fb7b3",
             "account_author": {
                 "id": "+13306795612",

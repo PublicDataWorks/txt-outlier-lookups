@@ -1,5 +1,4 @@
 class APIException(Exception):
-
     def __init__(self, message, status_code=400, payload=None):
         Exception.__init__(self)
         self.message = message

@@ -23,6 +23,7 @@ text = (
     "the table name when needed. You are required to use the following format, each taking one line:"
     "There might be multiple addresses in the query string, extract only the most recent address to use for querying"
     "Address will follow the format of a number followed by a street name"
+    "If rental_status is equal to 'IS NOT' then must ignore rental_status"
     "Question: Question here"
     "SQLQuery: SQL Query to run"
     "SQLResult: Result of the SQLQuery"
@@ -32,6 +33,7 @@ text = (
     "SQLQuery: "
 )
 qa_prompt_tmpl = PromptTemplate(text)
+
 
 metadata = MetaData(schema="address_lookup")
 sql_database = SQLDatabase(
@@ -47,13 +49,12 @@ city_stats_text = (
     "tax_status is the tax status of the place and rental status is the rental status"
     "the table residential_rental_registrations contains list of all rental properties in mi_wayne_detroit."
     "Write a query follow exactly this format, DO NOT change anything except for the query value"
-    "SELECT mi_wayne_detroit.owner, CASE WHEN residential_rental_registrations.lat IS NOT NULL THEN 'IS' ELSE 'IS NOT' END AS rental_status, "
+    "SELECT mi_wayne_detroit.owner, CASE WHEN residential_rental_registrations.lat IS NOT NULL THEN 'IS' ELSE false END AS rental_status, "
     "mi_wayne_detroit.tax_due, mi_wayne_detroit.tax_status FROM mi_wayne_detroit"
     "LEFT JOIN address_lookup.residential_rental_registrations ON ST_DWithin( mi_wayne_detroit.wkb_geometry, address_lookup.residential_rental_registrations.wkb_geometry , 0.001) and strict_word_similarity( mi_wayne_detroit.address, residential_rental_registrations.street_num || ' ' || residential_rental_registrations.street_name) > 0.8"
-    "WHERE mi_wayne_detroit.address ilike 'query_value%'"
-    "Always return mi_wayne_detroit.owner, mi_wayne_detroit.tax debt and mi_wayne_detroit.tax status and rental_status "
-    "does not belong to any table so return it by itself"
-    "Sometimes the query_value include the messages history, extract only the most recent address to query"
+    "WHERE mi_wayne_detroit.address ILIKE 'query_value%'"
+    "If rental_status is 'IS NOT' then must hide the rental_status from the result"
+    "Always return mi_wayne_detroit.owner, mi_wayne_detroit.tax debt and mi_wayne_detroit.tax"
     "Address will follow the format of a number followed by a street name"
     "Do not use keywords like 'yes' or 'more' as query value"
 )
@@ -65,10 +66,10 @@ obj_index = ObjectIndex.from_objects(
     VectorStoreIndex,
 )
 
-tax_query_engine = SQLTableRetrieverQueryEngine(
+owner_query_engine_without_sunit = SQLTableRetrieverQueryEngine(
     sql_database, obj_index.as_retriever(similarity_top_k=1), llm=function_llm
 )
 
-tax_query_engine.update_prompts(
+owner_query_engine_without_sunit.update_prompts(
     {"sql_retriever:text_to_sql_prompt": qa_prompt_tmpl},
 )

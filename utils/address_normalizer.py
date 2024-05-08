@@ -32,7 +32,8 @@ def get_first_valid_normalized_address(address_list):
                 normalized_address = NormalizeAddress(address).normalize()
 
                 # If normalization is successful, return the normalized address
-                return normalized_address.get("address_line_1", None)+ " " + normalized_address.get("address_line_2") if normalized_address.get("address_line_2", None) else normalized_address.get("address_line_1", None)
+                return normalized_address
+
             except Exception:
                 # If normalization fails, ignore the exception and continue to the next address
                 continue

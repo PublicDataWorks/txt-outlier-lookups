@@ -52,16 +52,15 @@ city_stats_text = (
     "mi_wayne_detroit.tax_due, mi_wayne_detroit.tax_status FROM mi_wayne_detroit"
     "LEFT JOIN address_lookup.residential_rental_registrations ON ST_DWithin( mi_wayne_detroit.wkb_geometry, address_lookup.residential_rental_registrations.wkb_geometry , 0.001) and strict_word_similarity( mi_wayne_detroit.address, residential_rental_registrations.street_num || ' ' || residential_rental_registrations.street_name) > 0.8"
     "WHERE mi_wayne_detroit.address ILIKE 'query_value%'"
-    "Always return mi_wayne_detroit.owner, mi_wayne_detroit.tax debt and mi_wayne_detroit.tax status and rental_status "
-    "does not belong to any table so return it by itself"
-    "Sometimes the query_value include the messages history, extract only the most recent address to query"
+    "AND ((mi_wayne_detroit.sunit == sunit) OR"
+    "(mi_wayne_detroit.sunit_suffix == sunit))"
+    "Always return mi_wayne_detroit.owner, mi_wayne_detroit.tax debt and mi_wayne_detroit.tax status"
+    "If rental_status is 'IS NOT' then must hide the rental_status from the result"
     "Address will follow the format of a number followed by a street name"
     "Do not use keywords like 'yes' or 'more' as query value"
 )
 table_node_mapping = SQLTableNodeMapping(sql_database)
-table_schema_objs = [
-    (SQLTableSchema(table_name="mi_wayne_detroit", context_str=city_stats_text))
-]
+table_schema_objs = [(SQLTableSchema(table_name="mi_wayne_detroit", context_str=city_stats_text))]
 obj_index = ObjectIndex.from_objects(
     table_schema_objs,
     table_node_mapping,

@@ -24,9 +24,7 @@ class mi_wayne_detroit(Base):
     ogc_fid = Column(
         Integer,
         primary_key=True,
-        server_default=text(
-            "nextval('address_lookup.mi_wayne_detroit_ogc_fid_seq'::regclass)"
-        ),
+        server_default=text("nextval('address_lookup.mi_wayne_detroit_ogc_fid_seq'::regclass)"),
     )
     wkb_geometry = Column(Geometry(), index=True)
     geoid = Column(String)
@@ -206,6 +204,7 @@ class mi_wayne_detroit(Base):
     refid_uniq_parcelnumb = Column(Boolean)
     tax_details_bak = Column(String)
     tax_payments_bak = Column(String)
+    sunit_suffix = Column(String)
 
 
 # metadata = MetaData()
