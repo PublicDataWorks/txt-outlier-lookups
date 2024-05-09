@@ -80,18 +80,31 @@ def yes():
         conversation_id = data.get("conversation", {}).get("id")
         to_phone = data.get("message", {}).get("from_field", {}).get("id")
         messages = missive_client.extract_preview_content(conversation_id=conversation_id)
-        address = extract_latest_address(
+        normalized_address = extract_latest_address(
             messages=messages, conversation_id=conversation_id, to_phone=to_phone
         )
+        query_result = ''
 
-        if not address:
+        if not normalized_address:
             logger.error("Couldn't parse address from history messages", messages)
             return (
                 jsonify({"message": "Couldn't parse address from history messages"}),
                 200,
-            )
+            )       
 
-        query_result = owner_query_engine.query(address.get("address_line_1", ""))
+        address = normalized_address.get("address_line_1", "")
+        address_line_2 = normalized_address.get("address_line_2")
+        if address_line_2 is not None:
+            sunit = " ".join(address_line_2.replace("UNIT", "").replace("#", "").split())
+        else:
+            sunit = ""
+
+
+        if sunit:
+            query_result = owner_query_engine.query(str({"address": address, "sunit": sunit}))
+        else:
+            query_result = owner_query_engine_without_sunit.query(str({"address": {address}}))
+
         if not "result" in query_result.metadata:
             logger.error(query_result)
 
