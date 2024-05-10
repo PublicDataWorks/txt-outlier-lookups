@@ -12,13 +12,17 @@ from configs.query_engine.owner_information import owner_query_engine
 from configs.query_engine.owner_information_without_sunit import (
     owner_query_engine_without_sunit,
 )
+from configs.query_engine.tax_information import tax_query_engine
+from configs.query_engine.tax_information_without_sunit import (
+    tax_query_engine_without_sunit,
+)
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from services.services import (
+    extract_address_information,
     handle_match,
     process_statuses,
     search_service,
-    extract_address_information,
 )
 from utils.address_normalizer import extract_latest_address
 from utils.check_property_status import check_property_status
@@ -142,9 +146,9 @@ def more():
             address, sunit = extract_address_information(normalized_address)
 
             if sunit:
-                query_result = owner_query_engine.query(str({"address": address, "sunit": sunit}))
+                query_result = tax_query_engine.query(str({"address": address, "sunit": sunit}))
             else:
-                query_result = owner_query_engine_without_sunit.query(str({"address": {address}}))
+                query_result = tax_query_engine_without_sunit.query(str({"address": {address}}))
 
             if not "result" in query_result.metadata:
                 logger.error(query_result)
