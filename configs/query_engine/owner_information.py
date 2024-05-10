@@ -53,8 +53,8 @@ city_stats_text = (
     "LEFT JOIN address_lookup.residential_rental_registrations ON ST_DWithin( mi_wayne_detroit.wkb_geometry, address_lookup.residential_rental_registrations.wkb_geometry , 0.001) and strict_word_similarity( mi_wayne_detroit.address, residential_rental_registrations.street_num || ' ' || residential_rental_registrations.street_name) > 0.8"
     "WHERE mi_wayne_detroit.address ILIKE 'address%'"
     "AND mi_wayne_detroit.sunit ILIKE '%sunit'"
-    "Always return mi_wayne_detroit.owner, mi_wayne_detroit.tax debt and mi_wayne_detroit.tax status"
     "If rental_status is 'IS NOT' then must hide the rental_status from the result"
+    "Always return mi_wayne_detroit.owner, mi_wayne_detroit.tax debt and mi_wayne_detroit.tax status"
     "Address will follow the format of a number followed by a street name"
     "Do not use keywords like 'yes' or 'more' as query value"
 )

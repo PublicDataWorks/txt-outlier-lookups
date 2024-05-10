@@ -22,12 +22,7 @@ def search_service(query, conversation_id, to_phone):
 
     # Run query engine to get address
     normalized_address = get_first_valid_normalized_address([query])
-    address = normalized_address.get("address_line_1", "")
-    address_line_2 = normalized_address.get("address_line_2")
-    if address_line_2 is not None:
-        sunit = " ".join(address_line_2.replace("UNIT", "").replace("#", "").split())
-    else:
-        sunit = ""
+    address, sunit = extract_address_information(normalized_address)
 
     query_result = []
 
@@ -143,3 +138,14 @@ def process_statuses(tax_status, rental_status, conversation_id, phone):
         conversation_id=conversation_id,
         to_phone=phone,
     )
+
+
+def extract_address_information(normalized_address):
+    address = normalized_address.get("address_line_1", "")
+    address_line_2 = normalized_address.get("address_line_2")
+    if address_line_2 is not None:
+        sunit = " ".join(address_line_2.replace("UNIT", "").replace("#", "").split())
+    else:
+        sunit = ""
+
+    return address, sunit

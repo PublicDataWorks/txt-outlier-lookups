@@ -14,7 +14,12 @@ from configs.query_engine.owner_information_without_sunit import (
 )
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
-from services.services import handle_match, process_statuses, search_service
+from services.services import (
+    handle_match,
+    process_statuses,
+    search_service,
+    extract_address_information,
+)
 from utils.address_normalizer import extract_latest_address
 from utils.check_property_status import check_property_status
 
@@ -83,22 +88,16 @@ def yes():
         normalized_address = extract_latest_address(
             messages=messages, conversation_id=conversation_id, to_phone=to_phone
         )
-        query_result = ''
+        query_result = ""
 
         if not normalized_address:
             logger.error("Couldn't parse address from history messages", messages)
             return (
                 jsonify({"message": "Couldn't parse address from history messages"}),
                 200,
-            )       
+            )
 
-        address = normalized_address.get("address_line_1", "")
-        address_line_2 = normalized_address.get("address_line_2")
-        if address_line_2 is not None:
-            sunit = " ".join(address_line_2.replace("UNIT", "").replace("#", "").split())
-        else:
-            sunit = ""
-
+        address, sunit = extract_address_information(normalized_address)
 
         if sunit:
             query_result = owner_query_engine.query(str({"address": address, "sunit": sunit}))
@@ -140,12 +139,7 @@ def more():
                     200,
                 )
 
-            address = normalized_address.get("address_line_1", "")
-            address_line_2 = normalized_address.get("address_line_2")
-            if address_line_2 is not None:
-                sunit = " ".join(address_line_2.replace("UNIT", "").replace("#", "").split())
-            else:
-                sunit = ""
+            address, sunit = extract_address_information(normalized_address)
 
             if sunit:
                 query_result = owner_query_engine.query(str({"address": address, "sunit": sunit}))
