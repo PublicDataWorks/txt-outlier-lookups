@@ -127,7 +127,6 @@ def process_statuses(tax_status, rental_status, conversation_id, phone):
             get_tax_message(tax_status),
             conversation_id=conversation_id,
             to_phone=phone,
-            remove_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
         )
         time.sleep(2)
 
@@ -136,7 +135,6 @@ def process_statuses(tax_status, rental_status, conversation_id, phone):
             get_rental_message(rental_status),
             conversation_id=conversation_id,
             to_phone=phone,
-            remove_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
         )
         time.sleep(2)
 
@@ -144,5 +142,4 @@ def process_statuses(tax_status, rental_status, conversation_id, phone):
         sms_templates["final"],
         conversation_id=conversation_id,
         to_phone=phone,
-        remove_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
     )
