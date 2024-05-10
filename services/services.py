@@ -48,10 +48,11 @@ def search_service(query, conversation_id, to_phone):
                 .all()
             )
 
+    display_address = address if not sunit else address + " " + sunit
     if not results:
-        return handle_no_match(query, conversation_id, to_phone)
+        return handle_no_match(display_address, conversation_id, to_phone)
     if len(results) > 1:
-        return handle_ambiguous(query, conversation_id, to_phone)
+        return handle_ambiguous(display_address, conversation_id, to_phone)
 
     # Missive API to adding tags
     exact_match = results[0].address
