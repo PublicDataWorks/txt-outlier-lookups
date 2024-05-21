@@ -60,7 +60,7 @@ sms_templates = {
     "final": (
         "If you have questions or don't think these resources will work, text REPORTER and we'll follow up with "
         "you. Text another address if you want to look it up another. Text MENU to see our other info. If you're "
-        "all set you can just text ALL SET."
+        "all set you can just text ALL GOOD."
     ),
     "match_second_message": (
         "If this doesn’t look right or you have any questions text REPORTER and we’ll follow up  with you within 48 hours. Or if you want tips and extra info about tax debt or rules for rentals type MORE."

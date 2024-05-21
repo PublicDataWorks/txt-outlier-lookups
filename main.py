@@ -9,10 +9,17 @@ from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from configs.query_engine.owner_information import owner_query_engine
-from configs.query_engine.owner_information_without_sunit import owner_query_engine_without_sunit
+from configs.query_engine.owner_information_without_sunit import (
+    owner_query_engine_without_sunit,
+)
+from configs.query_engine.tax_information import tax_query_engine
+from configs.query_engine.tax_information_without_sunit import (
+    tax_query_engine_without_sunit,
+)
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from services.services import (
+    extract_address_information,
     handle_match,
     process_statuses,
     search_service,
@@ -82,18 +89,25 @@ def yes():
         conversation_id = data.get("conversation", {}).get("id")
         to_phone = data.get("message", {}).get("from_field", {}).get("id")
         messages = missive_client.extract_preview_content(conversation_id=conversation_id)
-        address = extract_latest_address(
+        normalized_address = extract_latest_address(
             messages=messages, conversation_id=conversation_id, to_phone=to_phone
         )
+        query_result = ""
 
-        if not address:
+        if not normalized_address:
             logger.error("Couldn't parse address from history messages", messages)
             return (
                 jsonify({"message": "Couldn't parse address from history messages"}),
                 200,
             )
 
-        query_result = owner_query_engine.query(address.get("address_line_1", ""))
+        address, sunit = extract_address_information(normalized_address)
+
+        if sunit:
+            query_result = owner_query_engine.query(str({"address": address, "sunit": sunit}))
+        else:
+            query_result = owner_query_engine_without_sunit.query(str({"address": {address}}))
+
         if not "result" in query_result.metadata:
             logger.error(query_result)
 
@@ -129,18 +143,12 @@ def more():
                     200,
                 )
 
-            address = normalized_address.get("address_line_1", "")
-            sunit = " ".join(
-                normalized_address.get("address_line_2", "").replace("UNIT", "").split()
-            )
+            address, sunit = extract_address_information(normalized_address)
+
             if sunit:
-                query_result = owner_query_engine.query(
-                    str({"address": {address}, "sunit": sunit})
-                )
+                query_result = tax_query_engine.query(str({"address": address, "sunit": sunit}))
             else:
-                query_result = owner_query_engine_without_sunit.query(
-                    str({"address": {address}})
-                )
+                query_result = tax_query_engine_without_sunit.query(str({"address": {address}}))
 
             if not "result" in query_result.metadata:
                 logger.error(query_result)

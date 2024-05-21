@@ -1,19 +1,16 @@
 import os
-
+import time
 
 from loguru import logger
+
 from configs.database import Session
-from configs.query_engine.owner_information_without_sunit import owner_query_engine_without_sunit
-from configs.query_engine.owner_information import owner_query_engine
+from configs.query_engine.owner_information_without_sunit import (
+    owner_query_engine_without_sunit,
+)
 from libs.MissiveAPI import MissiveAPI
 from models import mi_wayne_detroit
 from templates.sms import get_rental_message, get_tax_message, sms_templates
-from utils.address_normalizer import (
-    get_first_valid_normalized_address,
-)
-from sqlalchemy import or_
-import time
-
+from utils.address_normalizer import get_first_valid_normalized_address
 
 missive_client = MissiveAPI()
 
@@ -21,11 +18,12 @@ missive_client = MissiveAPI()
 def search_service(query, conversation_id, to_phone):
     session = Session()
     results = []
+    sunit = ""
 
     # Run query engine to get address
-    normalize_address = get_first_valid_normalized_address([query])
-    address = normalize_address.get("address_line_1", "")
-    sunit = " ".join(normalize_address.get("address_line_2", "").replace("UNIT", "").split())
+    normalized_address = get_first_valid_normalized_address([query])
+    address, sunit = extract_address_information(normalized_address)
+
     query_result = []
 
     if not address:
@@ -38,10 +36,7 @@ def search_service(query, conversation_id, to_phone):
                 .filter(
                     (
                         mi_wayne_detroit.address.ilike(f"{address.strip()}%")
-                        & (
-                            (mi_wayne_detroit.sunit == sunit)
-                            | (mi_wayne_detroit.sunit_suffix == sunit)
-                        )
+                        & (mi_wayne_detroit.sunit.endswith(sunit))
                     )
                 )
                 .all()
@@ -53,10 +48,11 @@ def search_service(query, conversation_id, to_phone):
                 .all()
             )
 
+    display_address = address if not sunit else address + " " + sunit
     if not results:
-        return handle_no_match(query, conversation_id, to_phone)
+        return handle_no_match(display_address, conversation_id, to_phone)
     if len(results) > 1:
-        return handle_ambiguous(query, conversation_id, to_phone)
+        return handle_ambiguous(display_address, conversation_id, to_phone)
 
     # Missive API to adding tags
     exact_match = results[0].address
@@ -127,7 +123,6 @@ def process_statuses(tax_status, rental_status, conversation_id, phone):
             get_tax_message(tax_status),
             conversation_id=conversation_id,
             to_phone=phone,
-            remove_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
         )
         time.sleep(2)
 
@@ -136,7 +131,6 @@ def process_statuses(tax_status, rental_status, conversation_id, phone):
             get_rental_message(rental_status),
             conversation_id=conversation_id,
             to_phone=phone,
-            remove_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
         )
         time.sleep(2)
 
@@ -144,5 +138,15 @@ def process_statuses(tax_status, rental_status, conversation_id, phone):
         sms_templates["final"],
         conversation_id=conversation_id,
         to_phone=phone,
-        remove_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
     )
+
+
+def extract_address_information(normalized_address):
+    address = normalized_address.get("address_line_1", "")
+    address_line_2 = normalized_address.get("address_line_2")
+    if address_line_2 is not None:
+        sunit = " ".join(address_line_2.replace("UNIT", "").replace("#", "").split())
+    else:
+        sunit = ""
+
+    return address, sunit

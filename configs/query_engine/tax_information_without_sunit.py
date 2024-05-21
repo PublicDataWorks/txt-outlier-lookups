@@ -22,9 +22,6 @@ text = (
     "for columns that do not exist. Pay attention to which column is in which table. Also, qualify column names with "
     "the table name when needed. You are required to use the following format, each taking one line:"
     "Address will follow the format of a number followed by a street name"
-    "If the properties is not a rental then omit that from the result"
-    "If rental_status value is 'IS NOT' then must hide rental status from the result"
-    "Avoid showing anything about rental status like 'It is not registered as a residential rental property'"
     "Question: Question here"
     "SQLQuery: SQL Query to run"
     "SQLResult: Result of the SQLQuery"
@@ -54,9 +51,6 @@ city_stats_text = (
     "mi_wayne_detroit.tax_due, mi_wayne_detroit.tax_status FROM mi_wayne_detroit"
     "LEFT JOIN address_lookup.residential_rental_registrations ON ST_DWithin( mi_wayne_detroit.wkb_geometry, address_lookup.residential_rental_registrations.wkb_geometry , 0.001) and strict_word_similarity( mi_wayne_detroit.address, residential_rental_registrations.street_num || ' ' || residential_rental_registrations.street_name) > 0.8"
     "WHERE mi_wayne_detroit.address ILIKE 'query_value%'"
-    "If rental_status value is 'IS NOT' then must hide rental status from the result"
-    "Avoid showing anything about rental status like 'It is not registered as a residential rental property'"
-    "or 'The property is not registered as a residential rental.' or similar not rental status"
     "Always return mi_wayne_detroit.owner, mi_wayne_detroit.tax debt and mi_wayne_detroit.tax"
     "Address will follow the format of a number followed by a street name"
     "Do not use keywords like 'yes' or 'more' as query value"
@@ -69,10 +63,10 @@ obj_index = ObjectIndex.from_objects(
     VectorStoreIndex,
 )
 
-owner_query_engine_without_sunit = SQLTableRetrieverQueryEngine(
+tax_query_engine_without_sunit = SQLTableRetrieverQueryEngine(
     sql_database, obj_index.as_retriever(similarity_top_k=1), llm=function_llm
 )
 
-owner_query_engine_without_sunit.update_prompts(
+tax_query_engine_without_sunit.update_prompts(
     {"sql_retriever:text_to_sql_prompt": qa_prompt_tmpl},
 )
