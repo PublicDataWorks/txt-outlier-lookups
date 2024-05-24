@@ -15,7 +15,7 @@ load_dotenv(find_dotenv())
 host = os.getenv("SFTP_HOST")
 username = os.getenv("SFTP_USERNAME")
 password = os.getenv("SFTP_PASSWORD")
-port = int(os.getenv("SFTP_PORT", 22))  # Ensure port is an integer
+port = int(os.getenv("SFTP_PORT", 22))
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
