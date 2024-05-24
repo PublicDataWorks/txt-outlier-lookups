@@ -6,7 +6,7 @@ from zipfile import ZipFile
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import find_dotenv, load_dotenv
-from sftp_client import SFTPServerClient
+from .sftp_client import SFTPServerClient
 
 # Load environment variables
 load_dotenv(find_dotenv())
