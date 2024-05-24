@@ -1,6 +1,3 @@
-import os
-import stat
-
 import paramiko
 
 
