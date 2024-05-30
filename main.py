@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 
 import sentry_sdk
 from dotenv import load_dotenv
@@ -12,6 +13,11 @@ from configs.query_engine.owner_information import owner_query_engine
 from configs.query_engine.owner_information_without_sunit import (
     owner_query_engine_without_sunit,
 )
+from configs.query_engine.tax_information import tax_query_engine
+from configs.query_engine.tax_information_without_sunit import (
+    tax_query_engine_without_sunit,
+)
+from configs.supabase import connect_to_supabase
 from cron.property import start_scheduler
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
@@ -21,6 +27,9 @@ from services.services import (
     search_service, more_search_service,
 )
 from utils.address_normalizer import extract_latest_address
+from utils.check_property_status import check_property_status
+from flask import Flask
+from configs.cache_template import cache, init_lookup_templates_cache, get_template_content_by_name
 
 load_dotenv(override=True)
 
@@ -39,6 +48,11 @@ logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 
 app = Flask(__name__)
 
+os.makedirs('cache', exist_ok=True)
+cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Path('./cache')})
+
+with app.app_context():
+    init_lookup_templates_cache()
 
 @app.errorhandler(APIException)
 def handle_invalid_usage(error):
@@ -54,6 +68,13 @@ missive_client = MissiveAPI()
 
 @app.route("/", methods=["GET"])
 def health_check():
+    content = get_template_content_by_name("search_context")
+    if content:
+        # Use the retrieved content
+        print(content)
+    else:
+        print(f"No template found with name: search_context")
+
     return "OK"
 
 
@@ -149,4 +170,5 @@ def more():
 
 if __name__ == "__main__":
     start_scheduler()
+    connect_to_supabase()
     app.run(port=8080, host="0.0.0.0")

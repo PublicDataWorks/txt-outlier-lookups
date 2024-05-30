@@ -469,3 +469,17 @@ class mi_wayne_detroit(Base):
 #     # UniqueConstraint("id", name="mi_wayne_detroit_id_key"),
 #     schema="address_lookup",
 # )
+
+class LookupTemplate(Base):
+    __tablename__ = "lookup_template"
+    __table_args__ = {"schema": "public"}
+
+    id = Column(BigInteger, primary_key=True)
+    created_at = Column(DateTime(timezone=True))
+    updated_at = Column(DateTime(timezone=True))
+    name = Column(String, unique=True)
+    content = Column(String)
+    type = Column(String)
+
+    def __repr__(self):
+        return f"<LookupTemplate(id={self.id}, name='{self.name}', type='{self.type}')>"
