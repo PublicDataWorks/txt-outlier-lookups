@@ -1,3 +1,5 @@
+from configs.cache_template import get_template_content_by_name
+
 sms_templates = {
     "no_match": (
         "We don’t have info for {address}. If you’re sure the address is in Detroit and you entered it correctly text "
@@ -68,9 +70,9 @@ sms_templates = {
 
 def get_tax_message(tax_status):
     tax_status_mapping = {
-        "TAX_DEBT": sms_templates["has_tax_debt"],
-        "FORECLOSED": sms_templates["foreclosed"],
-        "FORFEITED": sms_templates["forfeited"],
+        "TAX_DEBT": get_template_content_by_name["has_tax_debt"],
+        "FORECLOSED": get_template_content_by_name["foreclosed"],
+        "FORFEITED": get_template_content_by_name["forfeited"],
         "NO_INFORMATION": None,
     }
 
@@ -79,8 +81,8 @@ def get_tax_message(tax_status):
 
 def get_rental_message(rental_status):
     rental_status_mapping = {
-        "REGISTERED": sms_templates["registered"],
-        "UNREGISTERED": sms_templates["unregistered"],
+        "REGISTERED": get_template_content_by_name["registered"],
+        "UNREGISTERED": get_template_content_by_name["unregistered"],
         "NO_INFORMATION": None,
     }
 

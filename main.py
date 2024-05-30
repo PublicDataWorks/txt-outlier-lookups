@@ -1,5 +1,8 @@
+import asyncio
 import os
 import sys
+import threading
+from pathlib import Path
 
 import sentry_sdk
 from dotenv import load_dotenv
@@ -12,7 +15,11 @@ from configs.query_engine.owner_information import owner_query_engine
 from configs.query_engine.owner_information_without_sunit import (
     owner_query_engine_without_sunit,
 )
-from cron.property import start_scheduler
+from configs.query_engine.tax_information import tax_query_engine
+from configs.query_engine.tax_information_without_sunit import (
+    tax_query_engine_without_sunit,
+)
+from configs.supabase import connect_to_supabase, run_websocket_listener
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from services.services import (
@@ -21,6 +28,9 @@ from services.services import (
     search_service, more_search_service,
 )
 from utils.address_normalizer import extract_latest_address
+from utils.check_property_status import check_property_status
+from flask import Flask
+from configs.cache_template import cache, init_lookup_templates_cache, get_template_content_by_name
 
 load_dotenv(override=True)
 
@@ -38,6 +48,12 @@ sentry_sdk.init(
 logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 
 app = Flask(__name__)
+
+os.makedirs('cache', exist_ok=True)
+cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Path('./cache')})
+
+with app.app_context():
+    init_lookup_templates_cache()
 
 
 @app.errorhandler(APIException)
@@ -148,5 +164,6 @@ def more():
 
 
 if __name__ == "__main__":
-    start_scheduler()
+    websocket_thread = threading.Thread(target=run_websocket_listener)
+    websocket_thread.start()
     app.run(port=8080, host="0.0.0.0")

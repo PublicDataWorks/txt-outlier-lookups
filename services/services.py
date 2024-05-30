@@ -4,6 +4,7 @@ import time
 from flask import jsonify
 from loguru import logger
 
+from configs.cache_template import get_template_content_by_name
 from configs.database import Session
 from configs.query_engine.owner_information_without_sunit import (
     owner_query_engine_without_sunit,
@@ -12,7 +13,7 @@ from configs.query_engine.tax_information import tax_query_engine
 from configs.query_engine.tax_information_without_sunit import tax_query_engine_without_sunit
 from libs.MissiveAPI import MissiveAPI
 from models import mi_wayne_detroit
-from templates.sms import get_rental_message, get_tax_message, sms_templates
+from templates.sms import get_rental_message, get_tax_message
 from utils.address_normalizer import get_first_valid_normalized_address, extract_latest_address
 from utils.check_property_status import check_property_status
 from utils.map_keys_to_result import map_keys_to_result
@@ -40,8 +41,8 @@ def search_service(query, conversation_id, to_phone):
                 session.query(mi_wayne_detroit)
                 .filter(
                     (
-                            mi_wayne_detroit.address.ilike(f"{address.strip()}%")
-                            & (mi_wayne_detroit.sunit.endswith(sunit))
+                        mi_wayne_detroit.address.ilike(f"{address.strip()}%")
+                        & (mi_wayne_detroit.sunit.endswith(sunit))
                     )
                 )
                 .all()
@@ -98,22 +99,34 @@ def more_search_service(conversation_id, to_phone):
 
 def handle_no_match(query, conversation_id, to_phone):
     # Missive API -> Send SMS template
-    missive_client.send_sms_sync(
-        sms_templates["no_match"].format(address=query),
-        to_phone,
-        conversation_id,
-    )
-    return {"result": sms_templates["no_match"]}, 200
+    content = get_template_content_by_name("no_match")
+    if content:
+        formatted_content = content.format(address=query)
+        missive_client.send_sms_sync(
+            formatted_content,
+            to_phone,
+            conversation_id,
+        )
+        return {"result": formatted_content}, 200
+    else:
+        logger.exception("Could not find template no_match")
+        return {"result": ""}, 200
 
 
 def handle_ambiguous(query, conversation_id, to_phone):
     # Missive API -> Send SMS template
-    missive_client.send_sms_sync(
-        sms_templates["closest_match"].format(address=query),
-        to_phone,
-        conversation_id,
-    )
-    return {"result": sms_templates["closest_match"]}, 200
+    content = get_template_content_by_name("closest_match")
+    if content:
+        formatted_content = content.format(address=query)
+        missive_client.send_sms_sync(
+            formatted_content,
+            to_phone,
+            conversation_id,
+        )
+        return {"result": formatted_content}, 200
+    else:
+        logger.exception("Could not find template closest_match")
+        return {"result": ""}, 200
 
 
 def handle_match(
@@ -130,24 +143,31 @@ def handle_match(
     )
 
     time.sleep(2)
-
-    missive_client.send_sms_sync(
-        sms_templates["match_second_message"],
-        conversation_id=conversation_id,
-        to_phone=to_phone,
-        add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
-    )
+    content = get_template_content_by_name("match_second_message")
+    if content:
+        formatted_content = content.format(response=response)
+        missive_client.send_sms_sync(
+            formatted_content,
+            conversation_id=conversation_id,
+            to_phone=to_phone,
+            add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
+        )
     # Remove tags
     return {"result": str(response)}, 200
 
 
 def handle_wrong_format(conversation_id, to_phone):
-    missive_client.send_sms_sync(
-        sms_templates["wrong_format"],
-        conversation_id=conversation_id,
-        to_phone=to_phone,
-    )
-    return {"result": sms_templates["wrong_format"]}, 200
+    content = get_template_content_by_name("wrong_format")
+    if content:
+        missive_client.send_sms_sync(
+            content,
+            conversation_id=conversation_id,
+            to_phone=to_phone,
+        )
+        return {"result": content}, 200
+    else:
+        logger.exception("Could not find template wrong_format")
+        return {"result": ""}, 200
 
 
 def process_statuses(tax_status, rental_status, conversation_id, phone):
@@ -167,11 +187,13 @@ def process_statuses(tax_status, rental_status, conversation_id, phone):
         )
         time.sleep(2)
 
-    missive_client.send_sms_sync(
-        sms_templates["final"],
-        conversation_id=conversation_id,
-        to_phone=phone,
-    )
+    content = get_template_content_by_name("final")
+    if content:
+        missive_client.send_sms_sync(
+            content,
+            conversation_id=conversation_id,
+            to_phone=phone,
+        )
 
 
 def extract_address_information(normalized_address):
