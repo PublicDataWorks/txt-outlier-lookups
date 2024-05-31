@@ -12,21 +12,15 @@ from configs.query_engine.owner_information import owner_query_engine
 from configs.query_engine.owner_information_without_sunit import (
     owner_query_engine_without_sunit,
 )
-from configs.query_engine.tax_information import tax_query_engine
-from configs.query_engine.tax_information_without_sunit import (
-    tax_query_engine_without_sunit,
-)
 from cron.property import start_scheduler
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from services.services import (
     extract_address_information,
     handle_match,
-    process_statuses,
-    search_service,
+    search_service, more_search_service,
 )
 from utils.address_normalizer import extract_latest_address
-from utils.check_property_status import check_property_status
 
 load_dotenv(override=True)
 
@@ -109,7 +103,7 @@ def yes():
         else:
             query_result = owner_query_engine_without_sunit.query(str({"address": {address}}))
 
-        if not "result" in query_result.metadata:
+        if "result" not in query_result.metadata:
             logger.error(query_result)
 
         handle_match(
@@ -132,31 +126,14 @@ def more():
         to_phone = data.get("message", {}).get("from_field", {}).get("id")
         shared_labels = data.get("conversation", {}).get("shared_labels", [])
         shared_label_ids = [label.get("id") for label in shared_labels]
-        query_result = []
 
         if shared_label_ids and os.environ.get("MISSIVE_LOOKUP_TAG_ID") in shared_label_ids:
-            messages = missive_client.extract_preview_content(conversation_id=conversation_id)
-            normalized_address = extract_latest_address(messages, conversation_id, to_phone)
-            if not normalized_address:
-                logger.error("Couldn't parse address from history messages", messages)
-                return (
-                    jsonify({"message": "Couldn't parse address from history messages"}),
-                    200,
-                )
 
-            address, sunit = extract_address_information(normalized_address)
+            more_search_service(
+                conversation_id=conversation_id, to_phone=to_phone
+            )
 
-            if sunit:
-                query_result = tax_query_engine.query(str({"address": address, "sunit": sunit}))
-            else:
-                query_result = tax_query_engine_without_sunit.query(str({"address": {address}}))
-
-            if not "result" in query_result.metadata:
-                logger.error(query_result)
-            tax_status, rental_status = check_property_status(query_result)
-
-            process_statuses(tax_status, rental_status, conversation_id, to_phone)
-            return jsonify("Success"), 200
+            return jsonify({"message": "Success"}), 200
 
         else:
             return (
