@@ -204,7 +204,6 @@ class mi_wayne_detroit(Base):
     refid_uniq_parcelnumb = Column(Boolean)
     tax_details_bak = Column(String)
     tax_payments_bak = Column(String)
-    sunit_suffix = Column(String)
 
 
 # metadata = MetaData()

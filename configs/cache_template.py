@@ -1,3 +1,4 @@
+from apscheduler.schedulers.background import BackgroundScheduler
 from flask_caching import Cache
 
 from configs.database import Session
@@ -23,3 +24,11 @@ def get_template_content_by_name(name):
     if lookup_templates_dict:
         return lookup_templates_dict.get(name)
     return None
+
+
+def update_lookup_templates_cache():
+    lookup_templates = get_lookup_templates()
+    lookup_templates_dict = {template['name']: template['content'] for template in lookup_templates}
+    cache.set("lookup_templates", lookup_templates_dict)
+
+

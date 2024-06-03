@@ -1,18 +1,47 @@
-from realtime.connection import Socket
+import os
 
-import time
-SUPABASE_ID = "pshrrdazlftosdtoevpf"
-API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzaHJyZGF6bGZ0b3NkdG9ldnBmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcwMTg5MTgzMiwiZXhwIjoyMDE3NDY3ODMyfQ.G-3C1vARyYT6CtIP_0qaHwwTu-g60afVw9akeabQA2g"
+from dotenv import load_dotenv
+from realtime import Channel
+from realtime.connection import Socket
+import asyncio
+from typing import cast
+import logging
+
+
+from configs.cache_template import update_lookup_templates_cache
+
+load_dotenv(override=True)
+
+supabase_id = os.environ.get("SUPABASE_ID")
+api_key = os.environ.get("API_KEY")
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def callback1(payload):
-    print("Callback 1: ", payload)
+    print(payload)
+    if payload.get('message') != "Subscribed to PostgreSQL":
+        update_lookup_templates_cache()
 
 
-if __name__ == "__main__":
-    URL = f"wss://{SUPABASE_ID}.supabase.co/realtime/v1/websocket?apikey={API_KEY}&vsn=1.0.0"
-    s = Socket(URL)
-    s.connect()
+async def connect_to_supabase():
+    while True:
+        URL = f"wss://{supabase_id}.supabase.co/realtime/v1/websocket?apikey={api_key}&vsn=1.0.0"
+        s = Socket(URL)
+        await s._connect()
+        # channel_1 = s.set_channel("realtime:public:lookup_template")
+        channel_1 = cast(Channel, s.set_channel("realtime:public:lookup_template"))
 
-    channel_1 = s.set_channel("realtime:public:lookup_template")
-    channel_1.join().on("*", callback1)
-    # s.listen()
+        await asyncio.create_task(channel_1._join())
+
+        channel_1.on("*", callback1)
+        await s._listen()
+        # asyncio.create_task(s._keep_alive())
+
+
+def run_websocket_listener():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.create_task(connect_to_supabase())
+    loop.run_forever()

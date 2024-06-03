@@ -1,5 +1,7 @@
+import asyncio
 import os
 import sys
+import threading
 from pathlib import Path
 
 import sentry_sdk
@@ -17,8 +19,7 @@ from configs.query_engine.tax_information import tax_query_engine
 from configs.query_engine.tax_information_without_sunit import (
     tax_query_engine_without_sunit,
 )
-from configs.supabase import connect_to_supabase
-from cron.property import start_scheduler
+from configs.supabase import connect_to_supabase, run_websocket_listener
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from services.services import (
@@ -54,6 +55,7 @@ cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Pa
 with app.app_context():
     init_lookup_templates_cache()
 
+
 @app.errorhandler(APIException)
 def handle_invalid_usage(error):
     response = jsonify(error.to_dict())
@@ -68,13 +70,6 @@ missive_client = MissiveAPI()
 
 @app.route("/", methods=["GET"])
 def health_check():
-    content = get_template_content_by_name("search_context")
-    if content:
-        # Use the retrieved content
-        print(content)
-    else:
-        print(f"No template found with name: search_context")
-
     return "OK"
 
 
@@ -169,6 +164,6 @@ def more():
 
 
 if __name__ == "__main__":
-    start_scheduler()
-    connect_to_supabase()
+    websocket_thread = threading.Thread(target=run_websocket_listener)
+    websocket_thread.start()
     app.run(port=8080, host="0.0.0.0")
