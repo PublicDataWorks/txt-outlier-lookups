@@ -1,9 +1,4 @@
 sms_templates = {
-    "all_good": (
-        "Thanks for using TXT Outlier. Come back anytime by texting DETROIT or another word that would tell "
-        "us what kind of resources you might need. You can always text REPORTER and we'll follow up with you. "
-        "Text UPDATES if you want to see what kind of weekly updates we offer."
-    ),
     "no_match": (
         "We don’t have info for {address}. If you’re sure the address is in Detroit and you entered it correctly text "
         "REPORTER. We’ll get back to you and see what’s going on. If you want to try again just enter an address in "
