@@ -22,7 +22,7 @@ def init_owner_query_engine():
     sql_database = SQLDatabase(
         engine,
         schema="address_lookup",
-        include_tables=["mi_wayne_detroit", "residential_rental_registrations"],
+        include_tables=["mi_wayne_detroit"],
         metadata=metadata,
     )
     function_llm = OpenAI(temperature=0.1, model="gpt-3.5-turbo", api_key=key)
