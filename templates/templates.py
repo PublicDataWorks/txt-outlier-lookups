@@ -58,13 +58,21 @@ templates = {
         "all set you can just text ALL GOOD."
     ),
     "match_second_message": (
-        "If this doesn’t look right or you have any questions text REPORTER and we’ll follow up with you within 48 hours. Or if you want tips and extra info about tax debt or rules for rentals type MORE."
+        "If this doesn’t look right or you have any questions text REPORTER and we’ll follow up with you "
+        "within 48 hours. Or if you want tips and extra info about tax debt or rules for rentals type MORE."
     ),
     "not_in_session": (
         "You are not currently in a lookup session, please initiate one before querying for more infomation."
     ),
     "land_bank": (
-        "If this doesn’t look right or you have any questions text REPORTER and we’ll follow up with you within 48 hours. Or if you want more info about the land bank text LANDBANK."
+        "If this doesn’t look right or you have any questions text REPORTER and we’ll follow up with you "
+        "within 48 hours. Or if you want more info about the land bank text LANDBANK."
+    ),
+    "tax_unconfirmed": (
+        "An “unconfirmed“ tax status is used when the Wayne County Treasurer's office thinks the total "
+        "amount of tax due might change. This could be because a payment was made very recently, "
+        "or a check bounced, for example. If your tax status is unconfirmed, you can call the Treasurer's "
+        "office at 313-224-5990, or you can text REPORTER if you have more questions."
     ),
     "search_prompt": (
         """Given an input question, first create a syntactically correct {dialect} query to run, then look at the results of the query and return the answer.
