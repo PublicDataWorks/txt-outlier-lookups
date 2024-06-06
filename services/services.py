@@ -29,7 +29,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
     normalized_address = get_first_valid_normalized_address([query])
     address, sunit = extract_address_information(normalized_address)
     rental_status_case = case(
-        (residential_rental_registrations.lat.isnot(None), True), else_=False
+        (residential_rental_registrations.lat.isnot(None), "REGISTERED"), else_="UNREGISTERED"
     ).label("rental_status")
 
     if not address:
@@ -43,6 +43,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
                     rental_status_case,
                     mi_wayne_detroit.tax_status,
                     mi_wayne_detroit.szip5,
+                    mi_wayne_detroit.tax_due,
                 )
                 .outerjoin(
                     residential_rental_registrations,
@@ -53,12 +54,11 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
                             0.001,
                         ),
                         func.strict_word_similarity(
-                            mi_wayne_detroit.address,
-                            residential_rental_registrations.street_num
-                            + " "
-                            + residential_rental_registrations.street_name,
+                            func.upper(mi_wayne_detroit.saddstr),
+                            func.upper(residential_rental_registrations.street_name),
                         )
                         > 0.8,
+                        mi_wayne_detroit.saddno == residential_rental_registrations.street_num,
                     ),
                 )
                 .filter(
@@ -76,6 +76,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
                     rental_status_case,
                     mi_wayne_detroit.tax_status,
                     mi_wayne_detroit.szip5,
+                    mi_wayne_detroit.tax_due,
                 )
                 .outerjoin(
                     residential_rental_registrations,
@@ -86,12 +87,11 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
                             0.001,
                         ),
                         func.strict_word_similarity(
-                            mi_wayne_detroit.address,
-                            residential_rental_registrations.street_num
-                            + " "
-                            + residential_rental_registrations.street_name,
+                            func.upper(mi_wayne_detroit.saddstr),
+                            func.upper(residential_rental_registrations.street_name),
                         )
                         > 0.8,
+                        mi_wayne_detroit.saddno == residential_rental_registrations.street_num,
                     ),
                 )
                 .filter(
@@ -103,17 +103,29 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
     display_address = address if not sunit else address + " " + sunit
     if not results:
         return handle_no_match(display_address, conversation_id, to_phone)
+
+    address, rental_status, tax_status, zip_code, tax_due = results[0]
+
+    if not tax_status and tax_due and int(tax_due) > 0:
+        add_data_lookup_to_db(
+            address,
+            zip_code,
+            "TAX_DEBT",
+            rental_status,
+        )
+    else:
+        add_data_lookup_to_db(
+            address,
+            zip_code,
+            "NO_TAX_DEBT",
+            rental_status,
+        )
+
+
     if len(results) > 1:
         return handle_ambiguous(display_address, conversation_id, to_phone)
 
     # Missive API to adding tags
-    address, rental_status, tax_status, zip_code = results[0]
-    add_data_lookup_to_db(
-        address,
-        zip_code,
-        tax_status,
-        rental_status,
-    )
     query_result = owner_query_engine_without_sunit.query(address)
 
     if "result" not in query_result.metadata:
@@ -196,9 +208,9 @@ def handle_match(
         rental_status=False
 ):
     response = str(response)
-    if rental_status:
+    if rental_status == "REGISTERED":
         response += "It is registered as a residential rental property"
-    
+
     # Missive API -> Send SMS template
     missive_client.send_sms_sync(
         str(response),
