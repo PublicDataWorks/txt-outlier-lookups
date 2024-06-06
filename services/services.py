@@ -38,8 +38,8 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
                 session.query(mi_wayne_detroit)
                 .filter(
                     (
-                        mi_wayne_detroit.address.ilike(f"{address.strip()}%")
-                        & (mi_wayne_detroit.sunit.endswith(sunit))
+                            mi_wayne_detroit.address.ilike(f"{address.strip()}%")
+                            & (mi_wayne_detroit.sunit.endswith(sunit))
                     )
                 )
                 .all()
@@ -61,8 +61,10 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
     exact_match = results[0].address
     query_result = owner_query_engine_without_sunit.query(exact_match)
 
-    if not "result" in query_result.metadata:
+    if "result" not in query_result.metadata:
         logger.error(query_result)
+        return "", 200
+
     owner_data = map_keys_to_result(query_result.metadata)
     if "owner" in owner_data and "LAND BANK" in owner_data["owner"].upper():
         is_landbank = True
@@ -89,8 +91,9 @@ def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_e
 
     if "result" not in query_result.metadata:
         logger.error(query_result)
-    tax_status, rental_status = check_property_status(query_result)
+        return "", 200
 
+    tax_status, rental_status = check_property_status(query_result)
     process_statuses(tax_status, rental_status, conversation_id, to_phone)
 
 
@@ -147,7 +150,7 @@ def handle_match(
         content = get_template_content_by_name("land_bank")
     else:
         content = get_template_content_by_name("match_second_message")
-
+    print("here")
     if content:
         formatted_content = content.format(response=response)
         missive_client.send_sms_sync(
