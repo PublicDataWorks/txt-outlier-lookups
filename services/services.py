@@ -6,14 +6,10 @@ from loguru import logger
 
 from configs.cache_template import get_template_content_by_name
 from configs.database import Session
-from configs.query_engine.owner_information_without_sunit import (
-    owner_query_engine_without_sunit,
-)
-from configs.query_engine.tax_information import tax_query_engine
-from configs.query_engine.tax_information_without_sunit import tax_query_engine_without_sunit
+
 from libs.MissiveAPI import MissiveAPI
 from models import mi_wayne_detroit
-from templates.sms import get_rental_message, get_tax_message
+from configs.cache_template import get_rental_message, get_tax_message
 from utils.address_normalizer import get_first_valid_normalized_address, extract_latest_address
 from utils.check_property_status import check_property_status
 from utils.map_keys_to_result import map_keys_to_result
@@ -21,7 +17,7 @@ from utils.map_keys_to_result import map_keys_to_result
 missive_client = MissiveAPI()
 
 
-def search_service(query, conversation_id, to_phone):
+def search_service(query, conversation_id, to_phone, owner_query_engine_without_sunit):
     session = Session()
     results = []
     sunit = ""
@@ -68,12 +64,14 @@ def search_service(query, conversation_id, to_phone):
         logger.error(query_result)
     owner_data = map_keys_to_result(query_result.metadata)
     if "owner" in owner_data and "LAND BANK" in owner_data["owner"].upper():
-        query_result = sms_templates["land_bank"]
+        content = get_template_content_by_name("land_bank")
+        if content:
+            query_result = content
 
     return handle_match(query_result, conversation_id, to_phone)
 
 
-def more_search_service(conversation_id, to_phone):
+def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_engine_without_sunit):
     messages = missive_client.extract_preview_content(conversation_id=conversation_id)
     normalized_address = extract_latest_address(messages, conversation_id, to_phone)
     if not normalized_address:
