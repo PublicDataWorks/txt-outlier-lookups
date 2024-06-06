@@ -45,5 +45,5 @@ def init_tax_query_engine_without_sunit():
     tax_query_engine_without_sunit.update_prompts(
         {"sql_retriever:text_to_sql_prompt": qa_prompt_tmpl},
     )
-    print("init 4")
+
     return tax_query_engine_without_sunit

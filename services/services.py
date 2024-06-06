@@ -21,6 +21,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
     session = Session()
     results = []
     sunit = ""
+    is_landbank = False
 
     # Run query engine to get address
     normalized_address = get_first_valid_normalized_address([query])
@@ -64,11 +65,9 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
         logger.error(query_result)
     owner_data = map_keys_to_result(query_result.metadata)
     if "owner" in owner_data and "LAND BANK" in owner_data["owner"].upper():
-        content = get_template_content_by_name("land_bank")
-        if content:
-            query_result = content
+        is_landbank = True
 
-    return handle_match(query_result, conversation_id, to_phone)
+    return handle_match(query_result, conversation_id, to_phone, is_landbank)
 
 
 def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_engine_without_sunit):
@@ -131,6 +130,7 @@ def handle_match(
         response,
         conversation_id,
         to_phone,
+        is_landbank=False,
 ):
     # Missive API -> Send SMS template
     missive_client.send_sms_sync(
@@ -141,7 +141,13 @@ def handle_match(
     )
 
     time.sleep(2)
-    content = get_template_content_by_name("match_second_message")
+
+    content = ""
+    if is_landbank:
+        content = get_template_content_by_name("land_bank")
+    else:
+        content = get_template_content_by_name("match_second_message")
+
     if content:
         formatted_content = content.format(response=response)
         missive_client.send_sms_sync(

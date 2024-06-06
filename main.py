@@ -18,6 +18,8 @@ from configs.query_engine.owner_information import init_owner_query_engine
 from configs.query_engine.owner_information_without_sunit import (
     init_owner_query_engine_without_sunit
 )
+from configs.query_engine.tax_information import init_tax_query_engine
+from configs.query_engine.tax_information_without_sunit import init_tax_query_engine_without_sunit
 from configs.supabase import run_websocket_listener
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
@@ -51,6 +53,11 @@ cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Pa
 with app.app_context():
     init_lookup_templates_cache()
 
+owner_query_engine = init_owner_query_engine()
+owner_query_engine_without_sunit = init_owner_query_engine_without_sunit()
+tax_query_engine = init_tax_query_engine()
+tax_query_engine_without_sunit = init_tax_query_engine_without_sunit()
+
 
 @app.errorhandler(APIException)
 def handle_invalid_usage(error):
@@ -77,9 +84,9 @@ def search():
         conversation_id = data.get("conversation", {}).get("id")
         to_phone = data.get("message", {}).get("from_field", {}).get("id")
         message = data.get("message", {}).get("preview")
-        query_engine = init_owner_query_engine_without_sunit()
         response, status = search_service(
-            query=message, conversation_id=conversation_id, to_phone=to_phone, owner_query_engine_without_sunit=query_engine
+            query=message, conversation_id=conversation_id, to_phone=to_phone,
+            owner_query_engine_without_sunit=owner_query_engine_without_sunit
         )
         return jsonify(response), status
 
@@ -99,9 +106,6 @@ def yes():
         normalized_address = extract_latest_address(
             messages=messages, conversation_id=conversation_id, to_phone=to_phone
         )
-        owner_query_engine = init_owner_query_engine()
-        owner_query_engine_without_sunit = init_owner_query_engine_without_sunit()
-
         query_result = ""
 
         if not normalized_address:
@@ -146,7 +150,7 @@ def more():
 
             more_search_service(
                 conversation_id=conversation_id, to_phone=to_phone,
-                tax_query_engine=init_owner_query_engine(), tax_query_engine_without_sunit=init_owner_query_engine_without_sunit()
+                tax_query_engine=tax_query_engine, tax_query_engine_without_sunit=tax_query_engine_without_sunit
             )
 
             return jsonify({"message": "Success"}), 200

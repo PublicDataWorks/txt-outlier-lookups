@@ -44,5 +44,5 @@ def init_owner_query_engine():
     owner_query_engine.update_prompts(
         {"sql_retriever:text_to_sql_prompt": qa_prompt_tmpl},
     )
-    print("init 2")
+
     return owner_query_engine

@@ -16,7 +16,6 @@ key = os.environ.get("OPENAI_API_KEY")
 
 def init_owner_query_engine_without_sunit():
     text = get_template_content_by_name("search_prompt")
-
     qa_prompt_tmpl = PromptTemplate(text)
 
     metadata = MetaData(schema="address_lookup")
@@ -45,5 +44,5 @@ def init_owner_query_engine_without_sunit():
     owner_query_engine_without_sunit.update_prompts(
         {"sql_retriever:text_to_sql_prompt": qa_prompt_tmpl},
     )
-    print("init 1")
+
     return owner_query_engine_without_sunit
