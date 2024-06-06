@@ -45,5 +45,5 @@ def init_tax_query_engine():
     tax_query_engine.update_prompts(
         {"sql_retriever:text_to_sql_prompt": qa_prompt_tmpl},
     )
-    print("init 3")
+
     return tax_query_engine
