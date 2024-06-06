@@ -20,14 +20,11 @@ missive_client = MissiveAPI()
 def search_service(query, conversation_id, to_phone, owner_query_engine_without_sunit):
     session = Session()
     results = []
-    sunit = ""
     is_landbank = False
 
     # Run query engine to get address
     normalized_address = get_first_valid_normalized_address([query])
     address, sunit = extract_address_information(normalized_address)
-
-    query_result = []
 
     if not address:
         logger.error("Wrong format address", query)
@@ -66,8 +63,12 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
         return "", 200
 
     owner_data = map_keys_to_result(query_result.metadata)
-    if "owner" in owner_data and "LAND BANK" in owner_data["owner"].upper():
-        is_landbank = True
+
+    if "owner" in owner_data:
+        if "LAND BANK" in owner_data["owner"].upper():
+            is_landbank = True
+        elif "UNCONFIRMED" in owner_data["tax_status"].upper():
+            query_result = get_template_content_by_name("tax_unconfirmed")
 
     return handle_match(query_result, conversation_id, to_phone, is_landbank)
 
@@ -150,7 +151,7 @@ def handle_match(
         content = get_template_content_by_name("land_bank")
     else:
         content = get_template_content_by_name("match_second_message")
-    print("here")
+
     if content:
         formatted_content = content.format(response=response)
         missive_client.send_sms_sync(
