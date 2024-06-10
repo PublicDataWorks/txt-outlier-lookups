@@ -11,6 +11,7 @@ from libs.MissiveAPI import MissiveAPI
 from models import mi_wayne_detroit
 from configs.cache_template import get_rental_message, get_tax_message
 from models import data_lookup, mi_wayne_detroit, residential_rental_registrations
+from models import lookup_history, mi_wayne_detroit, residential_rental_registrations
 from templates.sms import get_rental_message, get_tax_message, sms_templates
 from utils.address_normalizer import get_first_valid_normalized_address, extract_latest_address
 from utils.check_property_status import check_property_status
@@ -293,7 +294,7 @@ def extract_address_information(normalized_address):
 def add_data_lookup_to_db(address, zip_code, tax_status, rental_status):
     session = Session()
     try:
-        new_data_lookup = data_lookup(
+        new_data_lookup = lookup_history(
             address=address, zip_code=zip_code, tax_status=tax_status, rental_status=rental_status
         )
         session.add(new_data_lookup)

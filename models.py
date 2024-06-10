@@ -205,8 +205,8 @@ class mi_wayne_detroit(Base):
     tax_details_bak = Column(String)
     tax_payments_bak = Column(String)
 
-class data_lookup(Base):
-    __tablename__ = "data_lookups"
+class lookup_history(Base):
+    __tablename__ = "lookup_history"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     address = Column(String(255), nullable=False)
