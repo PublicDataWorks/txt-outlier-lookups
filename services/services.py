@@ -114,11 +114,18 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
             "TAX_DEBT",
             rental_status,
         )
-    else:
+    elif not tax_status and tax_due and int(tax_due) > 0 or tax_status == "OK":
         add_data_lookup_to_db(
             address,
             zip_code,
             "NO_TAX_DEBT",
+            rental_status,
+        )
+    else:
+        add_data_lookup_to_db(
+            address,
+            zip_code,
+            tax_status,
             rental_status,
         )
 
