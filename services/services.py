@@ -4,15 +4,12 @@ import time
 from flask import jsonify
 from loguru import logger
 
+from configs.cache_template import get_template_content_by_name
 from configs.database import Session
-from configs.query_engine.owner_information_without_sunit import (
-    owner_query_engine_without_sunit,
-)
-from configs.query_engine.tax_information import tax_query_engine
-from configs.query_engine.tax_information_without_sunit import tax_query_engine_without_sunit
+
 from libs.MissiveAPI import MissiveAPI
 from models import mi_wayne_detroit
-from templates.sms import get_rental_message, get_tax_message, sms_templates
+from configs.cache_template import get_rental_message, get_tax_message
 from utils.address_normalizer import get_first_valid_normalized_address, extract_latest_address
 from utils.check_property_status import check_property_status
 from utils.map_keys_to_result import map_keys_to_result
@@ -20,16 +17,14 @@ from utils.map_keys_to_result import map_keys_to_result
 missive_client = MissiveAPI()
 
 
-def search_service(query, conversation_id, to_phone):
+def search_service(query, conversation_id, to_phone, owner_query_engine_without_sunit):
     session = Session()
     results = []
-    sunit = ""
+    is_landbank = False
 
     # Run query engine to get address
     normalized_address = get_first_valid_normalized_address([query])
     address, sunit = extract_address_information(normalized_address)
-
-    query_result = []
 
     if not address:
         logger.error("Wrong format address", query)
@@ -63,16 +58,22 @@ def search_service(query, conversation_id, to_phone):
     exact_match = results[0].address
     query_result = owner_query_engine_without_sunit.query(exact_match)
 
-    if not "result" in query_result.metadata:
+    if "result" not in query_result.metadata:
         logger.error(query_result)
+        return "", 200
+
     owner_data = map_keys_to_result(query_result.metadata)
-    if "owner" in owner_data and "LAND BANK" in owner_data["owner"].upper():
-        query_result = sms_templates["land_bank"]
 
-    return handle_match(query_result, conversation_id, to_phone)
+    if "owner" in owner_data:
+        if "LAND BANK" in owner_data["owner"].upper():
+            is_landbank = True
+        elif "UNCONFIRMED" in owner_data["tax_status"].upper():
+            query_result = get_template_content_by_name("tax_unconfirmed")
+
+    return handle_match(query_result, conversation_id, to_phone, is_landbank)
 
 
-def more_search_service(conversation_id, to_phone):
+def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_engine_without_sunit):
     messages = missive_client.extract_preview_content(conversation_id=conversation_id)
     normalized_address = extract_latest_address(messages, conversation_id, to_phone)
     if not normalized_address:
@@ -91,35 +92,49 @@ def more_search_service(conversation_id, to_phone):
 
     if "result" not in query_result.metadata:
         logger.error(query_result)
-    tax_status, rental_status = check_property_status(query_result)
+        return "", 200
 
+    tax_status, rental_status = check_property_status(query_result)
     process_statuses(tax_status, rental_status, conversation_id, to_phone)
 
 
 def handle_no_match(query, conversation_id, to_phone):
     # Missive API -> Send SMS template
-    missive_client.send_sms_sync(
-        sms_templates["no_match"].format(address=query),
-        to_phone,
-        conversation_id,
-    )
-    return {"result": sms_templates["no_match"]}, 200
+    content = get_template_content_by_name("no_match")
+    if content:
+        formatted_content = content.format(address=query)
+        missive_client.send_sms_sync(
+            formatted_content,
+            to_phone,
+            conversation_id,
+        )
+        return {"result": formatted_content}, 200
+    else:
+        logger.exception("Could not find template no_match")
+        return {"result": ""}, 200
 
 
 def handle_ambiguous(query, conversation_id, to_phone):
     # Missive API -> Send SMS template
-    missive_client.send_sms_sync(
-        sms_templates["closest_match"].format(address=query),
-        to_phone,
-        conversation_id,
-    )
-    return {"result": sms_templates["closest_match"]}, 200
+    content = get_template_content_by_name("closest_match")
+    if content:
+        formatted_content = content.format(address=query)
+        missive_client.send_sms_sync(
+            formatted_content,
+            to_phone,
+            conversation_id,
+        )
+        return {"result": formatted_content}, 200
+    else:
+        logger.exception("Could not find template closest_match")
+        return {"result": ""}, 200
 
 
 def handle_match(
         response,
         conversation_id,
         to_phone,
+        is_landbank=False,
 ):
     # Missive API -> Send SMS template
     missive_client.send_sms_sync(
@@ -131,23 +146,36 @@ def handle_match(
 
     time.sleep(2)
 
-    missive_client.send_sms_sync(
-        sms_templates["match_second_message"],
-        conversation_id=conversation_id,
-        to_phone=to_phone,
-        add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
-    )
+    content = ""
+    if is_landbank:
+        content = get_template_content_by_name("land_bank")
+    else:
+        content = get_template_content_by_name("match_second_message")
+
+    if content:
+        formatted_content = content.format(response=response)
+        missive_client.send_sms_sync(
+            formatted_content,
+            conversation_id=conversation_id,
+            to_phone=to_phone,
+            add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
+        )
     # Remove tags
     return {"result": str(response)}, 200
 
 
 def handle_wrong_format(conversation_id, to_phone):
-    missive_client.send_sms_sync(
-        sms_templates["wrong_format"],
-        conversation_id=conversation_id,
-        to_phone=to_phone,
-    )
-    return {"result": sms_templates["wrong_format"]}, 200
+    content = get_template_content_by_name("wrong_format")
+    if content:
+        missive_client.send_sms_sync(
+            content,
+            conversation_id=conversation_id,
+            to_phone=to_phone,
+        )
+        return {"result": content}, 200
+    else:
+        logger.exception("Could not find template wrong_format")
+        return {"result": ""}, 200
 
 
 def process_statuses(tax_status, rental_status, conversation_id, phone):
@@ -167,11 +195,13 @@ def process_statuses(tax_status, rental_status, conversation_id, phone):
         )
         time.sleep(2)
 
-    missive_client.send_sms_sync(
-        sms_templates["final"],
-        conversation_id=conversation_id,
-        to_phone=phone,
-    )
+    content = get_template_content_by_name("final")
+    if content:
+        missive_client.send_sms_sync(
+            content,
+            conversation_id=conversation_id,
+            to_phone=phone,
+        )
 
 
 def extract_address_information(normalized_address):

@@ -1,18 +1,26 @@
+# Standard library imports
 import os
 import sys
+import threading
+from pathlib import Path
 
-import sentry_sdk
+# Related third party imports
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from loguru import logger
 from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
+import sentry_sdk
 
-from configs.query_engine.owner_information import owner_query_engine
+# Local application/library specific imports
+from configs.cache_template import init_lookup_templates_cache, cache
+from configs.query_engine.owner_information import init_owner_query_engine
 from configs.query_engine.owner_information_without_sunit import (
-    owner_query_engine_without_sunit,
+    init_owner_query_engine_without_sunit
 )
-from cron.property import start_scheduler
+from configs.query_engine.tax_information import init_tax_query_engine
+from configs.query_engine.tax_information_without_sunit import init_tax_query_engine_without_sunit
+from configs.supabase import run_websocket_listener
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from services.services import (
@@ -38,6 +46,17 @@ sentry_sdk.init(
 logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 
 app = Flask(__name__)
+
+os.makedirs('cache', exist_ok=True)
+cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Path('./cache')})
+
+with app.app_context():
+    init_lookup_templates_cache()
+
+owner_query_engine = init_owner_query_engine()
+owner_query_engine_without_sunit = init_owner_query_engine_without_sunit()
+tax_query_engine = init_tax_query_engine()
+tax_query_engine_without_sunit = init_tax_query_engine_without_sunit()
 
 
 @app.errorhandler(APIException)
@@ -65,9 +84,9 @@ def search():
         conversation_id = data.get("conversation", {}).get("id")
         to_phone = data.get("message", {}).get("from_field", {}).get("id")
         message = data.get("message", {}).get("preview")
-
         response, status = search_service(
-            query=message, conversation_id=conversation_id, to_phone=to_phone
+            query=message, conversation_id=conversation_id, to_phone=to_phone,
+            owner_query_engine_without_sunit=owner_query_engine_without_sunit
         )
         return jsonify(response), status
 
@@ -130,7 +149,8 @@ def more():
         if shared_label_ids and os.environ.get("MISSIVE_LOOKUP_TAG_ID") in shared_label_ids:
 
             more_search_service(
-                conversation_id=conversation_id, to_phone=to_phone
+                conversation_id=conversation_id, to_phone=to_phone,
+                tax_query_engine=tax_query_engine, tax_query_engine_without_sunit=tax_query_engine_without_sunit
             )
 
             return jsonify({"message": "Success"}), 200
@@ -147,6 +167,12 @@ def more():
         return jsonify({"error": str(e)}), 500
 
 
+def start_mqtt():
+    t = threading.Thread(target=run_websocket_listener)
+    t.daemon = True
+    t.start()
+
+
 if __name__ == "__main__":
-    start_scheduler()
+    start_mqtt()
     app.run(port=8080, host="0.0.0.0")
