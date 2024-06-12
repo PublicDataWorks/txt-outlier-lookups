@@ -10,11 +10,11 @@ from configs.database import Session
 from libs.MissiveAPI import MissiveAPI
 from models import mi_wayne_detroit
 from configs.cache_template import get_rental_message, get_tax_message
-from models import data_lookup, mi_wayne_detroit, residential_rental_registrations
 from models import lookup_history, mi_wayne_detroit, residential_rental_registrations
-from templates.sms import get_rental_message, get_tax_message, sms_templates
 from utils.address_normalizer import get_first_valid_normalized_address, extract_latest_address
 from utils.check_property_status import check_property_status
+from utils.map_keys_to_result import map_keys_to_result
+from constants.following_message import FollowingMessageType
 
 from sqlalchemy import and_, case, func, or_
 
@@ -142,13 +142,16 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
 
     owner_data = map_keys_to_result(query_result.metadata)
 
+    following_message_type = ""
     if "owner" in owner_data:
         if "LAND BANK" in owner_data["owner"].upper():
-            is_landbank = True
+            following_message_type = FollowingMessageType.LAND_BACK
         elif "UNCONFIRMED" in owner_data["tax_status"].upper():
-            query_result = get_template_content_by_name("tax_unconfirmed")
-
-    return handle_match(query_result, conversation_id, to_phone, is_landbank, rental_status)
+            following_message_type = FollowingMessageType.UNCONFIRMED_TAX_STATUS
+        else:
+            following_message_type = FollowingMessageType.DEFAULT
+            
+    return handle_match(query_result, conversation_id, to_phone, rental_status, following_message_type)
 
 
 def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_engine_without_sunit):
@@ -212,8 +215,8 @@ def handle_match(
         response,
         conversation_id,
         to_phone,
-        is_landbank=False,
-        rental_status=False
+        rental_status="UNREGISTERED",
+        following_message_type= "",
 ):
     response = str(response)
     if rental_status == "REGISTERED":
@@ -229,16 +232,20 @@ def handle_match(
 
     time.sleep(2)
 
-    content = ""
-    if is_landbank:
-        content = get_template_content_by_name("land_bank")
-    else:
-        content = get_template_content_by_name("match_second_message")
+    following_message = ""
+    match following_message_type:
+        case FollowingMessageType.LAND_BACK:
+            following_message = get_template_content_by_name(FollowingMessageType.LAND_BACK)
+        case FollowingMessageType.UNCONFIRMED_TAX_STATUS:
+            following_message = get_template_content_by_name(FollowingMessageType.UNCONFIRMED_TAX_STATUS)
+        case FollowingMessageType.DEFAULT:
+            following_message = get_template_content_by_name(FollowingMessageType.DEFAULT)
+        case _:
+            following_message = ""
 
-    if content:
-        formatted_content = content.format(response=response)
+    if following_message:
         missive_client.send_sms_sync(
-            formatted_content,
+            following_message,
             conversation_id=conversation_id,
             to_phone=to_phone,
             add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
