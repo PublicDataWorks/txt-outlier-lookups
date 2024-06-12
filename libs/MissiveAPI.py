@@ -6,7 +6,7 @@ import aiohttp
 import requests
 from dotenv import load_dotenv
 
-from constants.urls import CONVERSATION_MESSAGES_URL, CREATE_MESSAGE_URL
+from constants.urls import CONVERSATION_MESSAGES_URL, CREATE_MESSAGE_URL, CREATE_POST_URL
 
 load_dotenv(override=True)
 
@@ -110,5 +110,28 @@ class MissiveAPI:
             response.raise_for_status()  # Raise exception if not a 2xx response
             return response
 
+        except requests.exceptions.RequestException:
+            return None
+
+    def send_post_sync(self, markdowns, conversation_id):
+        attachments = [{'markdown': markdown, 'color': 'good'} for markdown in markdowns]
+
+        body = {
+            "posts": {
+                "conversation": '3c1c172a-749d-4671-96fb-f29e8b151ff7',
+                "notification": {"title": "Weekly Report", "body": "Summary"},
+                "username": "Weekly report",
+                "username_icon": "https://s3.amazonaws.com/missive-assets/missive-avatar.png",
+                "attachments": attachments,
+            },
+        }
+
+        try:
+            response = requests.post(
+                CREATE_POST_URL, headers=self.headers, data=json.dumps(body)
+            )
+            breakpoint()
+            response.raise_for_status()  # Raise exception if not a 2xx response
+            return response
         except requests.exceptions.RequestException:
             return None
