@@ -1,8 +1,10 @@
 import os
+from collections import defaultdict
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from .config import DATABASE_URL, IMPACT_LABEL_IDS, REPORTER_LABEL_IDS, BROADCAST_SOURCE_PHONE_NUMBER
-from .utils import (
+from config import DATABASE_URL, IMPACT_LABEL_IDS, REPORTER_LABEL_IDS, BROADCAST_SOURCE_PHONE_NUMBER
+from configs.query_engine.weekly_report_trend_summary import query_from_documents
+from utils import (
     format_metric_by_audience_segment,
     format_conversation_for_report,
     format_lookup_history,
@@ -11,45 +13,127 @@ from .utils import (
 )
 from libs.MissiveAPI import MissiveAPI
 
+
+def get_weekly_unsubscribe_by_audience_segment(session):
+    query = text("""
+        SELECT 
+        bsms.audience_segment_id,
+        asg.name,
+        COUNT(*) AS count
+        FROM 
+            public.unsubscribed_messages um 
+        LEFT JOIN 
+            public.broadcast_sent_message_status bsms 
+        ON 
+            um.reply_to = bsms.id
+        LEFT JOIN public.audience_segments asg 
+        ON bsms.audience_segment_id = asg.id
+        WHERE
+            um.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
+            AND 
+            um.created_at < DATE_TRUNC('week', CURRENT_DATE) 
+        GROUP BY bsms.audience_segment_id, asg.name
+    """)
+    return session.execute(query).fetchall()
+
+
+def get_weekly_broadcast_sent_messages_count(session):
+    query = text("""
+        SELECT COUNT(*) AS count
+        FROM public.broadcast_sent_message_status
+        WHERE 
+        is_second = False
+        AND
+        created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
+        AND 
+        created_at < DATE_TRUNC('week', CURRENT_DATE) 
+    """)
+    return session.execute(query).fetchone()
+
+
+def get_weekly_text_ins(session):
+    query = text(f"""
+        SELECT COUNT(*) AS count
+        FROM public.twilio_messages
+        WHERE 
+        is_broadcast_reply = false
+        AND 
+        from_field != '{BROADCAST_SOURCE_PHONE_NUMBER}'
+        AND
+        created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
+        AND 
+        created_at < DATE_TRUNC('week', CURRENT_DATE) 
+    """)
+    return session.execute(query).fetchone()
+
+
+def get_weekly_broadcast_sent(session):
+    query = text("""
+        SELECT *
+        FROM public.broadcasts
+        WHERE 
+        editable = False
+        AND
+        run_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
+        AND 
+        run_at < DATE_TRUNC('week', CURRENT_DATE) 
+    """)
+    return session.execute(query)
+
+
+def format_broadcast_details(broadcast):
+    run_at = broadcast['run_at']
+    first_message = broadcast['first_message']
+    second_message = broadcast['second_message']
+    run_at_formatted = run_at.strftime("%a %b %d, %Y at %I:%M%p ET")
+
+    return f"""
+<details>
+  <summary>{run_at_formatted}</summary>
+
+{first_message}
+
+{second_message}
+
+</details>
+"""
+
+
+def get_weekly_messages_history(session, broadcast_sent):
+    broadcast_messages = []
+    for broadcast in broadcast_sent:
+        broadcast_messages.append(broadcast['first_message'])
+        broadcast_messages.append(broadcast['second_message'])
+
+    placeholders = ', '.join([f'${i + 1}' for i in range(len(broadcast_messages))])
+    params = {f'{i + 1}': msg for i, msg in enumerate(broadcast_messages)}
+
+    query = text(f"""
+        SELECT *
+        FROM public.twilio_messages
+        WHERE 
+        preview NOT IN ({placeholders})
+        AND
+        created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
+        AND 
+        created_at < DATE_TRUNC('week', CURRENT_DATE)
+    """).bindparams(**params)
+
+    messages = session.execute(query).fetchall()
+
+    grouped_messages = defaultdict(list)
+    for message in messages:
+        refs = message['references']
+        preview = message['preview']
+        grouped_messages[refs].append(preview)
+
+    return grouped_messages
+
+
 class AnalyticsService:
     def __init__(self):
         self.engine = create_engine(DATABASE_URL)
         self.Session = sessionmaker(bind=self.engine)
-    
-    def get_weekly_unsubscribe_by_audience_segment(self, session):
-        query = text("""
-            SELECT 
-            bsms.audience_segment_id,
-            asg.name,
-            COUNT(*) AS count
-            FROM 
-                public.unsubscribed_messages um 
-            LEFT JOIN 
-                public.broadcast_sent_message_status bsms 
-            ON 
-                um.reply_to = bsms.id
-            LEFT JOIN public.audience_segments asg 
-            ON bsms.audience_segment_id = asg.id
-            WHERE
-                um.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-                AND 
-                um.created_at < DATE_TRUNC('week', CURRENT_DATE) 
-            GROUP BY bsms.audience_segment_id, asg.name
-        """)
-        return session.execute(query).fetchall()
-
-    def get_weekly_broadcast_sent(self, session):
-        query = text("""
-            SELECT COUNT(*) AS count
-            FROM public.broadcast_sent_message_status
-            WHERE 
-            is_second = False
-            AND
-            created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-            AND 
-            created_at < DATE_TRUNC('week', CURRENT_DATE) 
-        """)
-        return session.execute(query).fetchone()
 
     def get_weekly_failed_message(self, session):
         query = text("""
@@ -57,21 +141,6 @@ class AnalyticsService:
             FROM public.broadcast_sent_message_status
             WHERE 
             twilio_sent_status = 'failed' 
-            AND
-            created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-            AND 
-            created_at < DATE_TRUNC('week', CURRENT_DATE) 
-        """)
-        return session.execute(query).fetchone()
-
-    def get_weekly_text_ins(self, session):
-        query = text(f"""
-            SELECT COUNT(*) AS count
-            FROM public.twilio_messages
-            WHERE 
-            is_broadcast_reply = false
-            AND 
-            from_field != '{BROADCAST_SOURCE_PHONE_NUMBER}'
             AND
             created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
             AND 
@@ -146,7 +215,7 @@ class AnalyticsService:
         return session.execute(query).fetchall()
 
     def get_weekly_top_zip_code(self, session):
-        query = text ("""
+        query = text("""
         SELECT zip_code, COUNT(*) AS count
         FROM "lookup_history"
         WHERE
@@ -162,19 +231,23 @@ class AnalyticsService:
     def fetch_data(self):
         with self.Session() as session:
             # Fetch all the data here synchronously
-            unsubscribed_messages = self.get_weekly_unsubscribe_by_audience_segment(session)
-            broadcasts = self.get_weekly_broadcast_sent(session)
+            unsubscribed_messages = get_weekly_unsubscribe_by_audience_segment(session)
+            broadcast_sent = get_weekly_broadcast_sent(session)
+            messages_sent = get_weekly_broadcast_sent_messages_count(session)
+            message_history = get_weekly_messages_history(session, broadcast_sent)
             failed_messages = self.get_weekly_failed_message(session)
-            text_ins = self.get_weekly_text_ins(session)
+            text_ins = get_weekly_text_ins(session)
             impact_conversations = self.get_weekly_impact_conversations(session)
             replies = self.get_weekly_replies_by_audience_segment(session)
             report_conversations = self.get_weekly_reporter_conversation(session)
             lookup_history = self.get_weekly_data_look_up(session)
             zip_codes = self.get_weekly_top_zip_code(session)
-        
+
         return (
             unsubscribed_messages,
-            broadcasts,
+            broadcast_sent,
+            messages_sent,
+            message_history,
             failed_messages,
             text_ins,
             impact_conversations,
@@ -183,12 +256,14 @@ class AnalyticsService:
             lookup_history,
             zip_codes
         )
-    
+
     def send_weekly_report(self):
         # Fetch the data synchronously
         (
             unsubscribed_messages,
-            broadcasts,
+            broadcast_sent,
+            messages_sent,
+            message_history,
             failed_messages,
             text_ins,
             impact_conversations,
@@ -197,11 +272,13 @@ class AnalyticsService:
             lookup_history,
             zip_codes
         ) = self.fetch_data()
-       
+
         # weekly_report_conversation_id = os.getenv('MISSIVE_WEEKLY_REPORT_CONVERSATION_ID')
-        total_unsubscribed_messages = sum(int(conversation[1]) for conversation in unsubscribed_messages) if unsubscribed_messages else 0
+        total_unsubscribed_messages = sum(
+            int(conversation[1]) for conversation in unsubscribed_messages) if unsubscribed_messages else 0
         total_replies = sum(int(conversation[2]) for conversation in replies) if replies else 0
-        total_report_conversations = sum(int(conversation[1]) for conversation in report_conversations) if report_conversations else 0
+        total_report_conversations = sum(
+            int(conversation[1]) for conversation in report_conversations) if report_conversations else 0
 
         intro = f"# Weekly Summary Report ({get_current_date_formatted_for_weekly_report()})"
 
@@ -214,11 +291,25 @@ class AnalyticsService:
             "- **Accountability Initiatives**: Positive feedback on accountability initiatives, with some users highlighting persistent issues.\n"
         )
 
+        if message_history:
+            documents = [{'text': '\n'.join(messages)} for messages in message_history.values()]
+            content = query_from_documents(documents)
+        else:
+            content = "No message history for this week."
+
+        broadcasts = ()
+        for broadcast in broadcast_sent:
+            broadcast_detail = format_broadcast_details(broadcast)
+            broadcasts += broadcast_detail
+
+        if not broadcasts:
+            broadcasts = ("No broadcasts found for this week.",)
+
         conversation_metrics = (
             "### Conversation Metrics\n"
             "| Metric                         | Count |\n"
             "|------------------------------- |-------|\n"
-            f"| Conversation Starters Sent     | {broadcasts[0]} |\n"
+            f"| Conversation Starters Sent     | {messages_sent[0]} |\n"
             f"| Broadcast replies              | {total_replies}  |\n"
             f"| Text-ins                       | {text_ins[0]} |\n"
             f"| Reporter conversations         | {total_report_conversations} |\n"
@@ -276,8 +367,8 @@ class AnalyticsService:
                 f"{unsubscribed_by_audience_segment}"
             )
 
-        markdown_report = [intro, major_themes, conversation_metrics]
-        
+        markdown_report = [intro, major_themes, content, broadcasts, conversation_metrics]
+
         if lookup_history_section:
             markdown_report.append(lookup_history_section)
         if geographic_regions:
@@ -290,5 +381,5 @@ class AnalyticsService:
             markdown_report.append(unsubscribe_section)
 
         missive_client = MissiveAPI()
-        missive_client.send_post_sync(markdown_report, conversation_id= os.getenv('MISSIVE_WEEKLY_REPORT_CONVERSATION_ID'))
-        
+        missive_client.send_post_sync(markdown_report,
+                                      conversation_id=os.getenv('MISSIVE_WEEKLY_REPORT_CONVERSATION_ID'))
