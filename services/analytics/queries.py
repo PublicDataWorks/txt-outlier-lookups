@@ -1,12 +1,17 @@
 # app/queries/weekly_queries.py
 
 from sqlalchemy.sql import text
-from .config import DATABASE_URL, IMPACT_LABEL_IDS, REPORTER_LABEL_IDS, BROADCAST_SOURCE_PHONE_NUMBER
+from .config import (
+    DATABASE_URL,
+    IMPACT_LABEL_IDS,
+    REPORTER_LABEL_IDS,
+    BROADCAST_SOURCE_PHONE_NUMBER,
+)
 
 GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT = text("""
     SELECT 
     bsms.audience_segment_id,
-    asg.name,
+    asg.name as audience_segment_name,
     COUNT(*) AS count
     FROM 
         public.unsubscribed_messages um 
@@ -68,7 +73,7 @@ GET_WEEKLY_TEXT_INS = text(f"""
     created_at < DATE_TRUNC('week', CURRENT_DATE) 
 """)
 
-impact_label_ids = ', '.join(f"'{id}'" for id in IMPACT_LABEL_IDS)
+impact_label_ids = ", ".join(f"'{id}'" for id in IMPACT_LABEL_IDS)
 GET_WEEKLY_IMPACT_CONVERSATIONS = lambda impact_label_ids: text(f"""
     SELECT l.name as label_name, COUNT(*) as count
     FROM public.conversations_labels cl 
@@ -82,7 +87,7 @@ GET_WEEKLY_IMPACT_CONVERSATIONS = lambda impact_label_ids: text(f"""
 """)
 
 GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT = text("""
-    SELECT bsms.audience_segment_id, asg.name, COUNT(distinct tm.id) as count
+    SELECT bsms.audience_segment_id, asg.name as audience_segment_name, COUNT(distinct tm.id) as count
     FROM public.twilio_messages tm 
     LEFT JOIN public.broadcast_sent_message_status bsms 
     ON tm.reply_to_broadcast = bsms.broadcast_id
@@ -92,7 +97,7 @@ GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT = text("""
     GROUP BY bsms.audience_segment_id, asg.name
 """)
 
-reporter_label_ids = ', '.join(f"'{id}'" for id in REPORTER_LABEL_IDS)
+reporter_label_ids = ", ".join(f"'{id}'" for id in REPORTER_LABEL_IDS)
 GET_WEEKLY_REPORTER_CONVERSATION = lambda reporter_label_ids: text(f"""
     SELECT l.name as label_name, COUNT(*) as count
     FROM public.conversations_labels cl 

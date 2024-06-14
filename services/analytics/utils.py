@@ -152,7 +152,7 @@ def process_audience_segment_related_data(data):
 
     # Map the fetched data to segment_counts
     for row in data:
-        segment_name = row["name"]
+        segment_name = row["audience_segment_name"]
         count = row["count"]
         if segment_name in segment_counts:
             segment_counts[segment_name] = count
@@ -172,45 +172,45 @@ def generate_geographic_region_markdown(zip_codes):
     return ""
 
 
-def generate_lookup_history_markdown(status_counts):
+def generate_lookup_history_markdown(status_counts, percentage_changes):
     return (
         "### Data Lookups by Property Status\n"
         "| Status                         | Count |\n"
         "|------------------------------- |-------|\n"
-        f"| Registered             | {status_counts['REGISTERED']} |\n"
-        f"| Unregistered            | {status_counts['UNREGISTERED']}  |\n"
-        f"| Tax Debt                | {status_counts['TAX_DEBT']} |\n"
-        f"| No Tax Debt            | {status_counts['NO_TAX_DEBT']} |\n"
-        f"| Compliant               | {status_counts['COMPLIANT']} |\n"
-        f"| Foreclosed              | {status_counts['FORECLOSED']} |\n"
+        f"| Registered             | {status_counts['REGISTERED']} |   {format_percentage_change( percentage_changes['REGISTERED'] )} |\n"
+        f"| Unregistered            | {status_counts['UNREGISTERED']}  |   {format_percentage_change( percentage_changes['UNREGISTERED'] )} |\n"
+        f"| Tax Debt                | {status_counts['TAX_DEBT']} |   {format_percentage_change( percentage_changes['TAX_DEBT'] )} |\n"
+        f"| No Tax Debt            | {status_counts['NO_TAX_DEBT']} |   {format_percentage_change( percentage_changes['NO_TAX_DEBT'] )} |\n"
+        f"| Compliant               | {status_counts['COMPLIANT']} |   {format_percentage_change( percentage_changes['COMPLIANT'] )} |\n"
+        f"| Foreclosed              | {status_counts['FORECLOSED']} |   {format_percentage_change( percentage_changes['FORECLOSED'] )} |\n"
     )
 
 
-def generate_conversation_outcomes_markdown(outcome_counts):
+def generate_conversation_outcomes_markdown(outcome_counts, percentage_changes):
     return (
         "### Conversation Outcomes\n"
         "| Outcome                         | Count |\n"
         "|-------------------------------  |-------|\n"
-        f"| User Satisfaction             | {outcome_counts['user satisfaction']} |\n"
-        f"| Problem Addressed             | {outcome_counts['problem addressed']}  |\n"
-        f"| Crisis Averted                | {outcome_counts['crisis averted']} |\n"
-        f"| Accountability Gap            | {outcome_counts['accountability gap']} |\n"
-        f"| Source                        | {outcome_counts['source']} |\n"
-        f"| Unsatisfied                    | {outcome_counts['unsatisfied']} |\n"
-        f"| Future Keyword                | {outcome_counts['future keyword']} |\n"
+        f"| User Satisfaction             | {outcome_counts['user satisfaction']} |   {format_percentage_change( percentage_changes['user satisfaction'] )} |\n"
+        f"| Problem Addressed             | {outcome_counts['problem addressed']}  |   {format_percentage_change( percentage_changes['problem addressed'] )} |\n"
+        f"| Crisis Averted                | {outcome_counts['crisis averted']} |   {format_percentage_change( percentage_changes['crisis averted'] )} |\n"
+        f"| Accountability Gap            | {outcome_counts['accountability gap']} |   {format_percentage_change( percentage_changes['accountability gap'] )} |\n"
+        f"| Source                        | {outcome_counts['source']} |   {format_percentage_change( percentage_changes['source'] )} |\n"
+        f"| Unsatisfied                    | {outcome_counts['unsatisfied']} |   {format_percentage_change( percentage_changes['unsatisfied'] )} |\n"
+        f"| Future Keyword                | {outcome_counts['future keyword']} |   {format_percentage_change( percentage_changes['future keyword'] )} |\n"
     )
 
 
-def generate_data_by_audience_segment_markdown(segment_counts):
+def generate_data_by_audience_segment_markdown(segment_counts, percentage_changes):
     return (
         "### Broadcast Replies by Audience Segment\n"
         "| Segment                         | Count |\n"
         "|-------------------------------  |-------|\n"
-        f"| Proactive              | {segment_counts['Proactive']} |\n"
-        f"| Receptive             | {segment_counts['Receptive']}  |\n"
-        f"| Connected                | {segment_counts['Connected']} |\n"
-        f"| Passive            | {segment_counts['Passive']} |\n"
-        f"| Inactive                        | {segment_counts['Inactive']} |\n"
+        f"| Proactive              | {segment_counts['Proactive']}|   {format_percentage_change( percentage_changes['Proactive'] )}  |\n"
+        f"| Receptive             | {segment_counts['Receptive']}|   {format_percentage_change( percentage_changes['Receptive'] )}   |\n"
+        f"| Connected                | {segment_counts['Connected']}|   {format_percentage_change( percentage_changes['Connected'] )}  |\n"
+        f"| Passive            | {segment_counts['Passive']}|   {format_percentage_change( percentage_changes['Passive'] )}  |\n"
+        f"| Inactive                        | {segment_counts['Inactive']}|   {format_percentage_change( percentage_changes['Inactive'] )}  |\n"
     )
 
 
@@ -246,18 +246,110 @@ def generate_major_themes_section(messages_history):
     )
 
 
-def generate_conversation_metrics_section(conversation_metrics):
+def generate_conversation_metrics_section(conversation_metrics, percentage_changes):
     return (
         "### Conversation Metrics\n"
-        "| Metric                         | Count |\n"
-        "|------------------------------- |-------|\n"
-        f"| Conversation Starters Sent     | {conversation_metrics['conversation_starters_sent']} |\n"
-        f"| Broadcast replies              | {conversation_metrics['broadcast_replies']}  |\n"
-        f"| Text-ins                       | {conversation_metrics['text_ins']} |\n"
-        f"| Reporter conversations         | {conversation_metrics['reporter_conversations']} |\n"
-        f"| Failed Deliveries              | {conversation_metrics['failed_deliveries']} |\n"
-        f"| Unsubscribes                   | {conversation_metrics['unsubscribes']} |\n"
+        "| Metric                         | Count | Change |\n"
+        "|------------------------------- |-------|--------|\n"
+        f"| Conversation Starters Sent     | {conversation_metrics['conversation_starters_sent']} |   {format_percentage_change( percentage_changes['conversation_starters_sent'] )} |   \n"
+        f"| Broadcast replies              | {conversation_metrics['broadcast_replies']}  |   {format_percentage_change( percentage_changes['broadcast_replies'] )} |\n"
+        f"| Text-ins                       | {conversation_metrics['text_ins']} |   {format_percentage_change( percentage_changes['text_ins'] )} \n"
+        f"| Reporter conversations         | {conversation_metrics['reporter_conversations']} |   {format_percentage_change( percentage_changes['reporter_conversations'] )} \n"
+        f"| Failed Deliveries              | {conversation_metrics['failed_deliveries']} |   {format_percentage_change( percentage_changes['failed_deliveries'] )} \n"
+        f"| Unsubscribes                   | {conversation_metrics['unsubscribes']} |   {format_percentage_change( percentage_changes['unsubscribes'] )} \n"
     )
+
+
+def calculate_percentage_changes(current_data, last_data):
+    percentage_changes = {}
+    for key in current_data:
+        current_value = current_data[key]
+        last_value = last_data.get(key, 0)
+        if isinstance(current_value, (int, float)) and isinstance(last_value, (int, float)):
+            if last_value != 0:
+                change = ((current_value - last_value) / last_value) * 100
+            else:
+                change = 0 if current_value == 0 else 100
+            percentage_changes[key] = change
+    return percentage_changes
+
+
+def format_weekly_report_data(report_data):
+    formatted_data = {
+        "conversation_metrics": {
+            "conversation_starters_sent": int(report_data.conversation_starters_sent or 0),
+            "broadcast_replies": int(report_data.broadcast_replies or 0),
+            "text_ins": int(report_data.text_ins or 0),
+            "reporter_conversations": int(report_data.reporter_conversations or 0),
+            "unsubscribes": int(report_data.unsubscribes or 0),
+            "failed_deliveries": int(report_data.failed_deliveries or 0),
+        },
+        "lookup_history": {
+            "REGISTERED": int(report_data.status_registered or 0),
+            "UNREGISTERED": int(report_data.status_unregistered or 0),
+            "TAX_DEBT": int(report_data.status_tax_debt or 0),
+            "NO_TAX_DEBT": int(report_data.status_no_tax_debt or 0),
+            "COMPLIANT": int(report_data.status_compliant or 0),
+            "FORECLOSED": int(report_data.status_foreclosed or 0),
+        },
+        "conversation_outcomes": {
+            "user satisfaction": int(report_data.user_satisfaction or 0),
+            "problem addressed": int(report_data.problem_addressed or 0),
+            "unsatisfied": int(report_data.unsatisfied or 0),
+            "accountability gap": int(report_data.accountability_gap or 0),
+            "crisis averted": int(report_data.crisis_averted or 0),
+            "future keyword": int(report_data.future_keyword or 0),
+            "source": int(report_data.source or 0),
+        },
+        "unsubscribed_messages": {
+            "Proactive": int(report_data.unsubscribes_proactive or 0),
+            "Receptive": int(report_data.unsubscribes_receptive or 0),
+            "Connected": int(report_data.unsubscribes_connected or 0),
+            "Passive": int(report_data.unsubscribes_passive or 0),
+            "Inactive": int(report_data.unsubscribes_inactive or 0),
+        },
+        "replies": {
+            "Proactive": int(report_data.replies_proactive or 0),
+            "Receptive": int(report_data.replies_receptive or 0),
+            "Connected": int(report_data.replies_connected or 0),
+            "Passive": int(report_data.replies_passive or 0),
+            "Inactive": int(report_data.replies_inactive or 0),
+        },
+    }
+
+    return formatted_data
+
+
+def calculate_percentage_change(old_data, new_data):
+    def calculate_change(old, new):
+        if old == 0:
+            return 100
+        try:
+            return ((new - old) / old) * 100 if old != 0 else float("inf") if new != 0 else 0
+        except ZeroDivisionError:
+            return float("inf")
+
+    def recurse_dict(old_dict, new_dict):
+        change_dict = {}
+        for key in old_dict:
+            if isinstance(old_dict[key], dict):
+                change_dict[key] = recurse_dict(old_dict[key], new_dict.get(key, {}))
+            else:
+                old_value = old_dict[key]
+                new_value = new_dict.get(key, old_value)
+                change_dict[key] = calculate_change(old_value, new_value)
+        return change_dict
+
+    return recurse_dict(old_data, new_data)
+
+
+def format_percentage_change(change):
+    if change > 0:
+        return f"▲ {change:.2f}%"
+    elif change < 0:
+        return f"▼ {abs(change):.2f}%"
+    else:
+        return "~ 0%"
 
 
 class FetchDataResult(NamedTuple):
