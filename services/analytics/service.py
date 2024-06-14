@@ -2,12 +2,12 @@ import os
 from sqlalchemy import create_engine, text
 import datetime
 from sqlalchemy.orm import sessionmaker
-from .config import (
+from config import (
     DATABASE_URL,
     IMPACT_LABEL_IDS,
     REPORTER_LABEL_IDS,
 )
-from .utils import (
+from utils import (
     process_conversation_metrics,
     process_conversation_outcomes,
     process_audience_segment_related_data,
@@ -22,7 +22,7 @@ from .utils import (
     FetchDataResult,
     generate_broadcast_info_section,
 )
-from .queries import (
+from queries import (
     GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT,
     GET_WEEKLY_BROADCAST_SENT,
     GET_WEEKLY_FAILED_MESSAGE,
@@ -56,12 +56,15 @@ class AnalyticsService:
             broadcast_messages.append(broadcast["first_message"])
             broadcast_messages.append(broadcast["second_message"])
 
-        placeholders = ", ".join([f"${i + 1}" for i in range(len(broadcast_messages))])
-        params = {f"{i + 1}": msg for i, msg in enumerate(broadcast_messages)}
+        if broadcast_messages:
+            placeholders = ', '.join([f':msg{i + 1}' for i in range(len(broadcast_messages))])
+            not_in_clause = f"AND preview NOT IN ({placeholders})"
+            params = {f'msg{i + 1}': msg for i, msg in enumerate(broadcast_messages)}
+        else:
+            not_in_clause = ""
+            params = {}
 
-        query = text(GET_WEEKLY_MESSAGES_HISTORY.format(placeholders=placeholders)).bindparams(
-            **params
-        )
+        query = text(GET_WEEKLY_MESSAGES_HISTORY + "\n" + not_in_clause).bindparams(**params)
 
         messages = session.execute(query).fetchall()
 
@@ -123,16 +126,15 @@ class AnalyticsService:
             zip_codes,
         )
 
-    def insert_weekly_report(
-        self,
-        session,
-        current_date,
-        conversation_metrics,
-        conversation_outcomes,
-        property_statuses,
-        broadcast_replies,
-        unsubscribes,
-    ):
+    def insert_weekly_report(self,
+                             session,
+                             current_date,
+                             conversation_metrics,
+                             conversation_outcomes,
+                             property_statuses,
+                             broadcast_replies,
+                             unsubscribes,
+                             ):
         new_report = WeeklyReport(
             created_at=current_date,
             conversation_starters_sent=conversation_metrics["conversation_starters_sent"],

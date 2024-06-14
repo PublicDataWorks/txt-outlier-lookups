@@ -35,15 +35,14 @@ GET_WEEKLY_BROADCAST_SENT = text("""
 """)
 
 GET_WEEKLY_MESSAGES_HISTORY = """
-    SELECT *
-    FROM public.twilio_messages
-    WHERE 
-    preview NOT IN ({placeholders})
-    AND
-    created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
-    AND 
-    created_at < DATE_TRUNC('week', CURRENT_DATE)
-"""
+            SELECT *
+            FROM public.twilio_messages
+            WHERE 
+            created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
+            AND 
+            created_at < DATE_TRUNC('week', CURRENT_DATE)
+        """
+
 
 GET_WEEKLY_FAILED_MESSAGE = text("""
     SELECT COUNT(*) AS count
