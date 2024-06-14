@@ -263,17 +263,16 @@ def generate_conversation_metrics_section(conversation_metrics):
 
 
 class FetchDataResult(NamedTuple):
-    unsubscribed_messages: int
-    broadcasts_count: int
-    broadcasts_messages: str
-    broadcasts_summary: str
-    failed_deliveries: int
-    text_ins: int
-    impact_conversations: int
-    replies: int
-    report_conversations: int
-    lookup_history: int
-    zip_codes: int
+    unsubscribed_messages: any
+    broadcasts: any
+    messages_history: any
+    failed_deliveries: any
+    text_ins: any
+    impact_conversations: any
+    replies: any
+    report_conversations: any
+    lookup_history: any
+    zip_codes: any
 
     def __getitem__(self, key):
         return getattr(self, key)

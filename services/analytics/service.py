@@ -2,12 +2,12 @@ import os
 from sqlalchemy import create_engine, text
 import datetime
 from sqlalchemy.orm import sessionmaker
-from config import (
+from .config import (
     DATABASE_URL,
     IMPACT_LABEL_IDS,
     REPORTER_LABEL_IDS,
 )
-from utils import (
+from .utils import (
     process_conversation_metrics,
     process_conversation_outcomes,
     process_audience_segment_related_data,
@@ -22,7 +22,7 @@ from utils import (
     FetchDataResult,
     generate_broadcast_info_section,
 )
-from queries import (
+from .queries import (
     GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT,
     GET_WEEKLY_BROADCAST_SENT,
     GET_WEEKLY_FAILED_MESSAGE,
@@ -72,7 +72,7 @@ class AnalyticsService:
         for message in messages:
             refs = message["references"]
             preview = message["preview"]
-            grouped_messages[refs].append(preview)
+            grouped_messages[refs[0]].append(preview)
 
         return grouped_messages
 
