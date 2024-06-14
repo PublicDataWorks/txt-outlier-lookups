@@ -2,13 +2,12 @@ import os
 from sqlalchemy import create_engine, text
 import datetime
 from sqlalchemy.orm import sessionmaker
-from config import (
+from .config import (
     DATABASE_URL,
     IMPACT_LABEL_IDS,
     REPORTER_LABEL_IDS,
-    BROADCAST_SOURCE_PHONE_NUMBER,
 )
-from utils import (
+from .utils import (
     process_conversation_metrics,
     process_conversation_outcomes,
     process_audience_segment_related_data,
@@ -20,9 +19,10 @@ from utils import (
     generate_intro_section,
     generate_major_themes_section,
     generate_conversation_metrics_section,
-    FetchDataResult, generate_broadcast_info_section,
+    FetchDataResult,
+    generate_broadcast_info_section,
 )
-from queries import (
+from .queries import (
     GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT,
     GET_WEEKLY_BROADCAST_SENT,
     GET_WEEKLY_FAILED_MESSAGE,
@@ -31,7 +31,8 @@ from queries import (
     GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT,
     GET_WEEKLY_REPORTER_CONVERSATION,
     GET_WEEKLY_DATA_LOOKUP,
-    GET_WEEKLY_TOP_ZIP_CODE, GET_WEEKLY_MESSAGES_HISTORY
+    GET_WEEKLY_TOP_ZIP_CODE,
+    GET_WEEKLY_MESSAGES_HISTORY,
 )
 from collections import defaultdict
 from libs.MissiveAPI import MissiveAPI
@@ -52,20 +53,22 @@ class AnalyticsService:
     def get_weekly_messages_history(self, session, broadcast_sent):
         broadcast_messages = []
         for broadcast in broadcast_sent:
-            broadcast_messages.append(broadcast['first_message'])
-            broadcast_messages.append(broadcast['second_message'])
+            broadcast_messages.append(broadcast["first_message"])
+            broadcast_messages.append(broadcast["second_message"])
 
-        placeholders = ', '.join([f'${i + 1}' for i in range(len(broadcast_messages))])
-        params = {f'{i + 1}': msg for i, msg in enumerate(broadcast_messages)}
+        placeholders = ", ".join([f"${i + 1}" for i in range(len(broadcast_messages))])
+        params = {f"{i + 1}": msg for i, msg in enumerate(broadcast_messages)}
 
-        query = text(GET_WEEKLY_MESSAGES_HISTORY.format(placeholders=placeholders)).bindparams(**params)
+        query = text(GET_WEEKLY_MESSAGES_HISTORY.format(placeholders=placeholders)).bindparams(
+            **params
+        )
 
         messages = session.execute(query).fetchall()
 
         grouped_messages = defaultdict(list)
         for message in messages:
-            refs = message['references']
-            preview = message['preview']
+            refs = message["references"]
+            preview = message["preview"]
             grouped_messages[refs].append(preview)
 
         return grouped_messages
@@ -120,15 +123,16 @@ class AnalyticsService:
             zip_codes,
         )
 
-    def insert_weekly_report(self,
-                             session,
-                             current_date,
-                             conversation_metrics,
-                             conversation_outcomes,
-                             property_statuses,
-                             broadcast_replies,
-                             unsubscribes,
-                             ):
+    def insert_weekly_report(
+        self,
+        session,
+        current_date,
+        conversation_metrics,
+        conversation_outcomes,
+        property_statuses,
+        broadcast_replies,
+        unsubscribes,
+    ):
         new_report = WeeklyReport(
             created_at=current_date,
             conversation_starters_sent=conversation_metrics["conversation_starters_sent"],
@@ -194,7 +198,12 @@ class AnalyticsService:
             unsubscribes_by_audience_segment
         )
 
-        markdown_report = [intro_section, major_themes_section, broadcast_and_summary_section, conversation_metrics_section]
+        markdown_report = [
+            intro_section,
+            major_themes_section,
+            broadcast_and_summary_section,
+            conversation_metrics_section,
+        ]
 
         if lookup_history_section:
             markdown_report.append(lookup_history_section)
