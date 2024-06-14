@@ -118,7 +118,7 @@ class MissiveAPI:
 
         body = {
             "posts": {
-                "conversation": '3c1c172a-749d-4671-96fb-f29e8b151ff7',
+                "conversation": conversation_id,
                 "notification": {"title": "Weekly Report", "body": "Summary"},
                 "username": "Weekly report",
                 "username_icon": "https://s3.amazonaws.com/missive-assets/missive-avatar.png",
@@ -130,7 +130,6 @@ class MissiveAPI:
             response = requests.post(
                 CREATE_POST_URL, headers=self.headers, data=json.dumps(body)
             )
-            breakpoint()
             response.raise_for_status()  # Raise exception if not a 2xx response
             return response
         except requests.exceptions.RequestException:

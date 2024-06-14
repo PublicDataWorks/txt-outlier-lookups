@@ -118,7 +118,7 @@ class AnalyticsService:
         last_monday_start = datetime.datetime.combine(last_monday, datetime.time.min)
         last_sunday_end = datetime.datetime.combine(last_sunday, datetime.time.max)
 
-        with self.Session() as session:
+        with self.Session as session:
             # Fetch data for the given week
             data = (
                 session.query(WeeklyReport)
@@ -209,6 +209,7 @@ class AnalyticsService:
         # Fetch the data synchronously
         data = self.fetch_data()
         last_week_data = self.fetch_data_last_week()
+        last_4_week_data = self.fetch_average_data_last_4_weeks()
 
         conversation_metrics = process_conversation_metrics(data)
         property_statuses = process_lookup_history(data["lookup_history"])
@@ -227,25 +228,36 @@ class AnalyticsService:
             calculate_percentage_change(
                 last_week_data["conversation_metrics"], conversation_metrics
             ),
+            calculate_percentage_change(
+                last_4_week_data["conversation_metrics"], conversation_metrics
+            ),
         )
         lookup_history_section = generate_lookup_history_markdown(
             property_statuses,
             calculate_percentage_change(last_week_data["lookup_history"], property_statuses),
+            calculate_percentage_change(last_4_week_data["lookup_history"], property_statuses),
         )
         conversation_outcomes_section = generate_conversation_outcomes_markdown(
             conversations_outcomes,
             calculate_percentage_change(
                 last_week_data["conversation_outcomes"], conversations_outcomes
             ),
+            calculate_percentage_change(
+                last_4_week_data["conversation_outcomes"], conversations_outcomes
+            ),
         )
         replies_by_audience_segment_section = generate_data_by_audience_segment_markdown(
             replies_by_audience_segment,
             calculate_percentage_change(last_week_data["replies"], replies_by_audience_segment),
+            calculate_percentage_change(last_4_week_data["replies"], replies_by_audience_segment),
         )
         unsubscribe_by_audience_segment_section = generate_data_by_audience_segment_markdown(
             unsubscribes_by_audience_segment,
             calculate_percentage_change(
                 last_week_data["unsubscribed_messages"], unsubscribes_by_audience_segment
+            ),
+            calculate_percentage_change(
+                last_4_week_data["unsubscribed_messages"], unsubscribes_by_audience_segment
             ),
         )
 
@@ -272,7 +284,7 @@ class AnalyticsService:
             markdown_report, conversation_id=os.getenv("MISSIVE_WEEKLY_REPORT_CONVERSATION_ID")
         )
 
-        with self.Session() as session:
+        with self.Session as session:
             self.insert_weekly_report(
                 session,
                 datetime.datetime.now().isoformat(),
@@ -282,3 +294,60 @@ class AnalyticsService:
                 replies_by_audience_segment,
                 unsubscribes_by_audience_segment,
             )
+
+    def fetch_average_data_last_4_weeks(self):
+        # Calculate the start date for 4 weeks ago
+        today = datetime.date.today()
+        start_date = today - datetime.timedelta(days=today.weekday() + 28)
+
+        # Calculate the end date of the last Sunday
+        end_date = today - datetime.timedelta(days=today.weekday() + 1)
+
+        # Convert to datetime for database query purposes
+        start_datetime = datetime.datetime.combine(start_date, datetime.time.min)
+        end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
+
+        query = text("""
+            SELECT 
+                AVG(conversation_starters_sent) AS conversation_starters_sent,
+                AVG(broadcast_replies) AS broadcast_replies,
+                AVG(text_ins) AS text_ins,
+                AVG(reporter_conversations) AS reporter_conversations,
+                AVG(failed_deliveries) AS failed_deliveries,
+                AVG(unsubscribes) AS unsubscribes,
+                AVG(user_satisfaction) AS user_satisfaction,
+                AVG(problem_addressed) AS problem_addressed,
+                AVG(crisis_averted) AS crisis_averted,
+                AVG(accountability_gap) AS accountability_gap,
+                AVG(source) AS source,
+                AVG(unsatisfied) AS unsatisfied,
+                AVG(future_keyword) AS future_keyword,
+                AVG(status_registered) AS status_registered,
+                AVG(status_unregistered) AS status_unregistered,
+                AVG(status_tax_debt) AS status_tax_debt,
+                AVG(status_no_tax_debt) AS status_no_tax_debt,
+                AVG(status_compliant) AS status_compliant,
+                AVG(status_foreclosed) AS status_foreclosed,
+                AVG(replies_proactive) AS replies_proactive,
+                AVG(replies_receptive) AS replies_receptive,
+                AVG(replies_connected) AS replies_connected,
+                AVG(replies_passive) AS replies_passive,
+                AVG(replies_inactive) AS replies_inactive,
+                AVG(unsubscribes_proactive) AS unsubscribes_proactive,
+                AVG(unsubscribes_receptive) AS unsubscribes_receptive,
+                AVG(unsubscribes_connected) AS unsubscribes_connected,
+                AVG(unsubscribes_passive) AS unsubscribes_passive,
+                AVG(unsubscribes_inactive) AS unsubscribes_inactive
+            FROM weekly_reports
+            WHERE created_at >= :start_date AND created_at <= :end_date
+        """)
+
+        with self.Session as session:
+            result = session.execute(
+                query, {"start_date": start_datetime, "end_date": end_datetime}
+            ).fetchone()
+
+            if not result:
+                return None
+
+        return format_weekly_report_data(result)

@@ -172,45 +172,49 @@ def generate_geographic_region_markdown(zip_codes):
     return ""
 
 
-def generate_lookup_history_markdown(status_counts, percentage_changes):
+def generate_lookup_history_markdown(status_counts, percentage_changes, percentage_changes_4_week):
     return (
         "### Data Lookups by Property Status\n"
-        "| Status                         | Count |\n"
-        "|------------------------------- |-------|\n"
-        f"| Registered             | {status_counts['REGISTERED']} |   {format_percentage_change( percentage_changes['REGISTERED'] )} |\n"
-        f"| Unregistered            | {status_counts['UNREGISTERED']}  |   {format_percentage_change( percentage_changes['UNREGISTERED'] )} |\n"
-        f"| Tax Debt                | {status_counts['TAX_DEBT']} |   {format_percentage_change( percentage_changes['TAX_DEBT'] )} |\n"
-        f"| No Tax Debt            | {status_counts['NO_TAX_DEBT']} |   {format_percentage_change( percentage_changes['NO_TAX_DEBT'] )} |\n"
-        f"| Compliant               | {status_counts['COMPLIANT']} |   {format_percentage_change( percentage_changes['COMPLIANT'] )} |\n"
-        f"| Foreclosed              | {status_counts['FORECLOSED']} |   {format_percentage_change( percentage_changes['FORECLOSED'] )} |\n"
+        "| Status                         | Count |  Change (week) | Change (4-week avg) |\n"
+        "|------------------------------- |-------|----------------|---------------------|\n"
+        f"| Registered             | {status_counts['REGISTERED']} |   {format_percentage_change( percentage_changes['REGISTERED'] )} | {format_percentage_change( percentage_changes_4_week['REGISTERED'] )} \n"
+        f"| Unregistered            | {status_counts['UNREGISTERED']}  |   {format_percentage_change( percentage_changes['UNREGISTERED'] )} | {format_percentage_change( percentage_changes_4_week['UNREGISTERED'] )} \n"
+        f"| Tax Debt                | {status_counts['TAX_DEBT']} |   {format_percentage_change( percentage_changes['TAX_DEBT'] )} | {format_percentage_change( percentage_changes_4_week['TAX_DEBT'] )} \n"
+        f"| No Tax Debt            | {status_counts['NO_TAX_DEBT']} |   {format_percentage_change( percentage_changes['NO_TAX_DEBT'] )} | {format_percentage_change( percentage_changes_4_week['NO_TAX_DEBT'] )} \n"
+        f"| Compliant               | {status_counts['COMPLIANT']} |   {format_percentage_change( percentage_changes['COMPLIANT'] )} | {format_percentage_change( percentage_changes_4_week['COMPLIANT'] )} \n"
+        f"| Foreclosed              | {status_counts['FORECLOSED']} |   {format_percentage_change( percentage_changes['FORECLOSED'] )} | {format_percentage_change( percentage_changes_4_week['FORECLOSED'] )} \n"
     )
 
 
-def generate_conversation_outcomes_markdown(outcome_counts, percentage_changes):
+def generate_conversation_outcomes_markdown(
+    outcome_counts, percentage_changes, percentage_changes_4_week
+):
     return (
         "### Conversation Outcomes\n"
-        "| Outcome                         | Count |\n"
-        "|-------------------------------  |-------|\n"
-        f"| User Satisfaction             | {outcome_counts['user satisfaction']} |   {format_percentage_change( percentage_changes['user satisfaction'] )} |\n"
-        f"| Problem Addressed             | {outcome_counts['problem addressed']}  |   {format_percentage_change( percentage_changes['problem addressed'] )} |\n"
-        f"| Crisis Averted                | {outcome_counts['crisis averted']} |   {format_percentage_change( percentage_changes['crisis averted'] )} |\n"
-        f"| Accountability Gap            | {outcome_counts['accountability gap']} |   {format_percentage_change( percentage_changes['accountability gap'] )} |\n"
-        f"| Source                        | {outcome_counts['source']} |   {format_percentage_change( percentage_changes['source'] )} |\n"
-        f"| Unsatisfied                    | {outcome_counts['unsatisfied']} |   {format_percentage_change( percentage_changes['unsatisfied'] )} |\n"
-        f"| Future Keyword                | {outcome_counts['future keyword']} |   {format_percentage_change( percentage_changes['future keyword'] )} |\n"
+        "| Outcome                         | Count |  Change (week) | Change (4-week avg) |\n"
+        "|-------------------------------  |-------|----------------|---------------------|\n"
+        f"| User Satisfaction             | {outcome_counts['user satisfaction']} |   {format_percentage_change( percentage_changes['user satisfaction'] )} | {format_percentage_change( percentage_changes_4_week['user satisfaction'] )} \n"
+        f"| Problem Addressed             | {outcome_counts['problem addressed']}  |   {format_percentage_change( percentage_changes['problem addressed'] )} | {format_percentage_change( percentage_changes_4_week['problem addressed'] )} \n"
+        f"| Crisis Averted                | {outcome_counts['crisis averted']} |   {format_percentage_change( percentage_changes['crisis averted'] )} | {format_percentage_change( percentage_changes_4_week['crisis averted'] )} \n"
+        f"| Accountability Gap            | {outcome_counts['accountability gap']} |   {format_percentage_change( percentage_changes['accountability gap'] )} | {format_percentage_change( percentage_changes_4_week['accountability gap'] )} \n"
+        f"| Source                        | {outcome_counts['source']} |   {format_percentage_change( percentage_changes['source'] )} |  {format_percentage_change( percentage_changes_4_week['source'] )} \n"
+        f"| Unsatisfied                    | {outcome_counts['unsatisfied']} |   {format_percentage_change( percentage_changes['unsatisfied'] )} |  {format_percentage_change( percentage_changes_4_week['unsatisfied'] )} \n"
+        f"| Future Keyword                | {outcome_counts['future keyword']} |   {format_percentage_change( percentage_changes['future keyword'] )} | {format_percentage_change( percentage_changes_4_week['future keyword'] )} \n"
     )
 
 
-def generate_data_by_audience_segment_markdown(segment_counts, percentage_changes):
+def generate_data_by_audience_segment_markdown(
+    segment_counts, percentage_changes, percentage_changes_4_week
+):
     return (
         "### Broadcast Replies by Audience Segment\n"
-        "| Segment                         | Count |\n"
-        "|-------------------------------  |-------|\n"
-        f"| Proactive              | {segment_counts['Proactive']}|   {format_percentage_change( percentage_changes['Proactive'] )}  |\n"
-        f"| Receptive             | {segment_counts['Receptive']}|   {format_percentage_change( percentage_changes['Receptive'] )}   |\n"
-        f"| Connected                | {segment_counts['Connected']}|   {format_percentage_change( percentage_changes['Connected'] )}  |\n"
-        f"| Passive            | {segment_counts['Passive']}|   {format_percentage_change( percentage_changes['Passive'] )}  |\n"
-        f"| Inactive                        | {segment_counts['Inactive']}|   {format_percentage_change( percentage_changes['Inactive'] )}  |\n"
+        "| Segment                         | Count |  Change (week) | Change (4-week avg) |\n"
+        "|-------------------------------  |-------|----------------|---------------------|\n"
+        f"| Proactive              | {segment_counts['Proactive']}|   {format_percentage_change( percentage_changes['Proactive'] )}  | {format_percentage_change( percentage_changes_4_week['Proactive'] )}  \n"
+        f"| Receptive             | {segment_counts['Receptive']}|   {format_percentage_change( percentage_changes['Receptive'] )}   | {format_percentage_change( percentage_changes_4_week['Receptive'] )}   \n"
+        f"| Connected                | {segment_counts['Connected']}|   {format_percentage_change( percentage_changes['Connected'] )}  | {format_percentage_change( percentage_changes_4_week['Connected'] )}  \n"
+        f"| Passive            | {segment_counts['Passive']}|   {format_percentage_change( percentage_changes['Passive'] )}  | {format_percentage_change( percentage_changes_4_week['Passive'] )}  \n"
+        f"| Inactive                        | {segment_counts['Inactive']}|   {format_percentage_change( percentage_changes['Inactive'] )}  | {format_percentage_change( percentage_changes_4_week['Inactive'] )}  \n"
     )
 
 
@@ -246,17 +250,19 @@ def generate_major_themes_section(messages_history):
     )
 
 
-def generate_conversation_metrics_section(conversation_metrics, percentage_changes):
+def generate_conversation_metrics_section(
+    conversation_metrics, percentage_changes, percentage_changes_4_week
+):
     return (
         "### Conversation Metrics\n"
         "| Metric                         | Count | Change |\n"
         "|------------------------------- |-------|--------|\n"
         f"| Conversation Starters Sent     | {conversation_metrics['conversation_starters_sent']} |   {format_percentage_change( percentage_changes['conversation_starters_sent'] )} |   \n"
-        f"| Broadcast replies              | {conversation_metrics['broadcast_replies']}  |   {format_percentage_change( percentage_changes['broadcast_replies'] )} |\n"
-        f"| Text-ins                       | {conversation_metrics['text_ins']} |   {format_percentage_change( percentage_changes['text_ins'] )} \n"
-        f"| Reporter conversations         | {conversation_metrics['reporter_conversations']} |   {format_percentage_change( percentage_changes['reporter_conversations'] )} \n"
-        f"| Failed Deliveries              | {conversation_metrics['failed_deliveries']} |   {format_percentage_change( percentage_changes['failed_deliveries'] )} \n"
-        f"| Unsubscribes                   | {conversation_metrics['unsubscribes']} |   {format_percentage_change( percentage_changes['unsubscribes'] )} \n"
+        f"| Broadcast replies              | {conversation_metrics['broadcast_replies']}  |   {format_percentage_change( percentage_changes['broadcast_replies'] )} | {format_percentage_change( percentage_changes_4_week['broadcast_replies'] )} |\n"
+        f"| Text-ins                       | {conversation_metrics['text_ins']} |   {format_percentage_change( percentage_changes['text_ins'] )}| {format_percentage_change( percentage_changes_4_week['text_ins'] )} \n"
+        f"| Reporter conversations         | {conversation_metrics['reporter_conversations']} |   {format_percentage_change( percentage_changes['reporter_conversations'] )}| {format_percentage_change( percentage_changes_4_week['reporter_conversations'] )} \n"
+        f"| Failed Deliveries              | {conversation_metrics['failed_deliveries']} |   {format_percentage_change( percentage_changes['failed_deliveries'] )}| {format_percentage_change( percentage_changes_4_week['failed_deliveries'] )} \n"
+        f"| Unsubscribes                   | {conversation_metrics['unsubscribes']} |   {format_percentage_change( percentage_changes['unsubscribes'] )}| {format_percentage_change( percentage_changes_4_week['unsubscribes'] )} \n"
     )
 
 
