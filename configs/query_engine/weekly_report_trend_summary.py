@@ -1,11 +1,6 @@
 import os
 
 from dotenv import load_dotenv
-from llama_index.core import PromptTemplate, SQLDatabase, VectorStoreIndex
-from llama_index.core.indices.struct_store.sql_query import SQLTableRetrieverQueryEngine
-from llama_index.core.objects import ObjectIndex, SQLTableNodeMapping, SQLTableSchema
-from llama_index.llms.openai import OpenAI
-from sqlalchemy import MetaData
 
 from configs.cache_template import get_template_content_by_name
 from llama_index.core import DocumentSummaryIndex

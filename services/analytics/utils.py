@@ -1,5 +1,7 @@
 from typing import NamedTuple
 
+from configs.query_engine.weekly_report_trend_summary import query_from_documents
+
 
 def format_metric_by_audience_segment(metrics):
     metric_report = ""
@@ -42,10 +44,28 @@ def map_status(raw_status):
         return to_pascal_case(raw_status)
 
 
+def format_broadcast_details(broadcast):
+    run_at = broadcast['run_at']
+    first_message = broadcast['first_message']
+    second_message = broadcast['second_message']
+    run_at_formatted = run_at.strftime("%a %b %d, %Y at %I:%M%p ET")
+
+    return f"""
+<details>
+  <summary>{run_at_formatted}</summary>
+
+{first_message}
+
+{second_message}
+
+</details>
+"""
+
+
 def process_conversation_metrics(data):
     total_broadcasts = (
-        data["broadcasts"]["count"]
-        if isinstance(data["broadcasts"], dict) and data["broadcasts"]
+        len(data["broadcasts"])
+        if "broadcasts" in data and data["broadcasts"]
         else 0
     )
     total_text_ins = (
@@ -206,14 +226,25 @@ def generate_intro_section():
     return f"# Weekly Summary Report ({report_date})"
 
 
-def generate_major_themes_section():
+def generate_broadcast_info_section(broadcasts):
+    formatted_details = []
+    for broadcast in broadcasts:
+        formatted_detail = format_broadcast_details(broadcast)
+        formatted_details.append(formatted_detail)
+
+    # Combine all formatted details into a single string
+    return '\n'.join(formatted_details)
+
+
+def generate_major_themes_section(messages_history):
+    documents = [{'text': conversation} for conversation in messages_history.values()]
+
+    # Query the LLM for a summary
+    summary = query_from_documents(documents)
+
     return (
         "## Summary of Major Themes/Topics\n"
-        "- **User Satisfaction**: Significant number of users expressed satisfaction with the resources provided.\n"
-        "- **Problem Addressed**: Numerous reports of problems addressed successfully.\n"
-        "- **Crisis Averted**: Notable increase in crisis averted scenarios.\n"
-        "- **Property Status Inquiries**: Frequent inquiries about property status, particularly regarding tax debt and compliance issues.\n"
-        "- **Accountability Initiatives**: Positive feedback on accountability initiatives, with some users highlighting persistent issues.\n"
+        f"{summary}"
     )
 
 
@@ -233,7 +264,9 @@ def generate_conversation_metrics_section(conversation_metrics):
 
 class FetchDataResult(NamedTuple):
     unsubscribed_messages: int
-    broadcasts: int
+    broadcasts_count: int
+    broadcasts_messages: str
+    broadcasts_summary: str
     failed_deliveries: int
     text_ins: int
     impact_conversations: int

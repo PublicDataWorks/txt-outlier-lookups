@@ -75,9 +75,16 @@ templates = {
         "office at 313-224-5990, or you can text REPORTER if you have more questions."
     ),
     "sms_history_summary": (
-        "From the provided context of history of sms messages in multiple conversations grouped by number pairs."
-        "Provide a short summary of trends and hot topics of these conversation."
-        "Group by conversations."
+        f"""
+        Given the following SMS messages history, generate a summary of major themes and topics discussed:
+
+        Provide the summary in the following format:
+        - **User Satisfaction**: ...
+        - **Problem Addressed**: ...
+        - **Crisis Averted**: ...
+        - **Property Status Inquiries**: ...
+        - **Accountability Initiatives**: ...
+        """
     ),
     "search_prompt": (
         """Given an input question, first create a syntactically correct {dialect} query to run, then look at the results of the query and return the answer.
