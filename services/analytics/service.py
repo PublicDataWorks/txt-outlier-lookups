@@ -37,6 +37,7 @@ from .queries import (
     GET_WEEKLY_DATA_LOOKUP,
     GET_WEEKLY_TOP_ZIP_CODE,
     GET_WEEKLY_MESSAGES_HISTORY,
+    GET_WEEKLY_BROADCAST_CONTENT
 )
 from collections import defaultdict
 from libs.MissiveAPI import MissiveAPI
@@ -105,6 +106,9 @@ class AnalyticsService:
     def get_weekly_top_zip_code(self, session):
         return session.execute(GET_WEEKLY_TOP_ZIP_CODE).fetchall()
 
+    def get_broadcasts_content(self, session):
+        return session.execute(GET_WEEKLY_BROADCAST_CONTENT).fetchall()
+
     def fetch_data_last_week(self):
         # Calculate the date of the last Monday
         today = datetime.date.today()
@@ -143,6 +147,7 @@ class AnalyticsService:
             report_conversations = self.get_weekly_reporter_conversation(session)
             lookup_history = self.get_weekly_data_look_up(session)
             zip_codes = self.get_weekly_top_zip_code(session)
+            broadcasts_content = self.get_broadcasts_content(session)
 
         return FetchDataResult(
             unsubscribed_messages,
@@ -155,6 +160,7 @@ class AnalyticsService:
             report_conversations,
             lookup_history,
             zip_codes,
+            broadcasts_content
         )
 
     def insert_weekly_report(
@@ -219,7 +225,7 @@ class AnalyticsService:
         )
 
         intro_section = generate_intro_section()
-        broadcast_and_summary_section = generate_broadcast_info_section(data["broadcasts"])
+        broadcast_and_summary_section = generate_broadcast_info_section(data["broadcasts_content"])
         major_themes_section = generate_major_themes_section(data["messages_history"])
         zip_code_section = generate_geographic_region_markdown(data["zip_codes"])
         conversation_metrics_section = generate_conversation_metrics_section(

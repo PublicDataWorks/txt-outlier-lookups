@@ -2,7 +2,6 @@
 
 from sqlalchemy.sql import text
 from .config import (
-    DATABASE_URL,
     IMPACT_LABEL_IDS,
     REPORTER_LABEL_IDS,
     BROADCAST_SOURCE_PHONE_NUMBER,
@@ -141,4 +140,13 @@ GET_WEEKLY_TOP_ZIP_CODE = text("""
     GROUP BY zip_code
     ORDER BY count DESC
     LIMIT 5;
+""")
+
+GET_WEEKLY_BROADCAST_CONTENT = text("""
+   SELECT first_message, second_message, run_at
+    FROM broadcasts
+    WHERE 
+    run_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
+    AND 
+    run_at < DATE_TRUNC('week', CURRENT_DATE)                                 
 """)

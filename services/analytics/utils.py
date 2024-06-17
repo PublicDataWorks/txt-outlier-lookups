@@ -237,7 +237,10 @@ def generate_broadcast_info_section(broadcasts):
         formatted_details.append(formatted_detail)
 
     # Combine all formatted details into a single string
-    return '\n'.join(formatted_details)
+    return (
+        "### Broadcast messages sent this week\n"
+        + '\n'.join(formatted_details)
+    )
 
 
 def generate_major_themes_section(messages_history):
@@ -370,6 +373,7 @@ class FetchDataResult(NamedTuple):
     report_conversations: any
     lookup_history: any
     zip_codes: any
+    broadcasts_content: any
 
     def __getitem__(self, key):
         return getattr(self, key)
