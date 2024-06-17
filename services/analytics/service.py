@@ -1,7 +1,10 @@
 import os
+
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 import datetime
-from sqlalchemy.orm import sessionmaker
+
+from configs.database import Session
 from .config import (
     DATABASE_URL,
     IMPACT_LABEL_IDS,
@@ -38,11 +41,13 @@ from collections import defaultdict
 from libs.MissiveAPI import MissiveAPI
 from models import WeeklyReport
 
+load_dotenv(override=True)
+
 
 class AnalyticsService:
     def __init__(self):
-        self.engine = create_engine(DATABASE_URL)
-        self.Session = sessionmaker(bind=self.engine)
+        self.Session = Session()
+
 
     def get_weekly_unsubscribe_by_audience_segment(self, session):
         return session.execute(GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT).fetchall()
@@ -100,7 +105,7 @@ class AnalyticsService:
         return session.execute(GET_WEEKLY_TOP_ZIP_CODE).fetchall()
 
     def fetch_data(self):
-        with self.Session() as session:
+        with self.Session as session:
             # Fetch all the data here synchronously
             unsubscribed_messages = self.get_weekly_unsubscribe_by_audience_segment(session)
             broadcasts = self.get_weekly_broadcast_sent(session)

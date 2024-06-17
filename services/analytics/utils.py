@@ -237,10 +237,8 @@ def generate_broadcast_info_section(broadcasts):
 
 
 def generate_major_themes_section(messages_history):
-    documents = [{'text': conversation} for conversation in messages_history.values()]
 
-    # Query the LLM for a summary
-    summary = query_from_documents(documents)
+    summary = query_from_documents(messages_history)
 
     return (
         "## Summary of Major Themes/Topics\n"
