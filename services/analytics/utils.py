@@ -1,6 +1,6 @@
 from typing import NamedTuple
 
-from configs.query_engine.weekly_report_trend_summary import query_from_documents
+from configs.query_engine.weekly_report_trend_summary import generate_report_summary
 
 
 def format_metric_by_audience_segment(metrics):
@@ -241,13 +241,14 @@ def generate_broadcast_info_section(broadcasts):
 
 
 def generate_major_themes_section(messages_history):
+    summary = generate_report_summary(messages_history)
 
-    summary = query_from_documents(messages_history)
-
-    return (
-        "## Summary of Major Themes/Topics\n"
-        f"{summary}"
-    )
+    if messages_history:
+        return (
+            "## Summary of Major Themes/Topics\n"
+            f"{summary}"
+        )
+    return ""
 
 
 def generate_conversation_metrics_section(

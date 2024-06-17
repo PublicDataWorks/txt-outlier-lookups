@@ -13,7 +13,7 @@ key = os.environ.get("OPENAI_API_KEY")
 session = Session()
 
 
-def query_from_documents(messages_history):
+def generate_report_summary(messages_history):
     text = ""
     try:
         lookup_template = session.query(LookupTemplate).filter_by(name="sms_history_summary").first()

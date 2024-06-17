@@ -6,7 +6,6 @@ import datetime
 
 from configs.database import Session
 from .config import (
-    DATABASE_URL,
     IMPACT_LABEL_IDS,
     REPORTER_LABEL_IDS,
 )
@@ -263,11 +262,14 @@ class AnalyticsService:
 
         markdown_report = [
             intro_section,
-            major_themes_section,
-            broadcast_and_summary_section,
-            conversation_metrics_section,
         ]
 
+        if major_themes_section:
+            markdown_report.append(major_themes_section)
+        if broadcast_and_summary_section:
+            markdown_report.append(broadcast_and_summary_section)
+        if conversation_metrics_section:
+            markdown_report.append(conversation_metrics_section)
         if lookup_history_section:
             markdown_report.append(lookup_history_section)
         if zip_code_section:
