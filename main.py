@@ -26,7 +26,8 @@ from libs.MissiveAPI import MissiveAPI
 from services.services import (
     extract_address_information,
     handle_match,
-    search_service, more_search_service,
+    search_service,
+    more_search_service,
 )
 from utils.address_normalizer import extract_latest_address
 
