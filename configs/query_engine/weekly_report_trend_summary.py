@@ -1,3 +1,4 @@
+import logging
 import os
 from models import LookupTemplate
 
@@ -11,6 +12,7 @@ from llama_index.core.schema import Document
 load_dotenv(override=True)
 key = os.environ.get("OPENAI_API_KEY")
 session = Session()
+logger = logging.getLogger(__name__)
 
 
 def generate_report_summary(messages_history):
@@ -24,10 +26,10 @@ def generate_report_summary(messages_history):
             if fallback_template:
                 text = fallback_template
             else:
-                print(f"Error fetching backup template")
+                logger.error(f"Error fetching backup template")
                 return None
     except Exception as e:
-        print(f"Error fetching template from database: {e}")
+        logger.error(f"Error fetching template from database: {e}")
         return None
     documents = [Document(doc_id=str(i), text=str(conversation)) for i, conversation in enumerate(messages_history.values())]
 

@@ -1,8 +1,11 @@
+import logging
 import os
 from typing import NamedTuple
 
 from configs.query_engine.weekly_report_trend_summary import generate_report_summary
 from models import LookupTemplate
+
+logger = logging.getLogger(__name__)
 
 
 def format_metric_by_audience_segment(metrics):
@@ -119,8 +122,8 @@ def process_lookup_history(lookup_data):
     # Map the fetched data to status_counts
     for row in lookup_data:
         status = row["status"]
-        count = row["count"]
         if status in status_counts:
+            count = row["count"]
             status_counts[status] = count
 
     return status_counts
@@ -140,8 +143,8 @@ def process_conversation_outcomes(outcomes):
     # Map the fetched data to outcome_counts
     for row in outcomes:
         label_name = row["label_name"]
-        count = row["count"]
         if label_name in outcome_counts:
+            count = row["count"]
             outcome_counts[label_name] = count
 
     return outcome_counts
@@ -154,8 +157,8 @@ def process_audience_segment_related_data(data):
     # Map the fetched data to segment_counts
     for row in data:
         segment_name = row["audience_segment_name"]
-        count = row["count"]
         if segment_name in segment_counts:
+            count = row["count"]
             segment_counts[segment_name] = count
 
     return segment_counts
@@ -373,10 +376,10 @@ def get_conversation_id(session):
             if fallback_id:
                 text = fallback_id
             else:
-                print(f"Error fetching backup MISSIVE_WEEKLY_REPORT_CONVERSATION_ID")
+                logger.error(f"Error fetching backup MISSIVE_WEEKLY_REPORT_CONVERSATION_ID")
                 return None
     except Exception as e:
-        print(f"Error fetching MISSIVE_WEEKLY_REPORT_CONVERSATION_ID from database: {e}")
+        logger.error(f"Error fetching MISSIVE_WEEKLY_REPORT_CONVERSATION_ID from database: {e}")
         return None
 
 
