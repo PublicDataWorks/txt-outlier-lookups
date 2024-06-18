@@ -24,7 +24,7 @@ from .utils import (
     format_weekly_report_data,
     calculate_percentage_change,
     FetchDataResult,
-    generate_broadcast_info_section,
+    generate_broadcast_info_section, get_conversation_id,
 )
 from .queries import (
     GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT,
@@ -49,7 +49,6 @@ load_dotenv(override=True)
 class AnalyticsService:
     def __init__(self):
         self.Session = Session()
-
 
     def get_weekly_unsubscribe_by_audience_segment(self, session):
         return session.execute(GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT).fetchall()
@@ -164,14 +163,14 @@ class AnalyticsService:
         )
 
     def insert_weekly_report(
-        self,
-        session,
-        current_date,
-        conversation_metrics,
-        conversation_outcomes,
-        property_statuses,
-        broadcast_replies,
-        unsubscribes,
+            self,
+            session,
+            current_date,
+            conversation_metrics,
+            conversation_outcomes,
+            property_statuses,
+            broadcast_replies,
+            unsubscribes,
     ):
         new_report = WeeklyReport(
             created_at=current_date,
@@ -287,9 +286,10 @@ class AnalyticsService:
         if unsubscribe_by_audience_segment_section:
             markdown_report.append(unsubscribe_by_audience_segment_section)
 
+        conversation_id = get_conversation_id(self.Session)
         missive_client = MissiveAPI()
         missive_client.send_post_sync(
-            markdown_report, conversation_id=os.getenv("MISSIVE_WEEKLY_REPORT_CONVERSATION_ID")
+            markdown_report, conversation_id=conversation_id
         )
 
         with self.Session as session:

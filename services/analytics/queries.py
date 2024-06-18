@@ -48,7 +48,6 @@ GET_WEEKLY_MESSAGES_HISTORY = """
             created_at < DATE_TRUNC('week', CURRENT_DATE)
         """
 
-
 GET_WEEKLY_FAILED_MESSAGE = text("""
     SELECT COUNT(*) AS count
     FROM public.broadcast_sent_message_status

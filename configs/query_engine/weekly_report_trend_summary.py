@@ -23,6 +23,9 @@ def generate_report_summary(messages_history):
             fallback_template = templates.get("sms_history_summary")
             if fallback_template:
                 text = fallback_template
+            else:
+                print(f"Error fetching backup template")
+                return None
     except Exception as e:
         print(f"Error fetching template from database: {e}")
         return None
@@ -30,7 +33,7 @@ def generate_report_summary(messages_history):
 
     summary_index = DocumentSummaryIndex.from_documents(documents)
 
-    query_engine = summary_index.as_query_engine(llm=OpenAI(model="gpt-3.5-turbo"))
+    query_engine = summary_index.as_query_engine(llm=OpenAI(model="gpt-4o"))
 
     summary = query_engine.query(text)
 
