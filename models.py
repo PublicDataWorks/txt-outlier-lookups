@@ -205,6 +205,41 @@ class mi_wayne_detroit(Base):
     tax_details_bak = Column(String)
     tax_payments_bak = Column(String)
 
+    
+class lookup_history(Base):
+    __tablename__ = "lookup_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    address = Column(String(255), nullable=False)
+    zip_code = Column(String(20))
+    tax_status = Column(String(50))
+    rental_status = Column(String(50))
+
+
+class residential_rental_registrations(Base):
+    __tablename__ = "residential_rental_registrations"
+    __table_args__ = {"schema": "address_lookup"}
+
+    ogc_fid = Column(
+        Integer,
+        primary_key=True,
+        server_default=text(
+            "nextval('address_lookup.\"Residential_Rental_Registrations_ogc_fid_seq\"'::regclass)"
+        ),
+    )
+    wkb_geometry = Column(Geometry(), index=True)
+    record_id = Column(String)
+    date_status = Column(DateTime(True))
+    parcel_id = Column(String)
+    lon = Column(Float(53))
+    lat = Column(Float(53))
+    ObjectId = Column(Integer)
+    street_num = Column(String)
+    street_dir = Column(String)
+    street_name = Column(String)
+    address_id = Column(String)
+
+    
 class LookupTemplate(Base):
     __tablename__ = "lookup_template"
     __table_args__ = {"schema": "public"}
