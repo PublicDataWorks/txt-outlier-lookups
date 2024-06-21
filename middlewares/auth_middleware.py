@@ -13,7 +13,7 @@ load_dotenv(override=True)
 
 class AuthMiddleware:
     @staticmethod
-    def verify(hash: str, request_body: dict) -> bool:
+    def verify(sig: str, request_body: dict) -> bool:
         secret = os.getenv("HMAC_SECRET")
         if secret is None:
             raise ValueError("HMAC_SECRET must be set.")
@@ -21,7 +21,7 @@ class AuthMiddleware:
         data = json.dumps(request_body).encode()
 
         key_prefix = "sha256="
-        cleaned_header_sig = hash[len(key_prefix) :] if hash.startswith(key_prefix) else hash
+        cleaned_header_sig = sig[len(key_prefix):] if sig.startswith(key_prefix) else sig
         decoded_signature = bytes.fromhex(cleaned_header_sig)
 
         hmac_obj = hmac.new(secret.encode(), data, digestmod=hashlib.sha256)
@@ -35,11 +35,11 @@ class AuthMiddleware:
         if not header.startswith("sha256="):
             raise APIException("Unauthorized", 401)
         else:
-            hash = header.split("=")[1]
-            if not hash:
+            sig = header.split("=")[1]
+            if not sig:
                 raise APIException("Unauthorized", 401)
             else:
-                if not self.verify(hash, request.json):
+                if not self.verify(sig, request.json):
                     raise APIException("Unauthorized", 401)
 
 

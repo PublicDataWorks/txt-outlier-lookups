@@ -1,4 +1,9 @@
 import paramiko
+import logging
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class SFTPServerClient:
@@ -19,11 +24,12 @@ class SFTPServerClient:
                 username=self.__userName,
                 password=self.__password,
                 look_for_keys=False,
+                allow_agent=False
             )
             self.__SFTP_Client = self.__SSH_Client.open_sftp()
         except Exception as excp:
+            logger.error(f"Failed to connect to server {self.__hostName}:{self.__port}: {str(excp)}")
             raise Exception(excp)
-            return
         else:
             print(f"Connected to server {self.__hostName}:{self.__port} as {self.__userName}.")
 

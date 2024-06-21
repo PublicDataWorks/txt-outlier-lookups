@@ -1,10 +1,8 @@
-# Standard library imports
 import os
 import sys
 import threading
 from pathlib import Path
 
-# Related third party imports
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from loguru import logger
@@ -12,7 +10,6 @@ from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 import sentry_sdk
 
-# Local application/library specific imports
 from configs.cache_template import init_lookup_templates_cache, cache
 from configs.query_engine.owner_information import init_owner_query_engine
 from configs.query_engine.owner_information_without_sunit import (
@@ -21,6 +18,7 @@ from configs.query_engine.owner_information_without_sunit import (
 from configs.query_engine.tax_information import init_tax_query_engine
 from configs.query_engine.tax_information_without_sunit import init_tax_query_engine_without_sunit
 from configs.supabase import run_websocket_listener
+from cron.property import fetch_data
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from services.services import (
@@ -54,10 +52,10 @@ cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Pa
 with app.app_context():
     init_lookup_templates_cache()
 
-owner_query_engine = init_owner_query_engine()
-owner_query_engine_without_sunit = init_owner_query_engine_without_sunit()
-tax_query_engine = init_tax_query_engine()
-tax_query_engine_without_sunit = init_tax_query_engine_without_sunit()
+# owner_query_engine = init_owner_query_engine()
+# owner_query_engine_without_sunit = init_owner_query_engine_without_sunit()
+# tax_query_engine = init_tax_query_engine()
+# tax_query_engine_without_sunit = init_tax_query_engine_without_sunit()
 
 
 @app.errorhandler(APIException)
@@ -107,8 +105,6 @@ def yes():
         normalized_address = extract_latest_address(
             messages=messages, conversation_id=conversation_id, to_phone=to_phone
         )
-        query_result = ""
-
         if not normalized_address:
             logger.error("Couldn't parse address from history messages", messages)
             return (
@@ -166,6 +162,11 @@ def more():
         print(f"An error occurred: {str(e)}")
         logger.exception("", e)
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/test", methods=["POST"])
+def test():
+    fetch_data()
 
 
 def start_mqtt():

@@ -26,9 +26,13 @@ class MissiveAPI:
         message,
         to_phone,
         conversation_id=None,
-        add_label_list=[],
-        remove_label_list=[],
+        add_label_list=None,
+        remove_label_list=None,
     ):
+        if add_label_list is None:
+            add_label_list = []
+        if remove_label_list is None:
+            remove_label_list = []
         try:
             body = {
                 "drafts": {
@@ -47,9 +51,9 @@ class MissiveAPI:
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                    CREATE_MESSAGE_URL,
-                    headers=self.headers,
-                    data=json.dumps(body),
+                        CREATE_MESSAGE_URL,
+                        headers=self.headers,
+                        data=json.dumps(body),
                 ) as response:
                     return await response.text()
 
@@ -85,9 +89,13 @@ class MissiveAPI:
         message,
         to_phone,
         conversation_id=None,
-        add_label_list=[],
-        remove_label_list=[],
+        add_label_list=None,
+        remove_label_list=None,
     ):
+        if add_label_list is None:
+            add_label_list = []
+        if remove_label_list is None:
+            remove_label_list = []
         try:
             body = {
                 "drafts": {
@@ -113,7 +121,7 @@ class MissiveAPI:
         except requests.exceptions.RequestException:
             return None
 
-    def send_post_sync(self, markdowns, conversation_id):
+    def send_post_sync(self, markdowns):
         attachments = [{'markdown': markdown, 'color': 'good'} for markdown in markdowns]
 
         body = {

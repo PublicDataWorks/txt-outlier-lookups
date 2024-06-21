@@ -8,7 +8,6 @@ from configs.cache_template import get_template_content_by_name
 from configs.database import Session
 
 from libs.MissiveAPI import MissiveAPI
-from models import mi_wayne_detroit
 from configs.cache_template import get_rental_message, get_tax_message
 from models import lookup_history, mi_wayne_detroit, residential_rental_registrations
 from utils.address_normalizer import get_first_valid_normalized_address, extract_latest_address
@@ -23,8 +22,6 @@ missive_client = MissiveAPI()
 
 def search_service(query, conversation_id, to_phone, owner_query_engine_without_sunit):
     session = Session()
-    results = []
-    is_landbank = False
 
     # Run query engine to get address
     normalized_address = get_first_valid_normalized_address([query])
@@ -129,7 +126,6 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
             rental_status,
         )
 
-
     if len(results) > 1:
         return handle_ambiguous(display_address, conversation_id, to_phone)
 
@@ -216,7 +212,7 @@ def handle_match(
         conversation_id,
         to_phone,
         rental_status="UNREGISTERED",
-        following_message_type= "",
+        following_message_type="",
 ):
     response = str(response)
     if rental_status == "REGISTERED":
@@ -232,7 +228,6 @@ def handle_match(
 
     time.sleep(2)
 
-    following_message = ""
     match following_message_type:
         case FollowingMessageType.LAND_BACK:
             following_message = get_template_content_by_name(FollowingMessageType.LAND_BACK)
