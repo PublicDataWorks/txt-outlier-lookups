@@ -11,16 +11,11 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import sentry_sdk
 
 from configs.cache_template import init_lookup_templates_cache, cache
-from configs.query_engine.owner_information import init_owner_query_engine
-from configs.query_engine.owner_information_without_sunit import (
-    init_owner_query_engine_without_sunit
-)
-from configs.query_engine.tax_information import init_tax_query_engine
-from configs.query_engine.tax_information_without_sunit import init_tax_query_engine_without_sunit
 from configs.supabase import run_websocket_listener
-from cron.property import fetch_data
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
+from libs.pgcron import create_job
+from middlewares.jwt_middleware import require_authentication
 from services.services import (
     extract_address_information,
     handle_match,
@@ -51,6 +46,7 @@ cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Pa
 
 with app.app_context():
     init_lookup_templates_cache()
+
 
 # owner_query_engine = init_owner_query_engine()
 # owner_query_engine_without_sunit = init_owner_query_engine_without_sunit()
@@ -164,9 +160,22 @@ def more():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/test", methods=["POST"])
-def test():
-    fetch_data()
+@app.route("/fetch_property", methods=["GET"])
+@require_authentication
+def fetch_property():
+    from cron.property import fetch_data
+    thread = threading.Thread(target=fetch_data)
+    thread.start()
+    return jsonify({"message": "Data fetch started"}), 200
+
+
+@app.route("/fetch_rental", methods=["GET"])
+@require_authentication
+def fetch_rental():
+    from cron.rental import fetch_data
+    thread = threading.Thread(target=fetch_data)
+    thread.start()
+    return jsonify({"message": "Data fetch started"}), 200
 
 
 def start_mqtt():
@@ -177,4 +186,4 @@ def start_mqtt():
 
 if __name__ == "__main__":
     start_mqtt()
-    app.run(port=8080, host="0.0.0.0")
+    app.run(port=8081, host="0.0.0.0", debug=True)

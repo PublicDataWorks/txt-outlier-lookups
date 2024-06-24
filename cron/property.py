@@ -1,6 +1,5 @@
 import os
 import logging
-import shutil
 from subprocess import PIPE, Popen
 from zipfile import ZipFile
 
@@ -24,18 +23,16 @@ def fetch_data():
     zip_file_path = os.path.join(temp_dir, "mi_wayne_detroit.sql.zip")
     sftp_client = SFTPServerClient(host, port, username, password)
     try:
-        # sftp_client.connect()
-        # sftp_client.download_file(
-        #     "/download/mi_wayne_detroit.sql.zip", zip_file_path
-        # )
-        # sftp_client.disconnect()
+        sftp_client.connect()
+        sftp_client.download_file(
+            "/download/mi_wayne_detroit.sql.zip", zip_file_path
+        )
+        sftp_client.disconnect()
 
         with ZipFile(zip_file_path, "r") as zip_ref:
             zip_ref.extractall(temp_dir)
 
         try:
-            current_directory = os.getcwd()
-            print(f"Current working directory: {current_directory}")
             process = Popen(["./cron/property.sh"], shell=True, stdin=PIPE, stderr=PIPE)
             stdout, stderr = process.communicate()
             if stdout:

@@ -9,3 +9,4 @@ llama-index
 realtime~=1.0.5
 usaddress-scourgify
 paramiko
+supabase
