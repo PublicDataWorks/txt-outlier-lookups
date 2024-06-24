@@ -8,7 +8,6 @@ from models import LookupTemplate
 logger = logging.getLogger(__name__)
 
 
-
 def format_metric_by_audience_segment(metrics):
     metric_report = ""
     for metric in metrics:
@@ -16,13 +15,11 @@ def format_metric_by_audience_segment(metrics):
     return metric_report.strip() + "\n" if metric_report else ""
 
 
-
 def format_conversation_for_report(conversations):
     conversation_report = ""
     for result in conversations:
         conversation_report += f"| - {result[0].ljust(28)} | {str(result[1]).ljust(4)} |\n"
     return conversation_report.strip() + "\n" if conversation_report else ""
-
 
 
 def format_lookup_history(metrics):
@@ -34,7 +31,6 @@ def format_lookup_history(metrics):
     return lookup_history_report.strip() + "\n" if lookup_history_report else ""
 
 
-
 def format_geographic_regions(zipcodes):
     geographic_regions_table = ""
     for result in zipcodes:
@@ -42,10 +38,8 @@ def format_geographic_regions(zipcodes):
     return geographic_regions_table.strip() + "\n" if geographic_regions_table else ""
 
 
-
 def to_pascal_case(string):
     return " ".join(word.capitalize() for word in string.lower().split("_"))
-
 
 
 def map_status(raw_status):
@@ -197,7 +191,7 @@ def generate_lookup_history_markdown(status_counts, percentage_changes, percenta
 
 
 def generate_conversation_outcomes_markdown(
-        outcome_counts, percentage_changes, percentage_changes_4_week
+    outcome_counts, percentage_changes, percentage_changes_4_week
 ):
     return (
         "### Conversation Outcomes\n"
@@ -214,7 +208,7 @@ def generate_conversation_outcomes_markdown(
 
 
 def generate_data_by_audience_segment_markdown(
-        segment_counts, percentage_changes, percentage_changes_4_week
+    segment_counts, percentage_changes, percentage_changes_4_week
 ):
     return (
         "### Broadcast Replies by Audience Segment\n"
@@ -265,7 +259,7 @@ def generate_major_themes_section(messages_history):
 
 
 def generate_conversation_metrics_section(
-        conversation_metrics, percentage_changes, percentage_changes_4_week
+    conversation_metrics, percentage_changes, percentage_changes_4_week
 ):
     return (
         "### Conversation Metrics\n"
@@ -404,5 +398,3 @@ class FetchDataResult(NamedTuple):
 
     def __getitem__(self, key):
         return getattr(self, key)
-def get_current_date_formatted_for_weekly_report():
-    return datetime.now().strftime("%Y-%m-%d")

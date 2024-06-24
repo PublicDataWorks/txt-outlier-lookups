@@ -121,7 +121,7 @@ class MissiveAPI:
         except requests.exceptions.RequestException:
             return None
 
-    def send_post_sync(self, markdowns):
+    def send_post_sync(self, markdowns, conversation_id):
         attachments = [{'markdown': markdown, 'color': 'good'} for markdown in markdowns]
 
         body = {

@@ -2,6 +2,7 @@ sentry-sdk
 loguru
 python-dotenv
 Flask-Caching
+Flask
 SQLAlchemy
 psycopg2-binary
 GeoAlchemy2

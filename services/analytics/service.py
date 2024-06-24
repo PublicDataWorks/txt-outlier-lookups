@@ -1,15 +1,13 @@
-import os
-
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 import datetime
 
 from configs.database import Session
-from .config import (
+from config import (
     IMPACT_LABEL_IDS,
     REPORTER_LABEL_IDS,
 )
-from .utils import (
+from utils import (
     process_conversation_metrics,
     process_conversation_outcomes,
     process_audience_segment_related_data,
@@ -26,7 +24,7 @@ from .utils import (
     FetchDataResult,
     generate_broadcast_info_section, get_conversation_id,
 )
-from .queries import (
+from queries import (
     GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT,
     GET_WEEKLY_BROADCAST_SENT,
     GET_WEEKLY_FAILED_MESSAGE,
@@ -292,14 +290,6 @@ class AnalyticsService:
             markdown_report, conversation_id=conversation_id
         )
 
-        lookup_history_section = ''
-        formatted_lookup_history = format_lookup_history(lookup_history)
-        if formatted_lookup_history.strip():
-            lookup_history_section = (
-                "### Data Lookups by Property Status\n"
-                "| Status                         | Count |\n"
-                "|------------------------------- |-------|\n"
-                f"{formatted_lookup_history}"
         with self.Session as session:
             self.insert_weekly_report(
                 session,
@@ -311,54 +301,18 @@ class AnalyticsService:
                 unsubscribes_by_audience_segment,
             )
 
-        impact_conversations_section = format_conversation_for_report(impact_conversations)
-        conversation_outcomes = ''
-        if impact_conversations_section.strip():
-            conversation_outcomes = (
-                "### Conversation Outcomes\n"
-                "| Outcome                         | Count |\n"
-                "|-------------------------------  |-------|\n"
-                f"{impact_conversations_section}"
-            )
     def fetch_average_data_last_4_weeks(self):
         # Calculate the start date for 4 weeks ago
         today = datetime.date.today()
         start_date = today - datetime.timedelta(days=today.weekday() + 28)
 
-        zip_code_section = format_geographic_regions(zip_codes)
-        geographic_regions = ''
-        if zip_code_section.strip():
-            geographic_regions = (
-                "### Data Lookups by Geographic Regions (Top 5 ZIP Codes)\n"
-                "| **ZIP Code** | **Count** |\n"
-                "|--------------|-------|\n"
-                f"{zip_code_section}"
-            )
         # Calculate the end date of the last Sunday
         end_date = today - datetime.timedelta(days=today.weekday() + 1)
 
-        replies_by_audience_segment = format_metric_by_audience_segment(replies)
-        broadcast_replies = ''
-        if replies_by_audience_segment.strip():
-            broadcast_replies = (
-                "### Broadcast Replies by Audience Segment\n"
-                "| Segment                         | Count |\n"
-                "|-------------------------------  |-------|\n"
-                f"{replies_by_audience_segment}"
-            )
         # Convert to datetime for database query purposes
         start_datetime = datetime.datetime.combine(start_date, datetime.time.min)
         end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
 
-        unsubscribed_by_audience_segment = format_metric_by_audience_segment(unsubscribed_messages)
-        unsubscribe_section = ''
-        if unsubscribed_by_audience_segment.strip():
-            unsubscribe_section = (
-                "### Unsubscribes by Audience Segment\n"
-                "| Segment                         | Count |\n"
-                "|-------------------------------  |-------|\n"
-                f"{unsubscribed_by_audience_segment}"
-            )
         query = text("""
             SELECT 
                 AVG(conversation_starters_sent) AS conversation_starters_sent,
@@ -394,24 +348,12 @@ class AnalyticsService:
             WHERE created_at >= :start_date AND created_at <= :end_date
         """)
 
-        markdown_report = [intro, major_themes, content, broadcasts, conversation_metrics]
         with self.Session as session:
             result = session.execute(
                 query, {"start_date": start_datetime, "end_date": end_datetime}
             ).fetchone()
 
-        if lookup_history_section:
-            markdown_report.append(lookup_history_section)
-        if geographic_regions:
-            markdown_report.append(geographic_regions)
-        if conversation_outcomes:
-            markdown_report.append(conversation_outcomes)
-        if broadcast_replies:
-            markdown_report.append(broadcast_replies)
-        if unsubscribe_section:
-            markdown_report.append(unsubscribe_section)
             if not result:
                 return None
 
-        missive_client = MissiveAPI()
         return format_weekly_report_data(result)
