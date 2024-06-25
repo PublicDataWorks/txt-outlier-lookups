@@ -23,15 +23,15 @@ from services.services import (
     extract_address_information,
     handle_match,
     search_service,
-    more_search_service,
+    more_search_service, get_conversation_data, get_conversation_summary,
 )
 from utils.address_normalizer import extract_latest_address
 
 load_dotenv(override=True)
 
 sentry_loguru = LoguruIntegration(
-    level=LoggingLevels.INFO.value,
-    event_level=LoggingLevels.ERROR.value,
+    level=LoggingLevels.INFO.value,  # Capture info and above as breadcrumbs
+    event_level=LoggingLevels.ERROR.value,  # Send errors as events
 )
 
 sentry_sdk.init(
@@ -179,6 +179,41 @@ def fetch_rental():
     thread = threading.Thread(target=fetch_data)
     thread.start()
     return jsonify({"message": "Data fetch started"}), 200
+
+
+@app.route('/conversations', methods=['POST'])
+def get_conversation():
+    data = request.get_json()
+
+    # Validate the incoming data
+    if not data:
+        return jsonify({'error': 'Request body is required'}), 400
+
+    conversation_id = data.get('conversation_id')
+    reference = data.get('reference')
+
+    # Check if conversation_id and reference are provided
+    if not conversation_id:
+        return jsonify({'error': 'Conversation ID is required'}), 400
+    if not reference or not isinstance(reference, list) or len(reference) != 2:
+        return jsonify({'error': 'Reference must be a list with two phone numbers'}), 400
+
+    try:
+        # Call the service functions to get conversation data and summary
+        conversation_data = get_conversation_data(conversation_id, reference)
+        print(conversation_data)
+        # Check if the conversation data and summary exist
+        if not conversation_data:
+            return jsonify({'error': 'Error while getting user data'}), 404
+
+        # Return the conversation data and summary
+        return jsonify({
+            'conversation_data': conversation_data,
+        }), 200
+
+    except Exception as e:
+        # Handle any exceptions that occur during the process
+        return jsonify({'error': str(e)}), 500
 
 
 def start_mqtt():

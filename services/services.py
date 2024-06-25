@@ -3,13 +3,16 @@ import time
 
 from flask import jsonify
 from loguru import logger
+from sqlalchemy.orm import aliased
 
 from configs.cache_template import get_template_content_by_name
 from configs.database import Session
+from configs.query_engine.text_summary import generate_text_summary
 
 from libs.MissiveAPI import MissiveAPI
 from configs.cache_template import get_rental_message, get_tax_message
-from models import lookup_history, mi_wayne_detroit, residential_rental_registrations
+from models import LookupHistory, MiWayneDetroit, ResidentialRentalRegistrations, TwilioMessage, ConversationLabel, \
+    ConversationAssignee, Author, User, Comments
 from utils.address_normalizer import get_first_valid_normalized_address, extract_latest_address
 from utils.check_property_status import check_property_status
 from utils.map_keys_to_result import map_keys_to_result
@@ -27,7 +30,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
     normalized_address = get_first_valid_normalized_address([query])
     address, sunit = extract_address_information(normalized_address)
     rental_status_case = case(
-        (residential_rental_registrations.lat.isnot(None), "REGISTERED"), else_="UNREGISTERED"
+        (ResidentialRentalRegistrations.lat.isnot(None), "REGISTERED"), else_="UNREGISTERED"
     ).label("rental_status")
 
     if not address:
@@ -37,32 +40,32 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
         if sunit:
             results = (
                 session.query(
-                    mi_wayne_detroit.address,
+                    MiWayneDetroit.address,
                     rental_status_case,
-                    mi_wayne_detroit.tax_status,
-                    mi_wayne_detroit.szip5,
-                    mi_wayne_detroit.tax_due,
+                    MiWayneDetroit.tax_status,
+                    MiWayneDetroit.szip5,
+                    MiWayneDetroit.tax_due,
                 )
                 .outerjoin(
-                    residential_rental_registrations,
+                    ResidentialRentalRegistrations,
                     and_(
                         func.ST_DWithin(
-                            mi_wayne_detroit.wkb_geometry,
-                            residential_rental_registrations.wkb_geometry,
+                            MiWayneDetroit.wkb_geometry,
+                            ResidentialRentalRegistrations.wkb_geometry,
                             0.001,
                         ),
                         func.strict_word_similarity(
-                            func.upper(mi_wayne_detroit.saddstr),
-                            func.upper(residential_rental_registrations.street_name),
+                            func.upper(MiWayneDetroit.saddstr),
+                            func.upper(ResidentialRentalRegistrations.street_name),
                         )
                         > 0.8,
-                        mi_wayne_detroit.saddno == residential_rental_registrations.street_num,
+                        MiWayneDetroit.saddno == ResidentialRentalRegistrations.street_num,
                     ),
                 )
                 .filter(
-                    mi_wayne_detroit.address.ilike(f"{address.strip()}%"),
+                    MiWayneDetroit.address.ilike(f"{address.strip()}%"),
                     or_(
-                        mi_wayne_detroit.sunit.ilike(f"%{sunit}%"),
+                        MiWayneDetroit.sunit.ilike(f"%{sunit}%"),
                     ),
                 )
                 .all()
@@ -70,30 +73,30 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
         else:
             results = (
                 session.query(
-                    mi_wayne_detroit.address,
+                    MiWayneDetroit.address,
                     rental_status_case,
-                    mi_wayne_detroit.tax_status,
-                    mi_wayne_detroit.szip5,
-                    mi_wayne_detroit.tax_due,
+                    MiWayneDetroit.tax_status,
+                    MiWayneDetroit.szip5,
+                    MiWayneDetroit.tax_due,
                 )
                 .outerjoin(
-                    residential_rental_registrations,
+                    ResidentialRentalRegistrations,
                     and_(
                         func.ST_DWithin(
-                            mi_wayne_detroit.wkb_geometry,
-                            residential_rental_registrations.wkb_geometry,
+                            MiWayneDetroit.wkb_geometry,
+                            ResidentialRentalRegistrations.wkb_geometry,
                             0.001,
                         ),
                         func.strict_word_similarity(
-                            func.upper(mi_wayne_detroit.saddstr),
-                            func.upper(residential_rental_registrations.street_name),
+                            func.upper(MiWayneDetroit.saddstr),
+                            func.upper(ResidentialRentalRegistrations.street_name),
                         )
                         > 0.8,
-                        mi_wayne_detroit.saddno == residential_rental_registrations.street_num,
+                        MiWayneDetroit.saddno == ResidentialRentalRegistrations.street_num,
                     ),
                 )
                 .filter(
-                    mi_wayne_detroit.address.ilike(f"{address.strip()}%"),
+                    MiWayneDetroit.address.ilike(f"{address.strip()}%"),
                 )
                 .all()
             )
@@ -146,7 +149,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
             following_message_type = FollowingMessageType.UNCONFIRMED_TAX_STATUS
         else:
             following_message_type = FollowingMessageType.DEFAULT
-            
+
     return handle_match(query_result, conversation_id, to_phone, rental_status, following_message_type)
 
 
@@ -303,7 +306,7 @@ def extract_address_information(normalized_address):
 def add_data_lookup_to_db(address, zip_code, tax_status, rental_status):
     session = Session()
     try:
-        new_data_lookup = lookup_history(
+        new_data_lookup = LookupHistory(
             address=address, zip_code=zip_code, tax_status=tax_status, rental_status=rental_status
         )
         session.add(new_data_lookup)
@@ -321,42 +324,102 @@ def get_address_information(session, address):
 
     # Define the case statement for rental_status
     rental_status_case = case(
-        (residential_rental_registrations.lat.isnot(None), "IS"), else_="IS NOT"
+        (ResidentialRentalRegistrations.lat.isnot(None), "IS"), else_="IS NOT"
     ).label("rental_status")
 
     query = (
         session.query(
             rental_status_case,
-            mi_wayne_detroit.tax_due,
-            mi_wayne_detroit.tax_status,
-            mi_wayne_detroit.szip5,
+            MiWayneDetroit.tax_due,
+            MiWayneDetroit.tax_status,
+            MiWayneDetroit.szip5,
         )
         .outerjoin(
-            residential_rental_registrations,
+            ResidentialRentalRegistrations,
             and_(
                 func.ST_DWithin(
-                    mi_wayne_detroit.wkb_geometry,
-                    residential_rental_registrations.wkb_geometry,
+                    MiWayneDetroit.wkb_geometry,
+                    ResidentialRentalRegistrations.wkb_geometry,
                     0.001,
                 ),
                 func.strict_word_similarity(
-                    mi_wayne_detroit.address,
-                    residential_rental_registrations.street_num
+                    MiWayneDetroit.address,
+                    ResidentialRentalRegistrations.street_num
                     + " "
-                    + residential_rental_registrations.street_name,
+                    + ResidentialRentalRegistrations.street_name,
                 )
                 > 0.8,
             ),
         )
         .filter(
-            mi_wayne_detroit.address.ilike(f"{address.strip()}%"),
+            MiWayneDetroit.address.ilike(f"{address.strip()}%"),
             or_(
-                mi_wayne_detroit.sunit.ilike(f"%{sunit}%"),
-                mi_wayne_detroit.sunit == "",
-                mi_wayne_detroit.sunit.is_(None),
+                MiWayneDetroit.sunit.ilike(f"%{sunit}%"),
+                MiWayneDetroit.sunit == "",
+                MiWayneDetroit.sunit.is_(None),
             ),
         )
     )
 
     results = query.all()
     return results
+
+
+def get_conversation_data(conversation_id, references):
+    try:
+        with Session() as session:
+            # Get the query phone number
+            PHONE_NUMBER = os.getenv('PHONE_NUMBER')
+            query_phone_number = [phone for phone in references if phone != PHONE_NUMBER][0] # get the non system
+            # phone number in reference pair
+
+            # Query authors table
+            author = session.query(Author).filter(Author.phone_number == query_phone_number).first()
+            author_name = author.name if author else None
+            author_zipcode = author.zipcode if author else None
+            author_email = author.email if author else None
+
+            # Query conversations_assignees and users tables
+            UserAlias = aliased(User)
+            assignee_users = session.query(UserAlias.name).join(
+                ConversationAssignee, ConversationAssignee.user_id == UserAlias.id
+            ).filter(ConversationAssignee.conversation_id == conversation_id).all()
+            assignee_user_names = [user.name for user in assignee_users if user.name is not None]
+
+            # Query TwilioMessage table
+            messages = session.query(TwilioMessage.preview).filter(
+                or_(TwilioMessage.from_field == query_phone_number, TwilioMessage.to_field == query_phone_number)
+            ).order_by(TwilioMessage.delivered_at).all()
+
+            first_reply = session.query(TwilioMessage.delivered_at).filter(
+                TwilioMessage.from_field == query_phone_number
+            ).order_by(TwilioMessage.delivered_at).first()
+
+            # Query comments table
+            comments = session.query(Comments).filter(Comments.conversation_id == conversation_id).all()
+
+            comment_summary = generate_text_summary(comments)
+            message_summary = generate_text_summary(messages)
+
+            # Create a dictionary to store the conversation summary
+            conversation_summary = {
+                'author_name': author_name,
+                'author_zipcode': author_zipcode,
+                'author_email': author_email,
+                'assignee_user_name': assignee_user_names,
+                'first_reply': first_reply[0] if first_reply else None,
+                'messages': message_summary.text,
+                'comments': comment_summary.text
+            }
+
+            return conversation_summary
+
+    except Exception as e:
+        # Log the error for debugging purposes
+        print(f"Error occurred while retrieving conversation summary: {str(e)}")
+        # Re-raise the exception to be handled by the calling code
+        raise
+
+
+def get_conversation_summary(conversation_id, reference):
+    pass

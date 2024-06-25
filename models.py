@@ -1,3 +1,5 @@
+import uuid
+
 from geoalchemy2 import Geometry
 from sqlalchemy import (
     BigInteger,
@@ -8,7 +10,7 @@ from sqlalchemy import (
     Float,
     Integer,
     String,
-    text,
+    text, JSON,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
@@ -17,7 +19,7 @@ Base = declarative_base()
 metadata = Base.metadata
 
 
-class mi_wayne_detroit(Base):
+class MiWayneDetroit(Base):
     __tablename__ = "mi_wayne_detroit"
     __table_args__ = {"schema": "address_lookup"}
 
@@ -206,7 +208,7 @@ class mi_wayne_detroit(Base):
     tax_payments_bak = Column(String)
 
     
-class lookup_history(Base):
+class LookupHistory(Base):
     __tablename__ = "lookup_history"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -216,7 +218,7 @@ class lookup_history(Base):
     rental_status = Column(String(50))
 
 
-class residential_rental_registrations(Base):
+class ResidentialRentalRegistrations(Base):
     __tablename__ = "residential_rental_registrations"
     __table_args__ = {"schema": "address_lookup"}
 
@@ -296,3 +298,95 @@ class WeeklyReport(Base):
     unsubscribes_connected = Column(Integer)
     unsubscribes_passive = Column(Integer)
     unsubscribes_inactive = Column(Integer)
+
+
+class Author(Base):
+    __tablename__ = 'authors'
+
+    phone_number = Column(String, primary_key=True)
+    name = Column(String, nullable=True)
+    unsubscribed = Column(Boolean, nullable=False, default=False)
+    zipcode = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+
+    def __repr__(self):
+        return f"<Author(name={self.name}, phone_number={self.phone_number}, unsubscribed={self.unsubscribed})>"
+
+
+class TwilioMessage(Base):
+    __tablename__ = 'twilio_messages'
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    preview = Column(String, nullable=True)
+    type = Column(String, nullable=True)
+    delivered_at = Column(DateTime(timezone=True), nullable=True)
+    references = Column(JSON, nullable=True)
+    external_id = Column(String, nullable=True)
+    attachments = Column(String, nullable=True)
+    from_field = Column(String, nullable=True)
+    to_field = Column(String, nullable=True)
+    is_broadcast_reply = Column(Boolean, nullable=True, default=False)
+    reply_to_broadcast = Column(Integer, nullable=True)
+
+    def __repr__(self):
+        return f"<TwilioMessage(id={self.id}, type={self.type}, delivered_at={self.delivered_at})>"
+
+
+class ConversationLabel(Base):
+    __tablename__ = 'conversations_labels'
+
+    id = Column(Integer, primary_key=True)
+    conversation_id = Column(UUID(as_uuid=True))
+    label_id = Column(UUID(as_uuid=True))
+    updated_at = Column(DateTime(timezone=True))
+    is_archived = Column(Boolean)
+
+    def __repr__(self):
+        return f"<ConversationLabel(id={self.id}, conversation_id={self.conversation_id}, label_id={self.label_id})>"
+
+
+class ConversationAssignee(Base):
+    __tablename__ = 'conversations_assignees'
+
+    id = Column(Integer, primary_key=True)
+    unassigned = Column(Boolean)
+    closed = Column(Boolean)
+    archived = Column(Boolean)
+    trashed = Column(Boolean)
+    junked = Column(Boolean)
+    assigned = Column(Boolean)
+    flagged = Column(Boolean)
+    snoozed = Column(Boolean)
+    conversation_id = Column(UUID(as_uuid=True))
+    user_id = Column(UUID(as_uuid=True))
+
+    def __repr__(self):
+        return f"<ConversationAssignee(id={self.id}, conversation_id={self.conversation_id}, user_id={self.user_id})>"
+
+
+class User(Base):
+    __tablename__ = 'users'
+
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    email = Column(String)
+    name = Column(String)
+    avatar_url = Column(String)
+
+    def __repr__(self):
+        return f"<User(id={self.id}, email='{self.email}', name='{self.name}')>"
+
+
+class Comments(Base):
+    __tablename__ = 'comments'
+
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    created_at = Column(DateTime(timezone=True))
+    body = Column(String)
+    task_completed_at = Column(DateTime(timezone=True))
+    user_id = Column(UUID(as_uuid=True))
+    is_task = Column(Boolean)
+    conversation_id = Column(UUID(as_uuid=True))
+    attachment = Column(String)
+
+    def __repr__(self):
+        return f"<Comment(id={self.id}, body='{self.body}', user_id={self.user_id})>"
