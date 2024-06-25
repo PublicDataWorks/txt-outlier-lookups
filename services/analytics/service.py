@@ -1,385 +1,361 @@
 import os
-from collections import defaultdict
+
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
-from config import DATABASE_URL, IMPACT_LABEL_IDS, REPORTER_LABEL_IDS, BROADCAST_SOURCE_PHONE_NUMBER
-from configs.query_engine.weekly_report_trend_summary import query_from_documents
-from utils import (
-    format_metric_by_audience_segment,
-    format_conversation_for_report,
-    format_lookup_history,
-    get_current_date_formatted_for_weekly_report,
-    format_geographic_regions,
+import datetime
+
+from configs.database import Session
+from .config import (
+    IMPACT_LABEL_IDS,
+    REPORTER_LABEL_IDS,
 )
+from .utils import (
+    process_conversation_metrics,
+    process_conversation_outcomes,
+    process_audience_segment_related_data,
+    process_lookup_history,
+    generate_geographic_region_markdown,
+    generate_data_by_audience_segment_markdown,
+    generate_conversation_outcomes_markdown,
+    generate_lookup_history_markdown,
+    generate_intro_section,
+    generate_major_themes_section,
+    generate_conversation_metrics_section,
+    format_weekly_report_data,
+    calculate_percentage_change,
+    FetchDataResult,
+    generate_broadcast_info_section, get_conversation_id,
+)
+from .queries import (
+    GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT,
+    GET_WEEKLY_BROADCAST_SENT,
+    GET_WEEKLY_FAILED_MESSAGE,
+    GET_WEEKLY_TEXT_INS,
+    GET_WEEKLY_IMPACT_CONVERSATIONS,
+    GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT,
+    GET_WEEKLY_REPORTER_CONVERSATION,
+    GET_WEEKLY_DATA_LOOKUP,
+    GET_WEEKLY_TOP_ZIP_CODE,
+    GET_WEEKLY_MESSAGES_HISTORY,
+    GET_WEEKLY_BROADCAST_CONTENT
+)
+from collections import defaultdict
 from libs.MissiveAPI import MissiveAPI
+from models import WeeklyReport
 
-
-def get_weekly_unsubscribe_by_audience_segment(session):
-    query = text("""
-        SELECT 
-        bsms.audience_segment_id,
-        asg.name,
-        COUNT(*) AS count
-        FROM 
-            public.unsubscribed_messages um 
-        LEFT JOIN 
-            public.broadcast_sent_message_status bsms 
-        ON 
-            um.reply_to = bsms.id
-        LEFT JOIN public.audience_segments asg 
-        ON bsms.audience_segment_id = asg.id
-        WHERE
-            um.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-            AND 
-            um.created_at < DATE_TRUNC('week', CURRENT_DATE) 
-        GROUP BY bsms.audience_segment_id, asg.name
-    """)
-    return session.execute(query).fetchall()
-
-
-def get_weekly_broadcast_sent_messages_count(session):
-    query = text("""
-        SELECT COUNT(*) AS count
-        FROM public.broadcast_sent_message_status
-        WHERE 
-        is_second = False
-        AND
-        created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-        AND 
-        created_at < DATE_TRUNC('week', CURRENT_DATE) 
-    """)
-    return session.execute(query).fetchone()
-
-
-def get_weekly_text_ins(session):
-    query = text(f"""
-        SELECT COUNT(*) AS count
-        FROM public.twilio_messages
-        WHERE 
-        is_broadcast_reply = false
-        AND 
-        from_field != '{BROADCAST_SOURCE_PHONE_NUMBER}'
-        AND
-        created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-        AND 
-        created_at < DATE_TRUNC('week', CURRENT_DATE) 
-    """)
-    return session.execute(query).fetchone()
-
-
-def get_weekly_broadcast_sent(session):
-    query = text("""
-        SELECT *
-        FROM public.broadcasts
-        WHERE 
-        editable = False
-        AND
-        run_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-        AND 
-        run_at < DATE_TRUNC('week', CURRENT_DATE) 
-    """)
-    return session.execute(query)
-
-
-def format_broadcast_details(broadcast):
-    run_at = broadcast['run_at']
-    first_message = broadcast['first_message']
-    second_message = broadcast['second_message']
-    run_at_formatted = run_at.strftime("%a %b %d, %Y at %I:%M%p ET")
-
-    return f"""
-<details>
-  <summary>{run_at_formatted}</summary>
-
-{first_message}
-
-{second_message}
-
-</details>
-"""
-
-
-def get_weekly_messages_history(session, broadcast_sent):
-    broadcast_messages = []
-    for broadcast in broadcast_sent:
-        broadcast_messages.append(broadcast['first_message'])
-        broadcast_messages.append(broadcast['second_message'])
-
-    placeholders = ', '.join([f'${i + 1}' for i in range(len(broadcast_messages))])
-    params = {f'{i + 1}': msg for i, msg in enumerate(broadcast_messages)}
-
-    query = text(f"""
-        SELECT *
-        FROM public.twilio_messages
-        WHERE 
-        preview NOT IN ({placeholders})
-        AND
-        created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
-        AND 
-        created_at < DATE_TRUNC('week', CURRENT_DATE)
-    """).bindparams(**params)
-
-    messages = session.execute(query).fetchall()
-
-    grouped_messages = defaultdict(list)
-    for message in messages:
-        refs = message['references']
-        preview = message['preview']
-        grouped_messages[refs].append(preview)
-
-    return grouped_messages
+load_dotenv(override=True)
 
 
 class AnalyticsService:
     def __init__(self):
-        self.engine = create_engine(DATABASE_URL)
-        self.Session = sessionmaker(bind=self.engine)
+        self.Session = Session()
+
+    def get_weekly_unsubscribe_by_audience_segment(self, session):
+        return session.execute(GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT).fetchall()
+
+    def get_weekly_broadcast_sent(self, session):
+        return session.execute(GET_WEEKLY_BROADCAST_SENT).fetchall()
+
+    def get_weekly_messages_history(self, session, broadcast_sent):
+        broadcast_messages = []
+        for broadcast in broadcast_sent:
+            broadcast_messages.append(broadcast["first_message"])
+            broadcast_messages.append(broadcast["second_message"])
+
+        if broadcast_messages:
+            placeholders = ', '.join([f':msg{i + 1}' for i in range(len(broadcast_messages))])
+            not_in_clause = f"AND preview NOT IN ({placeholders})"
+            params = {f'msg{i + 1}': msg for i, msg in enumerate(broadcast_messages)}
+        else:
+            not_in_clause = ""
+            params = {}
+
+        query = text(GET_WEEKLY_MESSAGES_HISTORY + "\n" + not_in_clause).bindparams(**params)
+
+        messages = session.execute(query).fetchall()
+
+        grouped_messages = defaultdict(list)
+        for message in messages:
+            refs = message["references"]
+            preview = message["preview"]
+            grouped_messages[refs[0]].append(preview)
+
+        return grouped_messages
 
     def get_weekly_failed_message(self, session):
-        query = text("""
-            SELECT COUNT(*) AS count
-            FROM public.broadcast_sent_message_status
-            WHERE 
-            twilio_sent_status = 'failed' 
-            AND
-            created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-            AND 
-            created_at < DATE_TRUNC('week', CURRENT_DATE) 
-        """)
-        return session.execute(query).fetchone()
+        return session.execute(GET_WEEKLY_FAILED_MESSAGE).fetchone()
+
+    def get_weekly_text_ins(self, session):
+        return session.execute(GET_WEEKLY_TEXT_INS).fetchone()
 
     def get_weekly_impact_conversations(self, session):
-        impact_label_ids = ', '.join(f"'{id}'" for id in IMPACT_LABEL_IDS)
-        query = text(f"""
-            SELECT l.name as label_name, COUNT(*) as count
-            FROM public.conversations_labels cl 
-            JOIN public.labels l ON cl.label_id = l.id
-            WHERE label_id IN ({impact_label_ids})
-            AND
-            cl.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-            AND 
-            cl.created_at < DATE_TRUNC('week', CURRENT_DATE) 
-            GROUP BY l.name;
-        """)
-        return session.execute(query).fetchall()
+        impact_label_ids = ", ".join(f"'{id}'" for id in IMPACT_LABEL_IDS)
+        return session.execute(GET_WEEKLY_IMPACT_CONVERSATIONS(impact_label_ids)).fetchall()
 
     def get_weekly_replies_by_audience_segment(self, session):
-        query = text("""
-            SELECT bsms.audience_segment_id, asg.name, COUNT(distinct tm.id) as count
-            FROM public.twilio_messages tm 
-            LEFT JOIN public.broadcast_sent_message_status bsms 
-            ON tm.reply_to_broadcast = bsms.broadcast_id
-            LEFT JOIN public.audience_segments asg 
-            ON bsms.audience_segment_id = asg.id
-            WHERE tm.is_broadcast_reply = true and tm.from_field = bsms.recipient_phone_number
-            GROUP BY bsms.audience_segment_id, asg.name
-        """)
-        return session.execute(query).fetchall()
+        return session.execute(GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT).fetchall()
 
     def get_weekly_reporter_conversation(self, session):
-        reporter_label_ids = ', '.join(f"'{id}'" for id in REPORTER_LABEL_IDS)
-        query = text(f"""
-            SELECT l.name as label_name, COUNT(*) as count
-            FROM public.conversations_labels cl 
-            JOIN public.labels l ON cl.label_id = l.id
-            WHERE label_id IN ({reporter_label_ids})
-            GROUP BY l.name;
-        """)
-        return session.execute(query).fetchall()
+        reporter_label_ids = ", ".join(f"'{id}'" for id in REPORTER_LABEL_IDS)
+        return session.execute(GET_WEEKLY_REPORTER_CONVERSATION(reporter_label_ids)).fetchall()
 
     def get_weekly_data_look_up(self, session):
-        query = text("""
-            SELECT 
-                status,
-                COUNT(*) AS count
-            FROM (
-                SELECT 
-                    rental_status AS status
-                FROM 
-                    lookup_history
-                WHERE
-                created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-                AND 
-                created_at < DATE_TRUNC('week', CURRENT_DATE) 
-                UNION ALL
-                SELECT 
-                    tax_status AS status
-                FROM 
-                    lookup_history
-            ) AS combined_statuses
-            GROUP BY 
-                status
-            ORDER BY 
-                status;
-        """)
-        return session.execute(query).fetchall()
+        return session.execute(GET_WEEKLY_DATA_LOOKUP).fetchall()
 
     def get_weekly_top_zip_code(self, session):
-        query = text("""
-        SELECT zip_code, COUNT(*) AS count
-        FROM "lookup_history"
-        WHERE
-        created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-        AND 
-        created_at < DATE_TRUNC('week', CURRENT_DATE) 
-        GROUP BY zip_code
-        ORDER BY count DESC
-        LIMIT 5;
-    """)
-        return session.execute(query).fetchall()
+        return session.execute(GET_WEEKLY_TOP_ZIP_CODE).fetchall()
+
+    def get_broadcasts_content(self, session):
+        return session.execute(GET_WEEKLY_BROADCAST_CONTENT).fetchall()
+
+    def fetch_data_last_week(self):
+        # Calculate the date of the last Monday
+        today = datetime.date.today()
+        last_monday = today - datetime.timedelta(days=today.weekday() + 7)
+
+        # Calculate the end date of the last Sunday
+        last_sunday = last_monday + datetime.timedelta(days=6)
+
+        # Convert to datetime for database query purposes
+        last_monday_start = datetime.datetime.combine(last_monday, datetime.time.min)
+        last_sunday_end = datetime.datetime.combine(last_sunday, datetime.time.max)
+
+        with self.Session as session:
+            # Fetch data for the given week
+            data = (
+                session.query(WeeklyReport)
+                .filter(
+                    WeeklyReport.created_at >= last_monday_start,
+                    WeeklyReport.created_at <= last_sunday_end,
+                )
+                .first()
+            )
+
+        return format_weekly_report_data(data)
 
     def fetch_data(self):
-        with self.Session() as session:
+        with self.Session as session:
             # Fetch all the data here synchronously
-            unsubscribed_messages = get_weekly_unsubscribe_by_audience_segment(session)
-            broadcast_sent = get_weekly_broadcast_sent(session)
-            messages_sent = get_weekly_broadcast_sent_messages_count(session)
-            message_history = get_weekly_messages_history(session, broadcast_sent)
-            failed_messages = self.get_weekly_failed_message(session)
-            text_ins = get_weekly_text_ins(session)
+            unsubscribed_messages = self.get_weekly_unsubscribe_by_audience_segment(session)
+            broadcasts = self.get_weekly_broadcast_sent(session)
+            messages_history = self.get_weekly_messages_history(session, broadcasts)
+            failed_deliveries = self.get_weekly_failed_message(session)
+            text_ins = self.get_weekly_text_ins(session)
             impact_conversations = self.get_weekly_impact_conversations(session)
             replies = self.get_weekly_replies_by_audience_segment(session)
             report_conversations = self.get_weekly_reporter_conversation(session)
             lookup_history = self.get_weekly_data_look_up(session)
             zip_codes = self.get_weekly_top_zip_code(session)
+            broadcasts_content = self.get_broadcasts_content(session)
 
-        return (
+        return FetchDataResult(
             unsubscribed_messages,
-            broadcast_sent,
-            messages_sent,
-            message_history,
-            failed_messages,
+            broadcasts,
+            messages_history,
+            failed_deliveries,
             text_ins,
             impact_conversations,
             replies,
             report_conversations,
             lookup_history,
-            zip_codes
+            zip_codes,
+            broadcasts_content
         )
+
+    def insert_weekly_report(
+            self,
+            session,
+            current_date,
+            conversation_metrics,
+            conversation_outcomes,
+            property_statuses,
+            broadcast_replies,
+            unsubscribes,
+    ):
+        new_report = WeeklyReport(
+            created_at=current_date,
+            conversation_starters_sent=conversation_metrics["conversation_starters_sent"],
+            broadcast_replies=conversation_metrics["broadcast_replies"],
+            text_ins=conversation_metrics["text_ins"],
+            reporter_conversations=conversation_metrics["reporter_conversations"],
+            failed_deliveries=conversation_metrics["failed_deliveries"],
+            unsubscribes=conversation_metrics["unsubscribes"],
+            user_satisfaction=conversation_outcomes["user satisfaction"],
+            problem_addressed=conversation_outcomes["problem addressed"],
+            crisis_averted=conversation_outcomes["crisis averted"],
+            accountability_gap=conversation_outcomes["accountability gap"],
+            source=conversation_outcomes["source"],
+            unsatisfied=conversation_outcomes["unsatisfied"],
+            future_keyword=conversation_outcomes["future keyword"],
+            status_registered=property_statuses["REGISTERED"],
+            status_unregistered=property_statuses["UNREGISTERED"],
+            status_tax_debt=property_statuses["TAX_DEBT"],
+            status_no_tax_debt=property_statuses["NO_TAX_DEBT"],
+            status_compliant=property_statuses["COMPLIANT"],
+            status_foreclosed=property_statuses["FORECLOSED"],
+            replies_total=sum(broadcast_replies.values()),
+            replies_proactive=broadcast_replies["Proactive"],
+            replies_receptive=broadcast_replies["Receptive"],
+            replies_connected=broadcast_replies["Connected"],
+            replies_passive=broadcast_replies["Passive"],
+            replies_inactive=broadcast_replies["Inactive"],
+            unsubscribes_total=sum(unsubscribes.values()),
+            unsubscribes_proactive=unsubscribes["Proactive"],
+            unsubscribes_receptive=unsubscribes["Receptive"],
+            unsubscribes_connected=unsubscribes["Connected"],
+            unsubscribes_passive=unsubscribes["Passive"],
+            unsubscribes_inactive=unsubscribes["Inactive"],
+        )
+        session.add(new_report)
+        session.commit()
 
     def send_weekly_report(self):
         # Fetch the data synchronously
-        (
-            unsubscribed_messages,
-            broadcast_sent,
-            messages_sent,
-            message_history,
-            failed_messages,
-            text_ins,
-            impact_conversations,
-            replies,
-            report_conversations,
-            lookup_history,
-            zip_codes
-        ) = self.fetch_data()
+        data = self.fetch_data()
+        last_week_data = self.fetch_data_last_week()
+        last_4_week_data = self.fetch_average_data_last_4_weeks()
 
-        # weekly_report_conversation_id = os.getenv('MISSIVE_WEEKLY_REPORT_CONVERSATION_ID')
-        total_unsubscribed_messages = sum(
-            int(conversation[1]) for conversation in unsubscribed_messages) if unsubscribed_messages else 0
-        total_replies = sum(int(conversation[2]) for conversation in replies) if replies else 0
-        total_report_conversations = sum(
-            int(conversation[1]) for conversation in report_conversations) if report_conversations else 0
-
-        intro = f"# Weekly Summary Report ({get_current_date_formatted_for_weekly_report()})"
-
-        major_themes = (
-            "## Summary of Major Themes/Topics\n"
-            "- **User Satisfaction**: Significant number of users expressed satisfaction with the resources provided.\n"
-            "- **Problem Addressed**: Numerous reports of problems addressed successfully.\n"
-            "- **Crisis Averted**: Notable increase in crisis averted scenarios.\n"
-            "- **Property Status Inquiries**: Frequent inquiries about property status, particularly regarding tax debt and compliance issues.\n"
-            "- **Accountability Initiatives**: Positive feedback on accountability initiatives, with some users highlighting persistent issues.\n"
+        conversation_metrics = process_conversation_metrics(data)
+        property_statuses = process_lookup_history(data["lookup_history"])
+        conversations_outcomes = process_conversation_outcomes(data["impact_conversations"])
+        replies_by_audience_segment = process_audience_segment_related_data(data["replies"])
+        unsubscribes_by_audience_segment = process_audience_segment_related_data(
+            data["unsubscribed_messages"]
         )
 
-        if message_history:
-            documents = [{'text': '\n'.join(messages)} for messages in message_history.values()]
-            content = query_from_documents(documents)
-        else:
-            content = "No message history for this week."
-
-        broadcasts = ()
-        for broadcast in broadcast_sent:
-            broadcast_detail = format_broadcast_details(broadcast)
-            broadcasts += broadcast_detail
-
-        if not broadcasts:
-            broadcasts = ("No broadcasts found for this week.",)
-
-        conversation_metrics = (
-            "### Conversation Metrics\n"
-            "| Metric                         | Count |\n"
-            "|------------------------------- |-------|\n"
-            f"| Conversation Starters Sent     | {messages_sent[0]} |\n"
-            f"| Broadcast replies              | {total_replies}  |\n"
-            f"| Text-ins                       | {text_ins[0]} |\n"
-            f"| Reporter conversations         | {total_report_conversations} |\n"
-            f"| Failed Deliveries              | {failed_messages[0]} |\n"
-            f"| Unsubscribes                   | {total_unsubscribed_messages} |\n"
+        intro_section = generate_intro_section()
+        broadcast_and_summary_section = generate_broadcast_info_section(data["broadcasts_content"])
+        major_themes_section = generate_major_themes_section(data["messages_history"])
+        zip_code_section = generate_geographic_region_markdown(data["zip_codes"])
+        conversation_metrics_section = generate_conversation_metrics_section(
+            conversation_metrics,
+            calculate_percentage_change(
+                last_week_data["conversation_metrics"], conversation_metrics
+            ),
+            calculate_percentage_change(
+                last_4_week_data["conversation_metrics"], conversation_metrics
+            ),
+        )
+        lookup_history_section = generate_lookup_history_markdown(
+            property_statuses,
+            calculate_percentage_change(last_week_data["lookup_history"], property_statuses),
+            calculate_percentage_change(last_4_week_data["lookup_history"], property_statuses),
+        )
+        conversation_outcomes_section = generate_conversation_outcomes_markdown(
+            conversations_outcomes,
+            calculate_percentage_change(
+                last_week_data["conversation_outcomes"], conversations_outcomes
+            ),
+            calculate_percentage_change(
+                last_4_week_data["conversation_outcomes"], conversations_outcomes
+            ),
+        )
+        replies_by_audience_segment_section = generate_data_by_audience_segment_markdown(
+            replies_by_audience_segment,
+            calculate_percentage_change(last_week_data["replies"], replies_by_audience_segment),
+            calculate_percentage_change(last_4_week_data["replies"], replies_by_audience_segment),
+        )
+        unsubscribe_by_audience_segment_section = generate_data_by_audience_segment_markdown(
+            unsubscribes_by_audience_segment,
+            calculate_percentage_change(
+                last_week_data["unsubscribed_messages"], unsubscribes_by_audience_segment
+            ),
+            calculate_percentage_change(
+                last_4_week_data["unsubscribed_messages"], unsubscribes_by_audience_segment
+            ),
         )
 
-        lookup_history_section = ''
-        formatted_lookup_history = format_lookup_history(lookup_history)
-        if formatted_lookup_history.strip():
-            lookup_history_section = (
-                "### Data Lookups by Property Status\n"
-                "| Status                         | Count |\n"
-                "|------------------------------- |-------|\n"
-                f"{formatted_lookup_history}"
-            )
+        markdown_report = [
+            intro_section,
+        ]
 
-        impact_conversations_section = format_conversation_for_report(impact_conversations)
-        conversation_outcomes = ''
-        if impact_conversations_section.strip():
-            conversation_outcomes = (
-                "### Conversation Outcomes\n"
-                "| Outcome                         | Count |\n"
-                "|-------------------------------  |-------|\n"
-                f"{impact_conversations_section}"
-            )
-
-        zip_code_section = format_geographic_regions(zip_codes)
-        geographic_regions = ''
-        if zip_code_section.strip():
-            geographic_regions = (
-                "### Data Lookups by Geographic Regions (Top 5 ZIP Codes)\n"
-                "| **ZIP Code** | **Count** |\n"
-                "|--------------|-------|\n"
-                f"{zip_code_section}"
-            )
-
-        replies_by_audience_segment = format_metric_by_audience_segment(replies)
-        broadcast_replies = ''
-        if replies_by_audience_segment.strip():
-            broadcast_replies = (
-                "### Broadcast Replies by Audience Segment\n"
-                "| Segment                         | Count |\n"
-                "|-------------------------------  |-------|\n"
-                f"{replies_by_audience_segment}"
-            )
-
-        unsubscribed_by_audience_segment = format_metric_by_audience_segment(unsubscribed_messages)
-        unsubscribe_section = ''
-        if unsubscribed_by_audience_segment.strip():
-            unsubscribe_section = (
-                "### Unsubscribes by Audience Segment\n"
-                "| Segment                         | Count |\n"
-                "|-------------------------------  |-------|\n"
-                f"{unsubscribed_by_audience_segment}"
-            )
-
-        markdown_report = [intro, major_themes, content, broadcasts, conversation_metrics]
-
+        if major_themes_section:
+            markdown_report.append(major_themes_section)
+        if broadcast_and_summary_section:
+            markdown_report.append(broadcast_and_summary_section)
+        if conversation_metrics_section:
+            markdown_report.append(conversation_metrics_section)
         if lookup_history_section:
             markdown_report.append(lookup_history_section)
-        if geographic_regions:
-            markdown_report.append(geographic_regions)
-        if conversation_outcomes:
-            markdown_report.append(conversation_outcomes)
-        if broadcast_replies:
-            markdown_report.append(broadcast_replies)
-        if unsubscribe_section:
-            markdown_report.append(unsubscribe_section)
+        if zip_code_section:
+            markdown_report.append(zip_code_section)
+        if conversation_outcomes_section:
+            markdown_report.append(conversation_outcomes_section)
+        if replies_by_audience_segment_section:
+            markdown_report.append(replies_by_audience_segment_section)
+        if unsubscribe_by_audience_segment_section:
+            markdown_report.append(unsubscribe_by_audience_segment_section)
 
+        conversation_id = get_conversation_id(self.Session)
         missive_client = MissiveAPI()
-        missive_client.send_post_sync(markdown_report,
-                                      conversation_id=os.getenv('MISSIVE_WEEKLY_REPORT_CONVERSATION_ID'))
+        missive_client.send_post_sync(
+            markdown_report, conversation_id=conversation_id
+        )
+
+        with self.Session as session:
+            self.insert_weekly_report(
+                session,
+                datetime.datetime.now().isoformat(),
+                conversation_metrics,
+                conversations_outcomes,
+                property_statuses,
+                replies_by_audience_segment,
+                unsubscribes_by_audience_segment,
+            )
+
+    def fetch_average_data_last_4_weeks(self):
+        # Calculate the start date for 4 weeks ago
+        today = datetime.date.today()
+        start_date = today - datetime.timedelta(days=today.weekday() + 28)
+
+        # Calculate the end date of the last Sunday
+        end_date = today - datetime.timedelta(days=today.weekday() + 1)
+
+        # Convert to datetime for database query purposes
+        start_datetime = datetime.datetime.combine(start_date, datetime.time.min)
+        end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
+
+        query = text("""
+            SELECT 
+                AVG(conversation_starters_sent) AS conversation_starters_sent,
+                AVG(broadcast_replies) AS broadcast_replies,
+                AVG(text_ins) AS text_ins,
+                AVG(reporter_conversations) AS reporter_conversations,
+                AVG(failed_deliveries) AS failed_deliveries,
+                AVG(unsubscribes) AS unsubscribes,
+                AVG(user_satisfaction) AS user_satisfaction,
+                AVG(problem_addressed) AS problem_addressed,
+                AVG(crisis_averted) AS crisis_averted,
+                AVG(accountability_gap) AS accountability_gap,
+                AVG(source) AS source,
+                AVG(unsatisfied) AS unsatisfied,
+                AVG(future_keyword) AS future_keyword,
+                AVG(status_registered) AS status_registered,
+                AVG(status_unregistered) AS status_unregistered,
+                AVG(status_tax_debt) AS status_tax_debt,
+                AVG(status_no_tax_debt) AS status_no_tax_debt,
+                AVG(status_compliant) AS status_compliant,
+                AVG(status_foreclosed) AS status_foreclosed,
+                AVG(replies_proactive) AS replies_proactive,
+                AVG(replies_receptive) AS replies_receptive,
+                AVG(replies_connected) AS replies_connected,
+                AVG(replies_passive) AS replies_passive,
+                AVG(replies_inactive) AS replies_inactive,
+                AVG(unsubscribes_proactive) AS unsubscribes_proactive,
+                AVG(unsubscribes_receptive) AS unsubscribes_receptive,
+                AVG(unsubscribes_connected) AS unsubscribes_connected,
+                AVG(unsubscribes_passive) AS unsubscribes_passive,
+                AVG(unsubscribes_inactive) AS unsubscribes_inactive
+            FROM weekly_reports
+            WHERE created_at >= :start_date AND created_at <= :end_date
+        """)
+
+        with self.Session as session:
+            result = session.execute(
+                query, {"start_date": start_datetime, "end_date": end_datetime}
+            ).fetchone()
+
+            if not result:
+                return None
+
+        return format_weekly_report_data(result)

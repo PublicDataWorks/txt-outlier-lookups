@@ -205,6 +205,7 @@ class mi_wayne_detroit(Base):
     tax_details_bak = Column(String)
     tax_payments_bak = Column(String)
 
+    
 class lookup_history(Base):
     __tablename__ = "lookup_history"
 
@@ -238,6 +239,7 @@ class residential_rental_registrations(Base):
     street_name = Column(String)
     address_id = Column(String)
 
+    
 class LookupTemplate(Base):
     __tablename__ = "lookup_template"
     __table_args__ = {"schema": "public"}
@@ -251,3 +253,46 @@ class LookupTemplate(Base):
 
     def __repr__(self):
         return f"<LookupTemplate(id={self.id}, name='{self.name}', type='{self.type}')>"
+
+
+class WeeklyReport(Base):
+    __tablename__ = "weekly_reports"
+
+    id = Column(Integer, primary_key=True)
+    created_at = Column(Date, nullable=False)
+
+    conversation_starters_sent = Column(Integer)
+    broadcast_replies = Column(Integer)
+    text_ins = Column(Integer)
+    reporter_conversations = Column(Integer)
+    failed_deliveries = Column(Integer)
+    unsubscribes = Column(Integer)
+
+    user_satisfaction = Column(Integer)
+    problem_addressed = Column(Integer)
+    crisis_averted = Column(Integer)
+    accountability_gap = Column(Integer)
+    source = Column(Integer)
+    unsatisfied = Column(Integer)
+    future_keyword = Column(Integer)
+
+    status_registered = Column(Integer)
+    status_unregistered = Column(Integer)
+    status_tax_debt = Column(Integer)
+    status_no_tax_debt = Column(Integer)
+    status_compliant = Column(Integer)
+    status_foreclosed = Column(Integer)
+
+    replies_total = Column(Integer)
+    replies_proactive = Column(Integer)
+    replies_receptive = Column(Integer)
+    replies_connected = Column(Integer)
+    replies_passive = Column(Integer)
+    replies_inactive = Column(Integer)
+
+    unsubscribes_total = Column(Integer)
+    unsubscribes_proactive = Column(Integer)
+    unsubscribes_receptive = Column(Integer)
+    unsubscribes_connected = Column(Integer)
+    unsubscribes_passive = Column(Integer)
+    unsubscribes_inactive = Column(Integer)
