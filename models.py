@@ -10,7 +10,7 @@ from sqlalchemy import (
     Float,
     Integer,
     String,
-    text, JSON,
+    text, JSON, ARRAY, TEXT,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
@@ -320,7 +320,7 @@ class TwilioMessage(Base):
     preview = Column(String, nullable=True)
     type = Column(String, nullable=True)
     delivered_at = Column(DateTime(timezone=True), nullable=True)
-    references = Column(JSON, nullable=True)
+    references = Column(ARRAY(TEXT), nullable=True)
     external_id = Column(String, nullable=True)
     attachments = Column(String, nullable=True)
     from_field = Column(String, nullable=True)

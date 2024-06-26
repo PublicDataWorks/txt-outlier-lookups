@@ -181,22 +181,24 @@ def fetch_rental():
     return jsonify({"message": "Data fetch started"}), 200
 
 
-@app.route('/conversations', methods=['POST'])
+@app.route('/conversations', methods=['GET'])
 def get_conversation():
-    data = request.get_json()
+    # Get parameters from the URL
+    conversation_id = request.args.get('conversation_id')
+    reference = request.args.get('reference')
 
-    # Validate the incoming data
-    if not data:
-        return jsonify({'error': 'Request body is required'}), 400
+    # Get teamId from the headers
+    team_id = request.headers.get('X-Teams')
+    env_team_id = os.getenv('TEAM_ID')
 
-    conversation_id = data.get('conversation_id')
-    reference = data.get('reference')
+    if not env_team_id or env_team_id != team_id:
+        return jsonify({'error': 'Unauthorized'}), 401
 
     # Check if conversation_id and reference are provided
     if not conversation_id:
         return jsonify({'error': 'Conversation ID is required'}), 400
-    if not reference or not isinstance(reference, list) or len(reference) != 2:
-        return jsonify({'error': 'Reference must be a list with two phone numbers'}), 400
+    if not reference:
+        return jsonify({'error': 'Reference is required'}), 400
 
     try:
         # Call the service functions to get conversation data and summary
@@ -207,9 +209,9 @@ def get_conversation():
             return jsonify({'error': 'Error while getting user data'}), 404
 
         # Return the conversation data and summary
-        return jsonify({
-            'conversation_data': conversation_data,
-        }), 200
+        return jsonify(
+            conversation_data
+        ), 200
 
     except Exception as e:
         # Handle any exceptions that occur during the process

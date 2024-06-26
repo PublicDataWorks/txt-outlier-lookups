@@ -365,17 +365,18 @@ def get_address_information(session, address):
     return results
 
 
-def get_conversation_data(conversation_id, references):
+def get_conversation_data(conversation_id, query_phone_number):
     try:
         with Session() as session:
             # Get the query phone number
-            PHONE_NUMBER = os.getenv('PHONE_NUMBER')
-            query_phone_number = [phone for phone in references if phone != PHONE_NUMBER][0] # get the non system
-            # phone number in reference pair
+            phone_number = os.getenv('PHONE_NUMBER')
+            if not phone_number:
+                return None
+            phone_pair_1 = [query_phone_number + phone_number]
+            phone_pair_2 = [phone_number + query_phone_number]
 
             # Query authors table
             author = session.query(Author).filter(Author.phone_number == query_phone_number).first()
-            author_name = author.name if author else None
             author_zipcode = author.zipcode if author else None
             author_email = author.email if author else None
 
@@ -386,30 +387,54 @@ def get_conversation_data(conversation_id, references):
             ).filter(ConversationAssignee.conversation_id == conversation_id).all()
             assignee_user_names = [user.name for user in assignee_users if user.name is not None]
 
+            label_ids = session.query(ConversationLabel.label_id).filter(
+                ConversationLabel.conversation_id == conversation_id
+            ).distinct().all()
+            label_ids = [label_id[0] for label_id in label_ids]
+
             # Query TwilioMessage table
             messages = session.query(TwilioMessage.preview).filter(
-                or_(TwilioMessage.from_field == query_phone_number, TwilioMessage.to_field == query_phone_number)
+                and_(
+                    or_(TwilioMessage.from_field == query_phone_number, TwilioMessage.to_field == query_phone_number),
+                    or_(TwilioMessage.references == phone_pair_1, TwilioMessage.references == phone_pair_2)
+                )
             ).order_by(TwilioMessage.delivered_at).all()
 
             first_reply = session.query(TwilioMessage.delivered_at).filter(
-                TwilioMessage.from_field == query_phone_number
+                and_(
+                    TwilioMessage.from_field == query_phone_number,
+                    or_(TwilioMessage.references == phone_pair_1, TwilioMessage.references == phone_pair_2)
+                )
             ).order_by(TwilioMessage.delivered_at).first()
 
             # Query comments table
             comments = session.query(Comments).filter(Comments.conversation_id == conversation_id).all()
 
-            comment_summary = generate_text_summary(comments)
-            message_summary = generate_text_summary(messages)
+            comment_summary = generate_text_summary(comments, "A summary of all comments left in the thread by "
+                                                              "reporters over time. Recommendations the reporters "
+                                                              "made, handoffs to other reporters, process/case notes, "
+                                                              "phone call notes,")
+            impact_summary = generate_text_summary(messages, "A short summary of impact/conversation outcomes for "
+                                                             "this contact. Detailing whether their issues have "
+                                                             "consistently been addressed, or if they were unable to "
+                                                             "get the help they needed.")
+            message_summary = generate_text_summary(messages, "A summary detailing the contact's general tone and "
+                                                              "approach during the conversations. Here we could flag "
+                                                              "if a contact has been abusive or rude in their "
+                                                              "communications with Outlier staff. Also include "
+                                                              "relevant case notes (e.g., this person never follows "
+                                                              "up after we provide info), notes from phone calls.")
 
             # Create a dictionary to store the conversation summary
             conversation_summary = {
-                'author_name': author_name,
                 'author_zipcode': author_zipcode,
                 'author_email': author_email,
                 'assignee_user_name': assignee_user_names,
                 'first_reply': first_reply[0] if first_reply else None,
-                'messages': message_summary.text,
-                'comments': comment_summary.text
+                'labels': label_ids,
+                'comments': comment_summary.text,
+                'outcome': impact_summary.text,
+                'messages': message_summary.text
             }
 
             return conversation_summary
