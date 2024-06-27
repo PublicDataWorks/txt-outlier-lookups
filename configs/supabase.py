@@ -36,8 +36,11 @@ async def connect_to_supabase():
         await asyncio.create_task(channel_1._join())
 
         channel_1.on("*", callback1)
-        await s._listen()
-        # asyncio.create_task(s._keep_alive())
+        listen_task = asyncio.create_task(s._listen())
+        keep_alive_task = asyncio.create_task(s._keep_alive())
+
+        await asyncio.wait([listen_task, keep_alive_task], return_when=asyncio.FIRST_COMPLETED)
+        print("Connection closed unexpectedly. Reconnecting...")
 
 
 def run_websocket_listener():

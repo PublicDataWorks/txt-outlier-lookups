@@ -26,10 +26,9 @@ def get_template_content_by_name(name):
             if template:
                 return template
     # Fallback to sms_templates if the key is not found in the cache
-    else:
-        fallback_template = templates.get(name)
-        if fallback_template:
-            return fallback_template
+    fallback_template = templates.get(name)
+    if fallback_template:
+        return fallback_template
 
     return None
 
