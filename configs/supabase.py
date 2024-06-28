@@ -26,7 +26,6 @@ def callback1(payload):
 
 
 async def connect_to_supabase():
-    while True:
         URL = f"wss://{supabase_id}.supabase.co/realtime/v1/websocket?apikey={api_key}&vsn=1.0.0"
         s = Socket(URL)
         await s._connect()
@@ -38,13 +37,11 @@ async def connect_to_supabase():
         channel_1.on("*", callback1)
         listen_task = asyncio.create_task(s._listen())
         keep_alive_task = asyncio.create_task(s._keep_alive())
-
-        await asyncio.wait([listen_task, keep_alive_task], return_when=asyncio.FIRST_COMPLETED)
-        print("Connection closed unexpectedly. Reconnecting...")
+        await asyncio.gather(listen_task, keep_alive_task)
+        # s.listen()
 
 
 def run_websocket_listener():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.create_task(connect_to_supabase())
-    loop.run_forever()
+    loop.run_until_complete(connect_to_supabase())

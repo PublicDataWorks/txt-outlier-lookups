@@ -1,3 +1,5 @@
+import logging
+
 from configs.database import Session
 from models import LookupTemplate
 from templates.templates import templates
@@ -5,6 +7,7 @@ from flask_caching import Cache
 
 session = Session()
 cache = Cache()
+logger = logging.getLogger(__name__)
 
 
 def get_lookup_templates():
@@ -29,7 +32,7 @@ def get_template_content_by_name(name):
     fallback_template = templates.get(name)
     if fallback_template:
         return fallback_template
-
+    logger.error("Could not get template")
     return None
 
 
