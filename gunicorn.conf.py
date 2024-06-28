@@ -1,3 +1,3 @@
-def post_worker_init(worker):
+def on_starting(server):
     from main import start_mqtt
     start_mqtt()
