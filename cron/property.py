@@ -1,5 +1,5 @@
 import os
-import logging
+from loguru import logger
 from subprocess import PIPE, Popen
 from zipfile import ZipFile
 
@@ -13,12 +13,9 @@ username = os.getenv("SFTP_USERNAME")
 password = os.getenv("SFTP_PASSWORD")
 port = int(os.getenv("SFTP_PORT", 22))
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 
 def fetch_data():
-    logger.info("Starting data fetch...")
+    logger.info("Starting Property data fetch...")
     temp_dir = "/tmp"
     zip_file_path = os.path.join(temp_dir, "mi_wayne_detroit.sql.zip")
     sftp_client = SFTPServerClient(host, port, username, password)
@@ -36,10 +33,10 @@ def fetch_data():
             process = Popen(["./cron/property.sh"], shell=True, stdin=PIPE, stderr=PIPE)
             stdout, stderr = process.communicate()
             if stdout:
-                logger.info(f"Script output: {stdout.decode()}")
+                logger.info(f"Property script output: {stdout.decode()}")
             if stderr:
-                logger.error(f"Script error: {stderr.decode()}")
+                logger.error(f"Property script error: {stderr.decode()}")
         except Exception as e:
-            logger.error("Error running script:", e)
+            logger.error("Error running Property script:", e)
     except Exception as e:
-        logger.error("Error fetching data:", e)
+        logger.error("Error fetching property data:", e)

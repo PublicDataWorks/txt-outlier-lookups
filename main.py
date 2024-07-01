@@ -30,8 +30,8 @@ from utils.address_normalizer import extract_latest_address
 load_dotenv(override=True)
 
 sentry_loguru = LoguruIntegration(
-    level=LoggingLevels.INFO.value,  # Capture info and above as breadcrumbs
-    event_level=LoggingLevels.ERROR.value,  # Send errors as events
+    level=LoggingLevels.INFO.value,
+    event_level=LoggingLevels.ERROR.value,
 )
 
 sentry_sdk.init(
