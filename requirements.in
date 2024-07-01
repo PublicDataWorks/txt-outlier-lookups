@@ -11,3 +11,4 @@ realtime~=1.0.5
 usaddress-scourgify
 paramiko
 supabase
+flask-cors

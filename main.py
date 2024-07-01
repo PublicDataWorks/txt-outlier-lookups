@@ -5,6 +5,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from loguru import logger
 from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -44,6 +45,7 @@ logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 
 app = Flask(__name__)
 
+CORS(app, origins=["https://domain1.com", "https://domain2.com", "http://localhost:5000"])
 os.makedirs('cache', exist_ok=True)
 cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Path('./cache')})
 
@@ -67,7 +69,7 @@ def handle_invalid_usage(error):
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 missive_client = MissiveAPI()
-
+cache_ttl = 24*60*60
 
 @app.route("/", methods=["GET"])
 def health_check():
@@ -181,40 +183,36 @@ def fetch_rental():
     return jsonify({"message": "Data fetch started"}), 200
 
 
-@app.route('/conversations', methods=['GET'])
-def get_conversation():
-    # Get parameters from the URL
-    conversation_id = request.args.get('conversation_id')
+@app.route('/conversations/<conversation_id>', methods=['GET'])
+@cache.cached(timeout=cache_ttl)
+def get_conversation(conversation_id):
     reference = request.args.get('reference')
+    if not reference.startswith('+'):
+        # If not, add it
+        reference = '+' + reference
 
-    # Get teamId from the headers
     team_id = request.headers.get('X-Teams')
     env_team_id = os.getenv('TEAM_ID')
 
     if not env_team_id or env_team_id != team_id:
         return jsonify({'error': 'Unauthorized'}), 401
 
-    # Check if conversation_id and reference are provided
     if not conversation_id:
         return jsonify({'error': 'Conversation ID is required'}), 400
     if not reference:
         return jsonify({'error': 'Reference is required'}), 400
 
     try:
-        # Call the service functions to get conversation data and summary
         conversation_data = get_conversation_data(conversation_id, reference)
-        print(conversation_data)
-        # Check if the conversation data and summary exist
         if not conversation_data:
             return jsonify({'error': 'Error while getting user data'}), 404
 
-        # Return the conversation data and summary
         return jsonify(
             conversation_data
         ), 200
 
     except Exception as e:
-        # Handle any exceptions that occur during the process
+        logger.error({'error': str(e)})
         return jsonify({'error': str(e)}), 500
 
 
