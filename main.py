@@ -45,7 +45,7 @@ logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 
 app = Flask(__name__)
 
-CORS(app, origins=["https://domain1.com", "https://domain2.com", "http://localhost:5000"])
+CORS(app, origins=["https://missive.com", "https://amazonaws.com", "http://localhost:5000"])
 os.makedirs('cache', exist_ok=True)
 cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Path('./cache')})
 
@@ -69,7 +69,7 @@ def handle_invalid_usage(error):
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 missive_client = MissiveAPI()
-cache_ttl = 24*60*60
+CACHE_TTL = 24 * 60 * 60
 
 @app.route("/", methods=["GET"])
 def health_check():
@@ -184,7 +184,7 @@ def fetch_rental():
 
 
 @app.route('/conversations/<conversation_id>', methods=['GET'])
-@cache.cached(timeout=cache_ttl)
+@cache.cached(timeout=CACHE_TTL)
 def get_conversation(conversation_id):
     reference = request.args.get('reference')
     if not reference.startswith('+'):
