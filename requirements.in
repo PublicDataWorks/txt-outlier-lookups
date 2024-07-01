@@ -3,7 +3,7 @@ loguru
 python-dotenv
 Flask-Caching
 Flask
-SQLAlchemy
+SQLAlchemy~=1.4.52
 psycopg2-binary
 GeoAlchemy2
 llama-index

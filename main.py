@@ -20,6 +20,7 @@ from configs.supabase import run_websocket_listener
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from middlewares.jwt_middleware import require_authentication
+from services.analytics.service import AnalyticsService
 from services.services import (
     extract_address_information,
     handle_match,
@@ -74,6 +75,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 missive_client = MissiveAPI()
 CACHE_TTL = 24 * 60 * 60
+
 
 @app.route("/", methods=["GET"])
 def health_check():
@@ -185,6 +187,15 @@ def fetch_rental():
     thread = threading.Thread(target=fetch_data)
     thread.start()
     return jsonify({"message": "Data fetch started"}), 200
+
+
+@app.route("/weekly_report", methods=["GET"])
+@require_authentication
+def send_weekly_report():
+    analytics = AnalyticsService()
+    analytics.send_weekly_report()
+
+    return jsonify({"message": "Weekly report sent"}), 200
 
 
 @app.route('/conversations/<conversation_id>', methods=['GET'])
