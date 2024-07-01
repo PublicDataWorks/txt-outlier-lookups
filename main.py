@@ -44,8 +44,12 @@ sentry_sdk.init(
 logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 
 app = Flask(__name__)
+SUMMARY_CONVO_URL = os.getenv('SUMMARY_CONVO_SIDEBAR_ADDRESS')
+if not SUMMARY_CONVO_URL:
+    print("Error: SUMMARY_CONVO_URL is not set. Aborting server startup.")
+    sys.exit(1)
 
-CORS(app, origins=["https://missive.com", "https://amazonaws.com", "http://localhost:5000"])
+CORS(app, origins=[SUMMARY_CONVO_URL])
 os.makedirs('cache', exist_ok=True)
 cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Path('./cache')})
 
@@ -190,12 +194,6 @@ def get_conversation(conversation_id):
     if not reference.startswith('+'):
         # If not, add it
         reference = '+' + reference
-
-    team_id = request.headers.get('X-Teams')
-    env_team_id = os.getenv('TEAM_ID')
-
-    if not env_team_id or env_team_id != team_id:
-        return jsonify({'error': 'Unauthorized'}), 401
 
     if not conversation_id:
         return jsonify({'error': 'Conversation ID is required'}), 400
