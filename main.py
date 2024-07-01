@@ -5,6 +5,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from loguru import logger
 from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -23,15 +24,15 @@ from services.services import (
     extract_address_information,
     handle_match,
     search_service,
-    more_search_service,
+    more_search_service, get_conversation_data, get_conversation_summary,
 )
 from utils.address_normalizer import extract_latest_address
 
 load_dotenv(override=True)
 
 sentry_loguru = LoguruIntegration(
-    level=LoggingLevels.INFO.value,
-    event_level=LoggingLevels.ERROR.value,
+    level=LoggingLevels.INFO.value,  # Capture info and above as breadcrumbs
+    event_level=LoggingLevels.ERROR.value,  # Send errors as events
 )
 
 sentry_sdk.init(
@@ -43,7 +44,12 @@ sentry_sdk.init(
 logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 
 app = Flask(__name__)
+SUMMARY_CONVO_URL = os.getenv('SUMMARY_CONVO_SIDEBAR_ADDRESS')
+if not SUMMARY_CONVO_URL:
+    print("Error: SUMMARY_CONVO_URL is not set. Aborting server startup.")
+    sys.exit(1)
 
+CORS(app, origins=[SUMMARY_CONVO_URL])
 os.makedirs('cache', exist_ok=True)
 cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Path('./cache')})
 
@@ -67,7 +73,7 @@ def handle_invalid_usage(error):
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 missive_client = MissiveAPI()
-
+CACHE_TTL = 24 * 60 * 60
 
 @app.route("/", methods=["GET"])
 def health_check():
@@ -179,6 +185,33 @@ def fetch_rental():
     thread = threading.Thread(target=fetch_data)
     thread.start()
     return jsonify({"message": "Data fetch started"}), 200
+
+
+@app.route('/conversations/<conversation_id>', methods=['GET'])
+@cache.cached(timeout=CACHE_TTL)
+def get_conversation(conversation_id):
+    reference = request.args.get('reference')
+    if not reference.startswith('+'):
+        # If not, add it
+        reference = '+' + reference
+
+    if not conversation_id:
+        return jsonify({'error': 'Conversation ID is required'}), 400
+    if not reference:
+        return jsonify({'error': 'Reference is required'}), 400
+
+    try:
+        conversation_data = get_conversation_data(conversation_id, reference)
+        if not conversation_data:
+            return jsonify({'error': 'Error while getting user data'}), 404
+
+        return jsonify(
+            conversation_data
+        ), 200
+
+    except Exception as e:
+        logger.error({'error': str(e)})
+        return jsonify({'error': str(e)}), 500
 
 
 def start_mqtt():

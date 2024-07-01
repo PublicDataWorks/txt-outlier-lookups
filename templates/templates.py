@@ -130,4 +130,9 @@ templates = {
         Address will follow the format of a number followed by a street name and street suffix.
         Do not use keywords like 'yes' or 'more' as query value"""
     ),
+    "text_summary_prompt": (
+        f"""
+        Given the following list of messages history, generate a short summary of major themes and topics discussed:
+        """
+    ),
 }
