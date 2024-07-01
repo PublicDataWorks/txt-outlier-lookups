@@ -3,6 +3,7 @@ import os
 from models import LookupTemplate
 
 from dotenv import load_dotenv
+
 from configs.database import Session
 from templates.templates import templates
 from llama_index.core import DocumentSummaryIndex
@@ -16,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 def generate_report_summary(messages_history):
-    text = ""
     try:
         lookup_template = session.query(LookupTemplate).filter_by(name="sms_history_summary").first()
         if lookup_template:

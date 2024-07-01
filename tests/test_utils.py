@@ -4,7 +4,7 @@ import json
 import os
 from unittest.mock import Mock, patch
 
-from middlewares.auth_middleware import AuthMiddleware
+from middlewares.missive_middleware import AuthMiddleware
 from utils.address_normalizer import (
     check_address_format,
 )

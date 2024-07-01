@@ -191,7 +191,7 @@ def generate_lookup_history_markdown(status_counts, percentage_changes, percenta
 
 
 def generate_conversation_outcomes_markdown(
-        outcome_counts, percentage_changes, percentage_changes_4_week
+    outcome_counts, percentage_changes, percentage_changes_4_week
 ):
     return (
         "### Conversation Outcomes\n"
@@ -208,7 +208,7 @@ def generate_conversation_outcomes_markdown(
 
 
 def generate_data_by_audience_segment_markdown(
-        segment_counts, percentage_changes, percentage_changes_4_week
+    segment_counts, percentage_changes, percentage_changes_4_week
 ):
     return (
         "### Broadcast Replies by Audience Segment\n"
@@ -259,7 +259,7 @@ def generate_major_themes_section(messages_history):
 
 
 def generate_conversation_metrics_section(
-        conversation_metrics, percentage_changes, percentage_changes_4_week
+    conversation_metrics, percentage_changes, percentage_changes_4_week
 ):
     return (
         "### Conversation Metrics\n"

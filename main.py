@@ -1,10 +1,8 @@
-# Standard library imports
 import os
 import sys
 import threading
 from pathlib import Path
 
-# Related third party imports
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from loguru import logger
@@ -12,17 +10,15 @@ from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 import sentry_sdk
 
-# Local application/library specific imports
 from configs.cache_template import init_lookup_templates_cache, cache
 from configs.query_engine.owner_information import init_owner_query_engine
-from configs.query_engine.owner_information_without_sunit import (
-    init_owner_query_engine_without_sunit
-)
+from configs.query_engine.owner_information_without_sunit import init_owner_query_engine_without_sunit
 from configs.query_engine.tax_information import init_tax_query_engine
 from configs.query_engine.tax_information_without_sunit import init_tax_query_engine_without_sunit
 from configs.supabase import run_websocket_listener
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
+from middlewares.jwt_middleware import require_authentication
 from services.services import (
     extract_address_information,
     handle_match,
@@ -34,8 +30,8 @@ from utils.address_normalizer import extract_latest_address
 load_dotenv(override=True)
 
 sentry_loguru = LoguruIntegration(
-    level=LoggingLevels.INFO.value,  # Capture info and above as breadcrumbs
-    event_level=LoggingLevels.ERROR.value,  # Send errors as events
+    level=LoggingLevels.INFO.value,
+    event_level=LoggingLevels.ERROR.value,
 )
 
 sentry_sdk.init(
@@ -53,6 +49,7 @@ cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Pa
 
 with app.app_context():
     init_lookup_templates_cache()
+
 
 owner_query_engine = init_owner_query_engine()
 owner_query_engine_without_sunit = init_owner_query_engine_without_sunit()
@@ -107,8 +104,6 @@ def yes():
         normalized_address = extract_latest_address(
             messages=messages, conversation_id=conversation_id, to_phone=to_phone
         )
-        query_result = ""
-
         if not normalized_address:
             logger.error("Couldn't parse address from history messages", messages)
             return (
@@ -166,6 +161,24 @@ def more():
         print(f"An error occurred: {str(e)}")
         logger.exception("", e)
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/fetch_property", methods=["GET"])
+@require_authentication
+def fetch_property():
+    from cron.property import fetch_data
+    thread = threading.Thread(target=fetch_data)
+    thread.start()
+    return jsonify({"message": "Data fetch started"}), 200
+
+
+@app.route("/fetch_rental", methods=["GET"])
+@require_authentication
+def fetch_rental():
+    from cron.rental import fetch_data
+    thread = threading.Thread(target=fetch_data)
+    thread.start()
+    return jsonify({"message": "Data fetch started"}), 200
 
 
 def start_mqtt():

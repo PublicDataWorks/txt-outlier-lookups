@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 def callback1(payload):
-    print(payload)
-    if payload.get('message') != "Subscribed to PostgreSQL":
+    logger.info(payload)
+    if payload.get('message') != "Subscribed to PostgresSQL":
         update_lookup_templates_cache()
 
 

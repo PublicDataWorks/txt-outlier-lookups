@@ -1,17 +1,15 @@
-import os
+from loguru import logger
 from subprocess import PIPE, Popen
-
-import requests
-from apscheduler.schedulers.background import BlockingScheduler
 
 
 def fetch_data():
+    logger.info("Starting Rental data fetch...")
     try:
-        Popen(["./rental.sh"], shell=True, stdin=PIPE, stderr=PIPE)
+        process = Popen(["./cron/rental.sh"], shell=True, stdin=PIPE, stderr=PIPE)
+        stdout, stderr = process.communicate()
+        if stdout:
+            logger.info(f"Rental script output: {stdout.decode()}")
+        if stderr:
+            logger.error(f"Rental script error: {stderr.decode()}")
     except Exception as e:
-        print(e)
-
-
-scheduler = BlockingScheduler()
-scheduler.add_job(fetch_data, "interval", weeks=4)
-scheduler.start()
+        logger.error("Error fetching rental data:", e)
