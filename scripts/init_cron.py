@@ -44,9 +44,10 @@ SELECT net.http_get(
     headers:= '{{"Content-Type": "application/json", "Authorization": "Bearer {SUPABASE_SERVICE_ROLE_KEY}"}}'::jsonb
 ) AS request_id;
 """
-    create_job('0 0 1 * *', command)
+    create_job('0 9 * * 1 ', command)  # every week on Monday morning at 5am ET
     logger.info('Monthly fetch rental initialized')
 
 
 init_monthly_fetch_property()
 init_monthly_fetch_rental()
+init_weekly_report()
