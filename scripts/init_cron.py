@@ -13,7 +13,7 @@ SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
 
 def init_monthly_fetch_property():
-    logger.info('Initializing monthly fetch property')
+    logger.info('Initializing monthly fetch property cron job')
     command = f"""\
 SELECT net.http_get(
     url:='{BACKEND_URL}/fetch_property',
@@ -25,7 +25,7 @@ SELECT net.http_get(
 
 
 def init_monthly_fetch_rental():
-    logger.info('Initializing monthly fetch rental')
+    logger.info('Initializing monthly fetch rental cron job')
     command = f"""\
 SELECT net.http_get(
     url:='{BACKEND_URL}/fetch_rental',
@@ -36,5 +36,18 @@ SELECT net.http_get(
     logger.info('Monthly fetch rental initialized')
 
 
+def init_weekly_report():
+    logger.info('Initializing weekly report cron job')
+    command = f"""\
+SELECT net.http_get(
+    url:='{BACKEND_URL}/weekly_report',
+    headers:= '{{"Content-Type": "application/json", "Authorization": "Bearer {SUPABASE_SERVICE_ROLE_KEY}"}}'::jsonb
+) AS request_id;
+"""
+    create_job('0 9 * * 1 ', command)  # every week on Monday morning at 5am ET
+    logger.info('Monthly fetch rental initialized')
+
+
 init_monthly_fetch_property()
 init_monthly_fetch_rental()
+init_weekly_report()
