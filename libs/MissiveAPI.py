@@ -132,7 +132,7 @@ class MissiveAPI:
 
         body = {
             "posts": {
-                "conversation": "75b4cfeb-737c-43e2-b88e-568e22a9a115",
+                "conversation": conversation_id,
                 "notification": {"title": "Weekly Report", "body": "Summary"},
                 "username": "Weekly report",
                 "username_icon": "https://s3.amazonaws.com/missive-assets/missive-avatar.png",
