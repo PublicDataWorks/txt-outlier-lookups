@@ -80,7 +80,6 @@ def handle_invalid_usage(error):
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 missive_client = MissiveAPI()
-CACHE_TTL = 24 * 60 * 60
 
 
 @app.route("/", methods=["GET"])
@@ -214,11 +213,9 @@ def send_weekly_report():
 
 
 @app.route('/conversations/<conversation_id>', methods=['GET'])
-@cache.cached(timeout=CACHE_TTL)
 def get_conversation(conversation_id):
-    reference = request.args.get('reference')
+    reference = request.args.get('reference').strip()
     if not reference.startswith('+'):
-        # If not, add it
         reference = '+' + reference
 
     if not conversation_id:

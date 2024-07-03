@@ -9,7 +9,7 @@ from sqlalchemy.orm import aliased
 from configs.cache_template import (
     get_rental_message,
     get_tax_message,
-    get_template_content_by_name,
+    get_template_content_by_name, cache,
 )
 from configs.database import Session
 from configs.query_engine.text_summary import generate_text_summary
@@ -24,7 +24,7 @@ from models import (
     MiWayneDetroit,
     ResidentialRentalRegistrations,
     TwilioMessage,
-    User,
+    User, LookupTemplate,
 )
 from utils.address_normalizer import (
     extract_latest_address,
@@ -34,6 +34,7 @@ from utils.check_property_status import check_property_status
 from utils.map_keys_to_result import map_keys_to_result
 
 missive_client = MissiveAPI()
+CACHE_TTL = 24 * 60 * 60
 
 
 def search_service(query, conversation_id, to_phone, owner_query_engine_without_sunit):
@@ -406,44 +407,31 @@ def get_conversation_data(conversation_id, query_phone_number):
             label_ids = [label_id[0] for label_id in label_ids]
 
             # Query TwilioMessage table
-            messages = session.query(TwilioMessage.preview).filter(
+            messages = session.query(TwilioMessage.from_field, TwilioMessage.delivered_at, TwilioMessage.preview).filter(
                 and_(
                     or_(TwilioMessage.from_field == query_phone_number, TwilioMessage.to_field == query_phone_number),
                     or_(TwilioMessage.references == phone_pair_1, TwilioMessage.references == phone_pair_2)
                 )
             ).order_by(TwilioMessage.delivered_at).all()
 
-            first_reply = session.query(TwilioMessage.delivered_at).filter(
-                and_(
-                    TwilioMessage.from_field == query_phone_number,
-                    or_(TwilioMessage.references == phone_pair_1, TwilioMessage.references == phone_pair_2)
-                )
-            ).order_by(TwilioMessage.delivered_at).first()
+            messages_from_query_phone_number = [message for message in messages if
+                                                message.from_field == query_phone_number]
+
+            first_message = messages_from_query_phone_number[0].delivered_at.timestamp() if messages_from_query_phone_number else None
+            last_message = messages_from_query_phone_number[-1].delivered_at.timestamp() if messages_from_query_phone_number else None
 
             # Query comments table
             comments = session.query(Comments).filter(Comments.conversation_id == conversation_id).all()
 
-            comment_summary = generate_text_summary(comments, "A summary of all comments left in the thread by "
-                                                              "reporters over time. Recommendations the reporters "
-                                                              "made, handoffs to other reporters, process/case notes, "
-                                                              "phone call notes,")
-            impact_summary = generate_text_summary(messages, "A short summary of impact/conversation outcomes for "
-                                                             "this contact. Detailing whether their issues have "
-                                                             "consistently been addressed, or if they were unable to "
-                                                             "get the help they needed.")
-            message_summary = generate_text_summary(messages, "A summary detailing the contact's general tone and "
-                                                              "approach during the conversations. Here we could flag "
-                                                              "if a contact has been abusive or rude in their "
-                                                              "communications with Outlier staff. Also include "
-                                                              "relevant case notes (e.g., this person never follows "
-                                                              "up after we provide info), notes from phone calls.")
+            comment_summary, impact_summary, message_summary = get_conversation_summary(comments, messages)
 
             # Create a dictionary to store the conversation summary
             conversation_summary = {
                 'author_zipcode': author_zipcode,
                 'author_email': author_email,
                 'assignee_user_name': assignee_user_names,
-                'first_reply': first_reply[0] if first_reply else None,
+                'first_reply': first_message,
+                'last_reply': last_message,
                 'labels': label_ids,
                 'comments': comment_summary.text,
                 'outcome': impact_summary.text,
@@ -454,7 +442,7 @@ def get_conversation_data(conversation_id, query_phone_number):
 
     except Exception as e:
         # Log the error for debugging purposes
-        print(f"Error occurred while retrieving conversation summary: {str(e)}")
+        logger.error(f"Error occurred while retrieving conversation summary: {str(e)}")
         # Re-raise the exception to be handled by the calling code
         raise
 
@@ -472,5 +460,23 @@ def extract_address_messages_from_supabase(phone):
     return list(map(lambda a: a.preview, messages))
 
 
-def get_conversation_summary(conversation_id, reference):
-    pass
+@cache.cached(timeout=CACHE_TTL, key_prefix='convo_summary')
+def get_conversation_summary(comments, messages):
+    try:
+        with Session() as session:
+            template_names = ["comment_summary_prompt", "impact_summary_prompt", "message_summary_prompt"]
+            results = session.query(LookupTemplate.name, LookupTemplate.content).filter(LookupTemplate.name.in_(template_names)).all()
+            content_dict = {result.name: result.content for result in results}
+
+            comment_summary_template = content_dict.get("comment_summary_prompt", "")
+            impact_summary_template = content_dict.get("impact_summary_prompt", "")
+            message_summary_template = content_dict.get("message_summary_prompt", "")
+
+            comment_summary = generate_text_summary(comments, comment_summary_template)
+            impact_summary = generate_text_summary(messages, impact_summary_template)
+            message_summary = generate_text_summary(messages, message_summary_template)
+            return comment_summary, impact_summary, message_summary
+
+    except Exception as e:
+        logger.error(f"Error occurred while generating LLM summary: {str(e)}")
+        raise
