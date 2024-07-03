@@ -378,11 +378,11 @@ def get_conversation_id(session):
     try:
         lookup_id = session.query(LookupTemplate).filter_by(name="missive_report_conversation_id").first()
         if lookup_id:
-            text = lookup_id.content
+            return lookup_id.content
         else:
             fallback_id = os.getenv("MISSIVE_WEEKLY_REPORT_CONVERSATION_ID")
             if fallback_id:
-                text = fallback_id
+                return fallback_id
             else:
                 logger.error(f"Error fetching backup MISSIVE_WEEKLY_REPORT_CONVERSATION_ID")
                 return None
