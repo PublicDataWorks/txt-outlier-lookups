@@ -2,6 +2,8 @@ import uuid
 
 from geoalchemy2 import Geometry
 from sqlalchemy import (
+    ARRAY,
+    TEXT,
     BigInteger,
     Boolean,
     Column,
@@ -10,7 +12,7 @@ from sqlalchemy import (
     Float,
     Integer,
     String,
-    text, JSON, ARRAY, TEXT,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
@@ -26,7 +28,9 @@ class MiWayneDetroit(Base):
     ogc_fid = Column(
         Integer,
         primary_key=True,
-        server_default=text("nextval('address_lookup.mi_wayne_detroit_ogc_fid_seq'::regclass)"),
+        server_default=text(
+            "nextval('address_lookup.mi_wayne_detroit_ogc_fid_seq'::regclass)"
+        ),
     )
     wkb_geometry = Column(Geometry(), index=True)
     geoid = Column(String)
@@ -207,7 +211,7 @@ class MiWayneDetroit(Base):
     tax_details_bak = Column(String)
     tax_payments_bak = Column(String)
 
-    
+
 class LookupHistory(Base):
     __tablename__ = "lookup_history"
 
@@ -241,7 +245,7 @@ class ResidentialRentalRegistrations(Base):
     street_name = Column(String)
     address_id = Column(String)
 
-    
+
 class LookupTemplate(Base):
     __tablename__ = "lookup_template"
     __table_args__ = {"schema": "public"}
@@ -301,7 +305,7 @@ class WeeklyReport(Base):
 
 
 class Author(Base):
-    __tablename__ = 'authors'
+    __tablename__ = "authors"
 
     phone_number = Column(String, primary_key=True)
     name = Column(String, nullable=True)
@@ -314,7 +318,7 @@ class Author(Base):
 
 
 class TwilioMessage(Base):
-    __tablename__ = 'twilio_messages'
+    __tablename__ = "twilio_messages"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     preview = Column(String, nullable=True)
@@ -333,7 +337,7 @@ class TwilioMessage(Base):
 
 
 class ConversationLabel(Base):
-    __tablename__ = 'conversations_labels'
+    __tablename__ = "conversations_labels"
 
     id = Column(Integer, primary_key=True)
     conversation_id = Column(UUID(as_uuid=True))
@@ -346,7 +350,7 @@ class ConversationLabel(Base):
 
 
 class ConversationAssignee(Base):
-    __tablename__ = 'conversations_assignees'
+    __tablename__ = "conversations_assignees"
 
     id = Column(Integer, primary_key=True)
     unassigned = Column(Boolean)
@@ -365,7 +369,7 @@ class ConversationAssignee(Base):
 
 
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True)
     email = Column(String)
@@ -377,7 +381,7 @@ class User(Base):
 
 
 class Comments(Base):
-    __tablename__ = 'comments'
+    __tablename__ = "comments"
 
     id = Column(UUID(as_uuid=True), primary_key=True)
     created_at = Column(DateTime(timezone=True))

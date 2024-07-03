@@ -176,10 +176,12 @@ def generate_geographic_region_markdown(zip_codes):
     return ""
 
 
-def generate_lookup_history_markdown(status_counts, percentage_changes, percentage_changes_4_week):
+def generate_lookup_history_markdown(
+    status_counts, percentage_changes, percentage_changes_4_week
+):
     return (
         "### Data Lookups by Property Status\n"
-        "| Status                         | Count |  Change (week) | Change (4-week avg) |\n"
+        "| Status                         | Count |  Change (weekly) | Change (4-weeks avg) |\n"
         "|------------------------------- |-------|----------------|---------------------|\n"
         f"| Registered             | {status_counts['REGISTERED']} |   {format_percentage_change(percentage_changes['REGISTERED'])} | {format_percentage_change(percentage_changes_4_week['REGISTERED'])} \n"
         f"| Unregistered            | {status_counts['UNREGISTERED']}  |   {format_percentage_change(percentage_changes['UNREGISTERED'])} | {format_percentage_change(percentage_changes_4_week['UNREGISTERED'])} \n"
@@ -195,7 +197,7 @@ def generate_conversation_outcomes_markdown(
 ):
     return (
         "### Conversation Outcomes\n"
-        "| Outcome                         | Count |  Change (week) | Change (4-week avg) |\n"
+        "| Outcome                         | Count |  Change (weekly) | Change (4-weeks avg) |\n"
         "|-------------------------------  |-------|----------------|---------------------|\n"
         f"| User Satisfaction             | {outcome_counts['user satisfaction']} |   {format_percentage_change(percentage_changes['user satisfaction'])} | {format_percentage_change(percentage_changes_4_week['user satisfaction'])} \n"
         f"| Problem Addressed             | {outcome_counts['problem addressed']}  |   {format_percentage_change(percentage_changes['problem addressed'])} | {format_percentage_change(percentage_changes_4_week['problem addressed'])} \n"
@@ -212,7 +214,7 @@ def generate_data_by_audience_segment_markdown(
 ):
     return (
         "### Broadcast Replies by Audience Segment\n"
-        "| Segment                         | Count |  Change (week) | Change (4-week avg) |\n"
+        "| Segment                         | Count |  Change (weekly) | Change (4-weeks avg) |\n"
         "|-------------------------------  |-------|----------------|---------------------|\n"
         f"| Proactive              | {segment_counts['Proactive']}|   {format_percentage_change(percentage_changes['Proactive'])}  | {format_percentage_change(percentage_changes_4_week['Proactive'])}  \n"
         f"| Receptive             | {segment_counts['Receptive']}|   {format_percentage_change(percentage_changes['Receptive'])}   | {format_percentage_change(percentage_changes_4_week['Receptive'])}   \n"
@@ -263,9 +265,9 @@ def generate_conversation_metrics_section(
 ):
     return (
         "### Conversation Metrics\n"
-        "| Metric                         | Count | Change |\n"
-        "|------------------------------- |-------|--------|\n"
-        f"| Conversation Starters Sent     | {conversation_metrics['conversation_starters_sent']} |   {format_percentage_change(percentage_changes['conversation_starters_sent'])} |   \n"
+        "| Metric                         | Count | Change (weekly)| Change (4-weeks avg) |\n"
+        "|------------------------------- |-------|--------|---------------------|\n"
+        f"| Conversation Starters Sent     | {conversation_metrics['conversation_starters_sent']} |   {format_percentage_change(percentage_changes['conversation_starters_sent'])} |  {format_percentage_change(percentage_changes_4_week['conversation_starters_sent'])} \n"
         f"| Broadcast replies              | {conversation_metrics['broadcast_replies']}  |   {format_percentage_change(percentage_changes['broadcast_replies'])} | {format_percentage_change(percentage_changes_4_week['broadcast_replies'])} |\n"
         f"| Text-ins                       | {conversation_metrics['text_ins']} |   {format_percentage_change(percentage_changes['text_ins'])}| {format_percentage_change(percentage_changes_4_week['text_ins'])} \n"
         f"| Reporter conversations         | {conversation_metrics['reporter_conversations']} |   {format_percentage_change(percentage_changes['reporter_conversations'])}| {format_percentage_change(percentage_changes_4_week['reporter_conversations'])} \n"
@@ -336,10 +338,16 @@ def format_weekly_report_data(report_data):
 
 def calculate_percentage_change(old_data, new_data):
     def calculate_change(old, new):
+        if old == new:
+            return 0
         if old == 0:
-            return 100
+            return 100 if new != 0 else 0
         try:
-            return ((new - old) / old) * 100 if old != 0 else float("inf") if new != 0 else 0
+            return (
+                ((new - old) / old) * 100
+                if old != 0
+                else float("inf") if new != 0 else 0
+            )
         except ZeroDivisionError:
             return float("inf")
 
@@ -363,7 +371,7 @@ def format_percentage_change(change):
     elif change < 0:
         return f"▼ {abs(change):.2f}%"
     else:
-        return "~ 0%"
+        return "~"
 
 
 def get_conversation_id(session):

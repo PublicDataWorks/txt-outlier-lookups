@@ -3,22 +3,35 @@ import time
 
 from flask import jsonify
 from loguru import logger
+from sqlalchemy import and_, case, func, or_, text
 from sqlalchemy.orm import aliased
 
-from configs.cache_template import get_template_content_by_name
+from configs.cache_template import (
+    get_rental_message,
+    get_tax_message,
+    get_template_content_by_name,
+)
 from configs.database import Session
 from configs.query_engine.text_summary import generate_text_summary
-
+from constants.following_message import FollowingMessageType
 from libs.MissiveAPI import MissiveAPI
-from configs.cache_template import get_rental_message, get_tax_message
-from models import LookupHistory, MiWayneDetroit, ResidentialRentalRegistrations, TwilioMessage, ConversationLabel, \
-    ConversationAssignee, Author, User, Comments
-from utils.address_normalizer import get_first_valid_normalized_address, extract_latest_address
+from models import (
+    Author,
+    Comments,
+    ConversationAssignee,
+    ConversationLabel,
+    LookupHistory,
+    MiWayneDetroit,
+    ResidentialRentalRegistrations,
+    TwilioMessage,
+    User,
+)
+from utils.address_normalizer import (
+    extract_latest_address,
+    get_first_valid_normalized_address,
+)
 from utils.check_property_status import check_property_status
 from utils.map_keys_to_result import map_keys_to_result
-from constants.following_message import FollowingMessageType
-
-from sqlalchemy import and_, case, func, or_
 
 missive_client = MissiveAPI()
 
@@ -444,6 +457,19 @@ def get_conversation_data(conversation_id, query_phone_number):
         print(f"Error occurred while retrieving conversation summary: {str(e)}")
         # Re-raise the exception to be handled by the calling code
         raise
+
+
+def extract_address_messages_from_supabase(phone):
+    session = Session()
+    messages = (
+        session.query(TwilioMessage)
+        .filter(TwilioMessage.from_field == phone)
+        .order_by(text("delivered_at desc"))
+        .limit(30)
+        .all()
+    )
+
+    return list(map(lambda a: a.preview, messages))
 
 
 def get_conversation_summary(conversation_id, reference):
