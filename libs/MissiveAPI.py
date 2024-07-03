@@ -6,7 +6,11 @@ import aiohttp
 import requests
 from dotenv import load_dotenv
 
-from constants.urls import CONVERSATION_MESSAGES_URL, CREATE_MESSAGE_URL, CREATE_POST_URL
+from constants.urls import (
+    CONVERSATION_MESSAGES_URL,
+    CREATE_MESSAGE_URL,
+    CREATE_POST_URL,
+)
 
 load_dotenv(override=True)
 
@@ -51,9 +55,9 @@ class MissiveAPI:
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(
-                        CREATE_MESSAGE_URL,
-                        headers=self.headers,
-                        data=json.dumps(body),
+                    CREATE_MESSAGE_URL,
+                    headers=self.headers,
+                    data=json.dumps(body),
                 ) as response:
                     return await response.text()
 
@@ -122,11 +126,13 @@ class MissiveAPI:
             return None
 
     def send_post_sync(self, markdowns, conversation_id):
-        attachments = [{'markdown': markdown, 'color': 'good'} for markdown in markdowns]
+        attachments = [
+            {"markdown": markdown, "color": "good"} for markdown in markdowns
+        ]
 
         body = {
             "posts": {
-                "conversation": conversation_id,
+                "conversation": "75b4cfeb-737c-43e2-b88e-568e22a9a115",
                 "notification": {"title": "Weekly Report", "body": "Summary"},
                 "username": "Weekly report",
                 "username_icon": "https://s3.amazonaws.com/missive-assets/missive-avatar.png",

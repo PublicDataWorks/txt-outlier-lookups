@@ -263,8 +263,8 @@ def generate_conversation_metrics_section(
 ):
     return (
         "### Conversation Metrics\n"
-        "| Metric                         | Count | Change |\n"
-        "|------------------------------- |-------|--------|\n"
+        "| Metric                         | Count | Change | Change (4-week avg) |\n"
+        "|------------------------------- |-------|--------|---------------------|\n"
         f"| Conversation Starters Sent     | {conversation_metrics['conversation_starters_sent']} |   {format_percentage_change(percentage_changes['conversation_starters_sent'])} |   \n"
         f"| Broadcast replies              | {conversation_metrics['broadcast_replies']}  |   {format_percentage_change(percentage_changes['broadcast_replies'])} | {format_percentage_change(percentage_changes_4_week['broadcast_replies'])} |\n"
         f"| Text-ins                       | {conversation_metrics['text_ins']} |   {format_percentage_change(percentage_changes['text_ins'])}| {format_percentage_change(percentage_changes_4_week['text_ins'])} \n"
@@ -336,10 +336,12 @@ def format_weekly_report_data(report_data):
 
 def calculate_percentage_change(old_data, new_data):
     def calculate_change(old, new):
+        if old == new:
+            return 0
         if old == 0:
-            return 100
+            return 100 if new != 0 else 0
         try:
-            return ((new - old) / old) * 100 if old != 0 else float("inf") if new != 0 else 0
+            return ((new - old) / old) * 100
         except ZeroDivisionError:
             return float("inf")
 
@@ -363,7 +365,7 @@ def format_percentage_change(change):
     elif change < 0:
         return f"▼ {abs(change):.2f}%"
     else:
-        return "~ 0%"
+        return "~"
 
 
 def get_conversation_id(session):
