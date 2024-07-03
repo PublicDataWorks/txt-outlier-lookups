@@ -4,6 +4,7 @@ import time
 
 import aiohttp
 import requests
+from loguru import logger
 from dotenv import load_dotenv
 
 from constants.urls import CONVERSATION_MESSAGES_URL, CREATE_MESSAGE_URL, CREATE_POST_URL
@@ -123,7 +124,6 @@ class MissiveAPI:
 
     def send_post_sync(self, markdowns, conversation_id):
         attachments = [{'markdown': markdown, 'color': 'good'} for markdown in markdowns]
-
         body = {
             "posts": {
                 "conversation": conversation_id,
@@ -134,11 +134,11 @@ class MissiveAPI:
             },
         }
 
-        try:
-            response = requests.post(
-                CREATE_POST_URL, headers=self.headers, data=json.dumps(body)
-            )
-            response.raise_for_status()  # Raise exception if not a 2xx response
-            return response
-        except requests.exceptions.RequestException:
+        response = requests.post(
+            CREATE_POST_URL, headers=self.headers, data=json.dumps(body)
+        )
+        if not response.ok:
+            logger.error(f"Create Missive post failed with status code {response.status_code}: {response.text}\n{body}")
             return None
+
+        return response
