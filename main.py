@@ -51,7 +51,7 @@ sentry_sdk.init(
 logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 
 app = Flask(__name__)
-SUMMARY_CONVO_URL = os.getenv('SUMMARY_CONVO_SIDEBAR_ADDRESS')
+SUMMARY_CONVO_URL = os.getenv('SUMMARY_CONVO_URL')
 if not SUMMARY_CONVO_URL:
     print("Error: SUMMARY_CONVO_URL is not set. Aborting server startup.")
     sys.exit(1)

@@ -12,3 +12,4 @@ usaddress-scourgify
 paramiko
 supabase
 flask-cors
+gunicorn
