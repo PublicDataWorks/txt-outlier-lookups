@@ -1,10 +1,12 @@
-FROM python:3.10-slim-buster
+FROM python:3.12-bullseye
 
 WORKDIR /app
 
-COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt
+RUN apt-get update && apt-get install -y gdal-bin libgdal-dev postgresql-client
 
+COPY requirements.txt /app/requirements.txt
+RUN pip install -r requirements.txt
 COPY . .
 
-CMD [ "python3", "main.py" ]
+EXPOSE 5000
+CMD ["gunicorn", "-w", "4", "--bind", "0.0.0.0:5000", "wsgi:app"]

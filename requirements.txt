@@ -92,6 +92,8 @@ gotrue==2.5.4
     # via supabase
 greenlet==3.0.3
     # via sqlalchemy
+gunicorn==22.0.0
+    # via -r requirements.in
 h11==0.14.0
     # via httpcore
 httpcore==1.0.5
@@ -215,6 +217,7 @@ packaging==24.1
     # via
     #   deprecation
     #   geoalchemy2
+    #   gunicorn
     #   marshmallow
 pandas==2.2.2
     # via
