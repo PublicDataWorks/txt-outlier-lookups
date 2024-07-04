@@ -27,7 +27,7 @@ def callback1(payload):
 
 async def connect_to_supabase():
         URL = f"wss://{supabase_id}.supabase.co/realtime/v1/websocket?apikey={api_key}&vsn=1.0.0"
-        s = Socket(URL)
+        s = Socket(URL, auto_reconnect=True)
         await s._connect()
         # channel_1 = s.set_channel("realtime:public:lookup_template")
         channel_1 = cast(Channel, s.set_channel("realtime:public:lookup_template"))
