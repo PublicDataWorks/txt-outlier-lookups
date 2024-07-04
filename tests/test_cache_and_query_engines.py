@@ -14,7 +14,7 @@ from configs.query_engine.owner_information import init_owner_query_engine
 from configs.query_engine.owner_information_without_sunit import init_owner_query_engine_without_sunit
 from configs.query_engine.tax_information import init_tax_query_engine
 from configs.query_engine.tax_information_without_sunit import init_tax_query_engine_without_sunit
-from configs.supabase import connect_to_supabase, run_websocket_listener
+from configs.supabase import connect_to_supabase_websocket, run_websocket_listener
 
 # Mock data
 mock_templates = [

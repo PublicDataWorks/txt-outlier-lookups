@@ -51,18 +51,17 @@ sentry_sdk.init(
 logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 
 app = Flask(__name__)
-SUMMARY_CONVO_URL = os.getenv('SUMMARY_CONVO_URL')
-if not SUMMARY_CONVO_URL:
+SUMMARY_CONVO_SIDEBAR_ADDRESS = os.getenv('SUMMARY_CONVO_SIDEBAR_ADDRESS')
+if not SUMMARY_CONVO_SIDEBAR_ADDRESS:
     print("Error: SUMMARY_CONVO_URL is not set. Aborting server startup.")
     sys.exit(1)
 
-CORS(app, origins=[SUMMARY_CONVO_URL])
+CORS(app, origins=[SUMMARY_CONVO_SIDEBAR_ADDRESS])
 os.makedirs('cache', exist_ok=True)
 cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Path('./cache')})
 
 with app.app_context():
     init_lookup_templates_cache()
-
 
 owner_query_engine = init_owner_query_engine()
 owner_query_engine_without_sunit = init_owner_query_engine_without_sunit()
@@ -80,6 +79,11 @@ def handle_invalid_usage(error):
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 missive_client = MissiveAPI()
+
+
+@app.before_request
+def log_request_info():
+    logger.info(f'Request: {request.path}')
 
 
 @app.route("/", methods=["GET"])
@@ -102,8 +106,8 @@ def search():
         return jsonify(response), status
 
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
-        logger.exception(e)
+        print(f"An error occurred at lookup /search: {str(e)}")
+        logger.error(e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -150,8 +154,8 @@ def yes():
         )
         return jsonify({"message": "Success"}), 200
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
-        logger.exception(e)
+        print(f"An error occurred at lookup /yes: {str(e)}")
+        logger.error(e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -180,8 +184,8 @@ def more():
             )
 
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
-        logger.exception("", e)
+        print(f"An error occurred at lookup /more: {str(e)}")
+        logger.error("", e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -208,20 +212,20 @@ def fetch_rental():
 def send_weekly_report():
     analytics = AnalyticsService()
     analytics.send_weekly_report()
-
     return jsonify({"message": "Weekly report sent"}), 200
 
 
 @app.route('/conversations/<conversation_id>', methods=['GET'])
 def get_conversation(conversation_id):
-    reference = request.args.get('reference').strip()
-    if not reference.startswith('+'):
-        reference = '+' + reference
+    reference = request.args.get('reference')
 
     if not conversation_id:
         return jsonify({'error': 'Conversation ID is required'}), 400
     if not reference:
         return jsonify({'error': 'Reference is required'}), 400
+
+    if not reference.strip().startswith('+'):
+        reference = '+' + reference
 
     try:
         conversation_data = get_conversation_data(conversation_id, reference)
@@ -233,7 +237,7 @@ def get_conversation(conversation_id):
         ), 200
 
     except Exception as e:
-        logger.error({'error': str(e)})
+        logger.error({'error occurred at getting conversation summary /conversations/<conversation_id>': str(e)})
         return jsonify({'error': str(e)}), 500
 
 
