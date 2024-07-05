@@ -7,6 +7,7 @@ import sentry_sdk
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager, jwt_required
 from loguru import logger
 from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -55,6 +56,14 @@ SUMMARY_CONVO_SIDEBAR_ADDRESS = os.getenv('SUMMARY_CONVO_SIDEBAR_ADDRESS')
 if not SUMMARY_CONVO_SIDEBAR_ADDRESS:
     print("Error: SUMMARY_CONVO_URL is not set. Aborting server startup.")
     sys.exit(1)
+
+JWT_SECRET = os.getenv('JWT_SECRET')
+if not JWT_SECRET:
+    print("Error: JWT_SECRET is not set. Aborting server startup.")
+    sys.exit(1)
+
+app.config['SECRET_KEY'] = JWT_SECRET
+jwt = JWTManager(app)
 
 CORS(app, origins=[SUMMARY_CONVO_SIDEBAR_ADDRESS])
 os.makedirs('cache', exist_ok=True)

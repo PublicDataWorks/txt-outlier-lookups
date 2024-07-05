@@ -13,3 +13,4 @@ paramiko
 supabase
 flask-cors
 gunicorn
+flask-jwt-extended
