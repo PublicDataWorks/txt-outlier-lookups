@@ -387,7 +387,7 @@ def get_conversation_data(conversation_id, query_phone_number):
             phone_pair_1 = [query_phone_number + phone_number]
             phone_pair_2 = [phone_number + query_phone_number]
 
-            comments = session.query(Comments).filter(Comments.conversation_id == conversation_id).all()
+            comments = session.query(Comments.body).filter(Comments.conversation_id == conversation_id).all()
 
             messages = session.query(TwilioMessage.from_field, TwilioMessage.delivered_at,
                                      TwilioMessage.preview).filter(
@@ -444,10 +444,10 @@ def get_conversation_data_with_cache(comments, messages, conversation_id, query_
             messages_from_query_phone_number = [message for message in messages if
                                                 message.from_field == query_phone_number]
 
-            first_message = messages_from_query_phone_number[
-                0].delivered_at.timestamp() if messages_from_query_phone_number else None
-            last_message = messages_from_query_phone_number[
-                -1].delivered_at.timestamp() if messages_from_query_phone_number else None
+            first_message = int(messages_from_query_phone_number[
+                0].delivered_at.timestamp()) if messages_from_query_phone_number else None
+            last_message = int(messages_from_query_phone_number[
+                -1].delivered_at.timestamp()) if messages_from_query_phone_number else None
 
             template_names = ["comment_summary_prompt", "impact_summary_prompt", "message_summary_prompt"]
             results = session.query(LookupTemplate.name, LookupTemplate.content).filter(
