@@ -398,7 +398,12 @@ def get_conversation_data(conversation_id, query_phone_number):
                 )
             ).order_by(TwilioMessage.delivered_at).all()
 
-            conversation_summary = get_conversation_data_with_cache(comments, messages, conversation_id, query_phone_number)
+            author = session.query(Author).filter(Author.phone_number == query_phone_number).first()
+            author_zipcode = author.zipcode if author else None
+            author_email = author.email if author else None
+
+            conversation_summary = get_conversation_data_with_cache(comments, messages, conversation_id,
+                                                                    query_phone_number, author_zipcode, author_email)
 
             return conversation_summary
 
@@ -421,16 +426,12 @@ def extract_address_messages_from_supabase(phone):
 
 
 @cache.cached(timeout=CACHE_TTL, key_prefix='convo_summary')
-def get_conversation_data_with_cache(comments, messages, conversation_id, query_phone_number):
+def get_conversation_data_with_cache(comments, messages, conversation_id, query_phone_number, author_zipcode, author_email):
     try:
         with Session() as session:
             phone_number = os.getenv('PHONE_NUMBER')
             if not phone_number:
                 return None
-
-            author = session.query(Author).filter(Author.phone_number == query_phone_number).first()
-            author_zipcode = author.zipcode if author else None
-            author_email = author.email if author else None
 
             assignee_users = session.query(User.name).join(
                 ConversationAssignee, ConversationAssignee.user_id == User.id
