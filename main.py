@@ -11,6 +11,7 @@ from flask_jwt_extended import JWTManager, jwt_required
 from loguru import logger
 from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
+from urllib.parse import unquote
 
 from configs.cache_template import cache, init_lookup_templates_cache
 from configs.query_engine.owner_information import init_owner_query_engine
@@ -32,7 +33,7 @@ from services.services import (
     get_conversation_data,
     handle_match,
     more_search_service,
-    search_service,
+    search_service, update_author_and_missive,
 )
 from utils.address_normalizer import extract_latest_address
 
@@ -248,6 +249,29 @@ def get_conversation(conversation_id):
     except Exception as e:
         logger.error({'error occurred at getting conversation summary /conversations/<conversation_id>': str(e)})
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/contacts/<phone_number>', methods=['PATCH'])
+def update_contact(phone_number):
+    phone_number = unquote(phone_number)
+
+    if not phone_number.strip().startswith('+'):
+        phone_number = '+' + phone_number
+
+    update_data = request.json
+
+    if not update_data:
+        return jsonify({'error': 'Update data is required'}), 400
+
+    email = update_data.get('email')
+    zipcode = update_data.get('zipcode')
+
+    if not email and not zipcode:
+        return jsonify({'error': 'At least one of email or zipcode is required'}), 400
+
+    result, status_code = update_author_and_missive(phone_number, email, zipcode)
+
+    return jsonify(result), status_code
 
 
 def start_mqtt():
