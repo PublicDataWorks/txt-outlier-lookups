@@ -1,4 +1,6 @@
+import logging
 import os
+import sys
 
 from dotenv import load_dotenv
 from llama_index.core import PromptTemplate, SQLDatabase, VectorStoreIndex
@@ -12,6 +14,8 @@ from configs.database import engine
 
 load_dotenv(override=True)
 key = os.environ.get("OPENAI_API_KEY")
+
+logging.basicConfig(stream=sys.stdout, level=logging.WARNING)
 
 
 def init_owner_query_engine():

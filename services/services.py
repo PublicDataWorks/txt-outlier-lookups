@@ -336,7 +336,6 @@ def get_address_information(session, address):
     normalized_address = get_first_valid_normalized_address([address])
     address, sunit = extract_address_information(normalized_address)
 
-    # Define the case statement for rental_status
     rental_status_case = case(
         (ResidentialRentalRegistrations.lat.isnot(None), "IS"), else_="IS NOT"
     ).label("rental_status")
@@ -382,68 +381,28 @@ def get_address_information(session, address):
 def get_conversation_data(conversation_id, query_phone_number):
     try:
         with Session() as session:
-            # Get the query phone number
             phone_number = os.getenv('PHONE_NUMBER')
             if not phone_number:
                 return None
             phone_pair_1 = [query_phone_number + phone_number]
             phone_pair_2 = [phone_number + query_phone_number]
 
-            # Query authors table
-            author = session.query(Author).filter(Author.phone_number == query_phone_number).first()
-            author_zipcode = author.zipcode if author else None
-            author_email = author.email if author else None
+            comments = session.query(Comments.body).filter(Comments.conversation_id == conversation_id).all()
 
-            # Query conversations_assignees and users tables
-            UserAlias = aliased(User)
-            assignee_users = session.query(UserAlias.name).join(
-                ConversationAssignee, ConversationAssignee.user_id == UserAlias.id
-            ).filter(ConversationAssignee.conversation_id == conversation_id).all()
-            assignee_user_names = [user.name for user in assignee_users if user.name is not None]
-
-            label_ids = session.query(ConversationLabel.label_id).filter(
-                ConversationLabel.conversation_id == conversation_id
-            ).distinct().all()
-            label_ids = [label_id[0] for label_id in label_ids]
-
-            # Query TwilioMessage table
-            messages = session.query(TwilioMessage.from_field, TwilioMessage.delivered_at, TwilioMessage.preview).filter(
+            messages = session.query(TwilioMessage.from_field, TwilioMessage.delivered_at,
+                                     TwilioMessage.preview).filter(
                 and_(
                     or_(TwilioMessage.from_field == query_phone_number, TwilioMessage.to_field == query_phone_number),
                     or_(TwilioMessage.references == phone_pair_1, TwilioMessage.references == phone_pair_2)
                 )
             ).order_by(TwilioMessage.delivered_at).all()
 
-            messages_from_query_phone_number = [message for message in messages if
-                                                message.from_field == query_phone_number]
-
-            first_message = messages_from_query_phone_number[0].delivered_at.timestamp() if messages_from_query_phone_number else None
-            last_message = messages_from_query_phone_number[-1].delivered_at.timestamp() if messages_from_query_phone_number else None
-
-            # Query comments table
-            comments = session.query(Comments).filter(Comments.conversation_id == conversation_id).all()
-
-            comment_summary, impact_summary, message_summary = get_conversation_summary(comments, messages)
-
-            # Create a dictionary to store the conversation summary
-            conversation_summary = {
-                'author_zipcode': author_zipcode,
-                'author_email': author_email,
-                'assignee_user_name': assignee_user_names,
-                'first_reply': first_message,
-                'last_reply': last_message,
-                'labels': label_ids,
-                'comments': comment_summary.text,
-                'outcome': impact_summary.text,
-                'messages': message_summary.text
-            }
+            conversation_summary = get_conversation_data_with_cache(comments, messages, conversation_id, query_phone_number)
 
             return conversation_summary
 
     except Exception as e:
-        # Log the error for debugging purposes
         logger.error(f"Error occurred while retrieving conversation summary: {str(e)}")
-        # Re-raise the exception to be handled by the calling code
         raise
 
 
@@ -461,11 +420,38 @@ def extract_address_messages_from_supabase(phone):
 
 
 @cache.cached(timeout=CACHE_TTL, key_prefix='convo_summary')
-def get_conversation_summary(comments, messages):
+def get_conversation_data_with_cache(comments, messages, conversation_id, query_phone_number):
     try:
         with Session() as session:
+            phone_number = os.getenv('PHONE_NUMBER')
+            if not phone_number:
+                return None
+
+            author = session.query(Author).filter(Author.phone_number == query_phone_number).first()
+            author_zipcode = author.zipcode if author else None
+            author_email = author.email if author else None
+
+            assignee_users = session.query(User.name).join(
+                ConversationAssignee, ConversationAssignee.user_id == User.id
+            ).filter(ConversationAssignee.conversation_id == conversation_id).all()
+            assignee_user_names = [user.name for user in assignee_users if user.name is not None]
+
+            label_ids = session.query(ConversationLabel.label_id).filter(
+                ConversationLabel.conversation_id == conversation_id
+            ).distinct().all()
+            label_ids = [label_id[0] for label_id in label_ids]
+
+            messages_from_query_phone_number = [message for message in messages if
+                                                message.from_field == query_phone_number]
+
+            first_message = int(messages_from_query_phone_number[
+                0].delivered_at.timestamp()) if messages_from_query_phone_number else None
+            last_message = int(messages_from_query_phone_number[
+                -1].delivered_at.timestamp()) if messages_from_query_phone_number else None
+
             template_names = ["comment_summary_prompt", "impact_summary_prompt", "message_summary_prompt"]
-            results = session.query(LookupTemplate.name, LookupTemplate.content).filter(LookupTemplate.name.in_(template_names)).all()
+            results = session.query(LookupTemplate.name, LookupTemplate.content).filter(
+                LookupTemplate.name.in_(template_names)).all()
             content_dict = {result.name: result.content for result in results}
 
             comment_summary_template = content_dict.get("comment_summary_prompt", "")
@@ -475,7 +461,19 @@ def get_conversation_summary(comments, messages):
             comment_summary = generate_text_summary(comments, comment_summary_template)
             impact_summary = generate_text_summary(messages, impact_summary_template)
             message_summary = generate_text_summary(messages, message_summary_template)
-            return comment_summary, impact_summary, message_summary
+
+            conversation_summary = {
+                'author_zipcode': author_zipcode,
+                'author_email': author_email,
+                'assignee_user_name': assignee_user_names,
+                'first_reply': first_message,
+                'last_reply': last_message,
+                'labels': label_ids,
+                'comments': comment_summary.text,
+                'outcome': impact_summary.text,
+                'messages': message_summary.text
+            }
+            return conversation_summary
 
     except Exception as e:
         logger.error(f"Error occurred while generating LLM summary: {str(e)}")
