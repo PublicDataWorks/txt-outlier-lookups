@@ -227,8 +227,7 @@ def send_weekly_report():
 
 @app.route('/conversations/<conversation_id>', methods=['GET'])
 def get_conversation(conversation_id):
-    reference_encoded = request.args.get('reference')
-    reference = unquote(reference_encoded) if reference_encoded else None
+    reference = request.args.get('reference')
 
     if not conversation_id:
         return jsonify({'error': 'Conversation ID is required'}), 400
