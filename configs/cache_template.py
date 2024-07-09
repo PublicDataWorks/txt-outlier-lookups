@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 
 from configs.database import Session
 from models import LookupTemplate
@@ -7,7 +7,6 @@ from flask_caching import Cache
 
 session = Session()
 cache = Cache()
-logger = logging.getLogger(__name__)
 
 
 def get_lookup_templates():

@@ -4,6 +4,7 @@ import time
 from flask import jsonify
 from loguru import logger
 from sqlalchemy import and_, case, func, or_, text
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import aliased
 
 from configs.cache_template import (
@@ -397,8 +398,15 @@ def get_conversation_data(conversation_id, query_phone_number):
                 )
             ).order_by(TwilioMessage.delivered_at).all()
 
-            conversation_summary = get_conversation_data_with_cache(comments, messages, conversation_id, query_phone_number)
+            author_zipcode, author_email = session.query(
+                Author.zipcode, Author.email
+            ).filter(Author.phone_number == query_phone_number).first() or (None, None)
 
+            conversation_summary = get_conversation_data_with_cache(comments, messages, conversation_id, query_phone_number)
+            if author_zipcode:
+                conversation_summary['author_zipcode'] = author_zipcode
+            if author_email:
+                conversation_summary['author_email'] = author_email
             return conversation_summary
 
     except Exception as e:
@@ -426,10 +434,6 @@ def get_conversation_data_with_cache(comments, messages, conversation_id, query_
             phone_number = os.getenv('PHONE_NUMBER')
             if not phone_number:
                 return None
-
-            author = session.query(Author).filter(Author.phone_number == query_phone_number).first()
-            author_zipcode = author.zipcode if author else None
-            author_email = author.email if author else None
 
             assignee_users = session.query(User.name).join(
                 ConversationAssignee, ConversationAssignee.user_id == User.id
@@ -463,8 +467,6 @@ def get_conversation_data_with_cache(comments, messages, conversation_id, query_
             message_summary = generate_text_summary(messages, message_summary_template)
 
             conversation_summary = {
-                'author_zipcode': author_zipcode,
-                'author_email': author_email,
                 'assignee_user_name': assignee_user_names,
                 'first_reply': first_message,
                 'last_reply': last_message,
@@ -478,3 +480,23 @@ def get_conversation_data_with_cache(comments, messages, conversation_id, query_
     except Exception as e:
         logger.error(f"Error occurred while generating LLM summary: {str(e)}")
         raise
+
+
+def update_author_and_missive(phone_number, email, zipcode):
+    try:
+        with Session() as session:
+            author = session.query(Author).filter(Author.phone_number == phone_number).one()
+            if email:
+                author.email = email
+            if zipcode:
+                author.zipcode = zipcode
+            session.commit()
+            return {"message": "Author updated successfully"}, 200
+    except NoResultFound:
+        return {"error": "Author not found"}, 404
+    except Exception as e:
+        session.rollback()
+        error_type = "email" if email else "zipcode"
+        error_message = f"Failed to update {error_type}: {str(e)}"
+        logger.error(f"Error occurred while updating contact email/zipcode: {str(e)}")
+        return {"type": error_type, "msg": error_message}, 500
