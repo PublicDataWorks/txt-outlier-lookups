@@ -266,7 +266,7 @@ def update_contact(phone_number):
     email = update_data.get('email')
     zipcode = update_data.get('zipcode')
 
-    if not email and not zipcode:
+    if email is None and zipcode is None:
         return jsonify({'error': 'At least one of email or zipcode is required'}), 400
 
     result, status_code = update_author_and_missive(phone_number, email, zipcode)

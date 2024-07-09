@@ -398,13 +398,15 @@ def get_conversation_data(conversation_id, query_phone_number):
                 )
             ).order_by(TwilioMessage.delivered_at).all()
 
-            author = session.query(Author).filter(Author.phone_number == query_phone_number).first()
-            author_zipcode = author.zipcode if author else None
-            author_email = author.email if author else None
+            author_zipcode, author_email = session.query(
+                Author.zipcode, Author.email
+            ).filter(Author.phone_number == query_phone_number).first() or (None, None)
 
-            conversation_summary = get_conversation_data_with_cache(comments, messages, conversation_id,
-                                                                    query_phone_number, author_zipcode, author_email)
-
+            conversation_summary = get_conversation_data_with_cache(comments, messages, conversation_id, query_phone_number)
+            if author_zipcode:
+                conversation_summary['author_zipcode'] = author_zipcode
+            if author_email:
+                conversation_summary['author_email'] = author_email
             return conversation_summary
 
     except Exception as e:
@@ -426,7 +428,7 @@ def extract_address_messages_from_supabase(phone):
 
 
 @cache.cached(timeout=CACHE_TTL, key_prefix='convo_summary')
-def get_conversation_data_with_cache(comments, messages, conversation_id, query_phone_number, author_zipcode, author_email):
+def get_conversation_data_with_cache(comments, messages, conversation_id, query_phone_number):
     try:
         with Session() as session:
             phone_number = os.getenv('PHONE_NUMBER')
@@ -465,8 +467,6 @@ def get_conversation_data_with_cache(comments, messages, conversation_id, query_
             message_summary = generate_text_summary(messages, message_summary_template)
 
             conversation_summary = {
-                'author_zipcode': author_zipcode,
-                'author_email': author_email,
                 'assignee_user_name': assignee_user_names,
                 'first_reply': first_message,
                 'last_reply': last_message,

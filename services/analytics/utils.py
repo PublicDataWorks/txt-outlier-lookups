@@ -1,11 +1,9 @@
-import logging
+from loguru import logger
 import os
 from typing import NamedTuple
 
 from configs.query_engine.weekly_report_trend_summary import generate_report_summary
 from models import LookupTemplate
-
-logger = logging.getLogger(__name__)
 
 
 def format_metric_by_audience_segment(metrics):
@@ -177,7 +175,7 @@ def generate_geographic_region_markdown(zip_codes):
 
 
 def generate_lookup_history_markdown(
-    status_counts, percentage_changes, percentage_changes_4_week
+        status_counts, percentage_changes, percentage_changes_4_week
 ):
     return (
         "### Data Lookups by Property Status\n"
@@ -193,7 +191,7 @@ def generate_lookup_history_markdown(
 
 
 def generate_conversation_outcomes_markdown(
-    outcome_counts, percentage_changes, percentage_changes_4_week
+        outcome_counts, percentage_changes, percentage_changes_4_week
 ):
     return (
         "### Conversation Outcomes\n"
@@ -210,7 +208,7 @@ def generate_conversation_outcomes_markdown(
 
 
 def generate_data_by_audience_segment_markdown(
-    segment_counts, percentage_changes, percentage_changes_4_week
+        segment_counts, percentage_changes, percentage_changes_4_week
 ):
     return (
         "### Broadcast Replies by Audience Segment\n"
@@ -261,7 +259,7 @@ def generate_major_themes_section(messages_history):
 
 
 def generate_conversation_metrics_section(
-    conversation_metrics, percentage_changes, percentage_changes_4_week
+        conversation_metrics, percentage_changes, percentage_changes_4_week
 ):
     return (
         "### Conversation Metrics\n"
@@ -380,12 +378,8 @@ def get_conversation_id(session):
         if lookup_id:
             return lookup_id.content
         else:
-            fallback_id = os.getenv("MISSIVE_WEEKLY_REPORT_CONVERSATION_ID")
-            if fallback_id:
-                return fallback_id
-            else:
-                logger.error(f"Error fetching backup MISSIVE_WEEKLY_REPORT_CONVERSATION_ID")
-                return None
+            logger.error(f"Error fetching MISSIVE_WEEKLY_REPORT_CONVERSATION_ID")
+            return None
     except Exception as e:
         logger.error(f"Error fetching MISSIVE_WEEKLY_REPORT_CONVERSATION_ID from database: {e}")
         return None

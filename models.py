@@ -14,7 +14,7 @@ from sqlalchemy import (
     String,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -390,7 +390,7 @@ class Comments(Base):
     user_id = Column(UUID(as_uuid=True))
     is_task = Column(Boolean)
     conversation_id = Column(UUID(as_uuid=True))
-    attachment = Column(String)
+    attachment = Column(JSONB)
 
     def __repr__(self):
         return f"<Comment(id={self.id}, body='{self.body}', user_id={self.user_id})>"
