@@ -427,7 +427,7 @@ def extract_address_messages_from_supabase(phone):
     return list(map(lambda a: a.preview, messages))
 
 
-@cache.cached(timeout=CACHE_TTL, key_prefix='convo_summary')
+@cache.memoize(timeout=CACHE_TTL)
 def get_conversation_data_with_cache(comments, messages, conversation_id, query_phone_number):
     try:
         with Session() as session:
@@ -467,8 +467,6 @@ def get_conversation_data_with_cache(comments, messages, conversation_id, query_
             message_summary = generate_text_summary(messages, message_summary_template)
             keyword_label_parent_id = get_template_content_by_name("keyword_label_parent_id")
             impact_label_parent_id = get_template_content_by_name("impact_label_parent_id")
-            if keyword_label_parent_id is None or impact_label_parent_id is None:
-                logger.error("Could find find keyword_label_parent_id or impact_label_parent_id")
 
             conversation_summary = {
                 'assignee_user_name': assignee_user_names,
