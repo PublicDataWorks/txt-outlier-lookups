@@ -465,6 +465,10 @@ def get_conversation_data_with_cache(comments, messages, conversation_id, query_
             comment_summary = generate_text_summary(comments, comment_summary_template)
             impact_summary = generate_text_summary(messages, impact_summary_template)
             message_summary = generate_text_summary(messages, message_summary_template)
+            keyword_label_parent_id = get_template_content_by_name("keyword_label_parent_id")
+            impact_label_parent_id = get_template_content_by_name("impact_label_parent_id")
+            if keyword_label_parent_id is None or impact_label_parent_id is None:
+                logger.error("Could find find keyword_label_parent_id or impact_label_parent_id")
 
             conversation_summary = {
                 'assignee_user_name': assignee_user_names,
@@ -473,7 +477,9 @@ def get_conversation_data_with_cache(comments, messages, conversation_id, query_
                 'labels': label_ids,
                 'comments': comment_summary.text,
                 'outcome': impact_summary.text,
-                'messages': message_summary.text
+                'messages': message_summary.text,
+                'keyword_label_parent_id': keyword_label_parent_id,
+                'impact_label_parent_id': impact_label_parent_id
             }
             return conversation_summary
 
@@ -486,9 +492,9 @@ def update_author_and_missive(phone_number, email, zipcode):
     try:
         with Session() as session:
             author = session.query(Author).filter(Author.phone_number == phone_number).one()
-            if email:
+            if email is not None:
                 author.email = email
-            if zipcode:
+            if zipcode is not None:
                 author.zipcode = zipcode
             session.commit()
             return {"message": "Author updated successfully"}, 200
