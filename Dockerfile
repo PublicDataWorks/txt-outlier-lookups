@@ -9,4 +9,4 @@ RUN pip install -r requirements.txt
 COPY . .
 
 EXPOSE 5000
-CMD ["gunicorn", "-w", "2", "--bind", "0.0.0.0:5000", "wsgi:app"]
+CMD ["gunicorn", "-w", "4", "--bind", "0.0.0.0:5000", "main:app"]

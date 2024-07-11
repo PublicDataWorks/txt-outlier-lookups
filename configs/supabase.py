@@ -7,7 +7,6 @@ import asyncio
 from typing import cast
 import logging
 
-
 from configs.cache_template import update_lookup_templates_cache
 
 load_dotenv(override=True)
@@ -26,19 +25,19 @@ def callback1(payload):
 
 
 async def connect_to_supabase():
-        URL = f"wss://{supabase_id}.supabase.co/realtime/v1/websocket?apikey={api_key}&vsn=1.0.0"
-        s = Socket(URL, auto_reconnect=True)
-        await s._connect()
-        # channel_1 = s.set_channel("realtime:public:lookup_template")
-        channel_1 = cast(Channel, s.set_channel("realtime:public:lookup_template"))
+    URL = f"wss://{supabase_id}.supabase.co/realtime/v1/websocket?apikey={api_key}&vsn=1.0.0"
+    s = Socket(URL, auto_reconnect=True)
+    await s._connect()
+    # channel_1 = s.set_channel("realtime:public:lookup_template")
+    channel_1 = cast(Channel, s.set_channel("realtime:public:lookup_template"))
 
-        await asyncio.create_task(channel_1._join())
+    await asyncio.create_task(channel_1._join())
 
-        channel_1.on("*", callback1)
-        listen_task = asyncio.create_task(s._listen())
-        keep_alive_task = asyncio.create_task(s._keep_alive())
-        await asyncio.gather(listen_task, keep_alive_task)
-        # s.listen()
+    channel_1.on("*", callback1)
+    listen_task = asyncio.create_task(s._listen())
+    keep_alive_task = asyncio.create_task(s._keep_alive())
+    await asyncio.gather(listen_task, keep_alive_task)
+    # s.listen()
 
 
 def run_websocket_listener():
