@@ -31,7 +31,7 @@ def get_template_content_by_name(name):
     fallback_template = templates.get(name)
     if fallback_template:
         return fallback_template
-    logger.error("Could not get template")
+    logger.error(f"Could not get template: {name}")
     return None
 
 
