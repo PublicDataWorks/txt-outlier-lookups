@@ -2,11 +2,11 @@ import json
 import os
 import time
 
-import aiohttp
 import requests
-from loguru import logger
 from dotenv import load_dotenv
+from loguru import logger
 
+from configs.cache_template import get_template_content_by_name
 from constants.urls import (
     CONVERSATION_MESSAGES_URL,
     CREATE_MESSAGE_URL,
@@ -20,50 +20,12 @@ class MissiveAPI:
     def __init__(self):
         self.email = os.environ.get("EMAIL")
         self.phone_number = os.environ.get("PHONE_NUMBER")
+        self.MISSIVE_SECRET = get_template_content_by_name("missive_secret")
         self.headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {os.environ.get('MISSIVE_SECRET')}",
+            "Authorization": f"Bearer {self.MISSIVE_SECRET}",
         }
         self.organization = os.environ.get("MISSIVE_ORGANIZATION")
-
-    async def send_sms_async(
-        self,
-        message,
-        to_phone,
-        conversation_id=None,
-        add_label_list=None,
-        remove_label_list=None,
-    ):
-        if add_label_list is None:
-            add_label_list = []
-        if remove_label_list is None:
-            remove_label_list = []
-        try:
-            body = {
-                "drafts": {
-                    "body": str(message),
-                    "from_field": {"phone_number": self.phone_number},
-                    "organization": self.organization,
-                    "to_fields": [{"phone_number": to_phone}],
-                    "add_shared_labels": add_label_list,
-                    "remove_shared_labels": remove_label_list,
-                    "send": True,  # Send right away
-                },
-            }
-
-            if conversation_id is not None:
-                body["drafts"]["conversation"] = conversation_id
-
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    CREATE_MESSAGE_URL,
-                    headers=self.headers,
-                    data=json.dumps(body),
-                ) as response:
-                    return await response.text()
-
-        except requests.exceptions.RequestException:
-            return None
 
     def get_conversation_messages(self, conversation_id):
         try:
@@ -76,6 +38,9 @@ class MissiveAPI:
             return response.json()
 
         except requests.exceptions.RequestException:
+            logger.error(
+                f"MissiveAPI get conversations failed with status code {response.status_code}: {response.text}\n"
+            )
             return None
 
     def extract_preview_content(self, conversation_id):
@@ -124,6 +89,9 @@ class MissiveAPI:
             return response
 
         except requests.exceptions.RequestException:
+            logger.error(
+                f"Missive send message failed with status code {response.status_code}: {response.text}\n{body}"
+            )
             return None
 
     def send_post_sync(self, markdowns, conversation_id):
@@ -144,7 +112,9 @@ class MissiveAPI:
             CREATE_POST_URL, headers=self.headers, data=json.dumps(body)
         )
         if not response.ok:
-            logger.error(f"Create Missive post failed with status code {response.status_code}: {response.text}\n{body}")
+            logger.error(
+                f"Create Missive post failed with status code {response.status_code}: {response.text}\n{body}"
+            )
             return None
 
         return response
