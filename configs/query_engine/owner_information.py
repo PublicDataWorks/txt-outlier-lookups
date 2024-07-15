@@ -19,6 +19,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.WARNING)
 
 
 def init_owner_query_engine():
+    model = get_template_content_by_name("search_model")
     text = get_template_content_by_name("search_prompt")
     qa_prompt_tmpl = PromptTemplate(text)
 
@@ -29,7 +30,7 @@ def init_owner_query_engine():
         include_tables=["mi_wayne_detroit"],
         metadata=metadata,
     )
-    function_llm = OpenAI(temperature=0.1, model="gpt-3.5-turbo", api_key=key)
+    function_llm = OpenAI(temperature=0.1, model=model, api_key=key)
 
     city_stats_text = get_template_content_by_name("search_context_with_sunit")
 

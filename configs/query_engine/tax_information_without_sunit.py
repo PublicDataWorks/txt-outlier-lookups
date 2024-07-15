@@ -15,6 +15,7 @@ key = os.environ.get("OPENAI_API_KEY")
 
 
 def init_tax_query_engine_without_sunit():
+    model = get_template_content_by_name("search_model")
     text = get_template_content_by_name("search_prompt")
 
     qa_prompt_tmpl = PromptTemplate(text)
@@ -26,7 +27,7 @@ def init_tax_query_engine_without_sunit():
         include_tables=["mi_wayne_detroit", "residential_rental_registrations"],
         metadata=metadata,
     )
-    function_llm = OpenAI(temperature=0.1, model="gpt-3.5-turbo", api_key=key)
+    function_llm = OpenAI(temperature=0.1, model=model, api_key=key)
 
     city_stats_text = get_template_content_by_name("search_context")
 
