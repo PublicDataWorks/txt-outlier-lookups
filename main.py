@@ -1,7 +1,6 @@
 import os
 import sys
 import threading
-from pathlib import Path
 
 import sentry_sdk
 from dotenv import load_dotenv
@@ -13,7 +12,8 @@ from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 from urllib.parse import unquote
 
-from configs.cache_template import cache, init_lookup_templates_cache
+from configs.cache_template import app
+
 from configs.query_engine.owner_information import init_owner_query_engine
 from configs.query_engine.owner_information_without_sunit import (
     init_owner_query_engine_without_sunit,
@@ -52,7 +52,6 @@ sentry_sdk.init(
 
 logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 
-app = Flask(__name__)
 SUMMARY_CONVO_SIDEBAR_ADDRESS = os.getenv('SUMMARY_CONVO_SIDEBAR_ADDRESS')
 if not SUMMARY_CONVO_SIDEBAR_ADDRESS:
     logger.error("Error: SUMMARY_CONVO_SIDEBAR_ADDRESS is not set. Aborting server startup.")
@@ -68,10 +67,6 @@ jwt = JWTManager(app)
 
 CORS(app, origins=[SUMMARY_CONVO_SIDEBAR_ADDRESS])
 os.makedirs('cache', exist_ok=True)
-cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Path('./cache')})
-
-with app.app_context():
-    init_lookup_templates_cache()
 
 owner_query_engine = init_owner_query_engine()
 owner_query_engine_without_sunit = init_owner_query_engine_without_sunit()

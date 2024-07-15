@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from flask import Flask
 from flask_caching import Cache
 from loguru import logger
 
@@ -62,3 +65,10 @@ def get_rental_message(rental_status):
     }
 
     return rental_status_mapping.get(rental_status, "Invalid rental status")
+
+
+app = Flask(__name__)
+cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Path('./cache')})
+# Cache must be initialized before the app import
+with app.app_context():
+    init_lookup_templates_cache()
