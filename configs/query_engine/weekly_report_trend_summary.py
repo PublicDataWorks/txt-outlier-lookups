@@ -1,5 +1,6 @@
 import logging
 import os
+from configs.cache_template import get_template_content_by_name
 from models import LookupTemplate
 
 from dotenv import load_dotenv
@@ -35,7 +36,9 @@ def generate_report_summary(messages_history):
 
     summary_index = DocumentSummaryIndex.from_documents(documents)
 
-    query_engine = summary_index.as_query_engine(llm=OpenAI(model="gpt-4o"))
+    # Get model from template 
+    model = get_template_content_by_name("summary_model")
+    query_engine = summary_index.as_query_engine(llm=OpenAI(model=model))
 
     summary = query_engine.query(text)
 

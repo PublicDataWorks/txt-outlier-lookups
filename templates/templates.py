@@ -135,6 +135,8 @@ templates = {
         Given the following list of messages history, generate a short summary of major themes and topics discussed:
         """
     ),
+    "search_model": "gpt-3.5-turbo",
+    "summary_model": "gpt-4o",
     "comments_title": "Reporter notes",
     "outcome_title": "Impact and outcomes",
     "messages_title": "Communication patterns",

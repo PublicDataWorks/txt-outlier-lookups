@@ -1,9 +1,9 @@
+from flask_caching import Cache
 from loguru import logger
 
 from configs.database import Session
 from models import LookupTemplate
 from templates.templates import templates
-from flask_caching import Cache
 
 session = Session()
 cache = Cache()
@@ -24,12 +24,14 @@ def get_template_content_by_name(name):
     if cache:
         lookup_templates_dict = cache.get("lookup_templates")
         if lookup_templates_dict:
-            template = lookup_templates_dict.get(name)
+            template = lookup_templates_dict.get(name, '')
             if template:
+                logger.info(f"Cache: {name} - {template[:50]}{'...' if len(template) > 50 else ''}")
                 return template
     # Fallback to sms_templates if the key is not found in the cache
-    fallback_template = templates.get(name)
+    fallback_template = templates.get(name, '')
     if fallback_template:
+        logger.info(f"Fallback: {name} - {template[:50]}{'...' if len(template) > 50 else ''}")
         return fallback_template
     logger.error(f"Could not get template: {name}")
     return None
