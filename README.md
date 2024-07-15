@@ -153,6 +153,27 @@ Stores comments and tasks related to conversations:
 - Associated user and conversation
 - Task status
 
+## Config Variables Description
+
+### Environment Variables
+
+- `SUPABASE_SERVICE_ROLE_KEY`: A secret key used for Supabase service role access, granting full database access.
+- `JWT_SECRET`: A secret key used to sign and verify JSON Web Tokens for authentication.
+- `HMAC_SECRET`: A secret key used for HMAC (Hash-based Message Authentication Code) operations.
+- `DATABASE_URL`: The connection string for your database.
+- `OPENAI_API_KEY`: Your API key for accessing OpenAI services.
+- `PHONE_NUMBER`: A phone number, possibly for SMS notifications or verification.
+- `SUPABASE_ID`: The unique identifier for your Supabase project.
+- `API_KEY`: A secret key from Supbase
+- `MISSIVE_SECRET`: A secret key for authenticating with the Missive API.
+- `MISSIVE_ORGANIZATION`: The organization identifier for your Missive account.
+- `MISSIVE_WEEKLY_REPORT_CONVERSATION_ID`: The ID of a specific conversation in Missive for weekly reports.
+- `SFTP_HOST`: The hostname or IP address of the SFTP server(Detroit rental property data)
+- `SFTP_USERNAME`: The username for authenticating with the SFTP server.
+- `SFTP_PASSWORD`: The password for authenticating with the SFTP server.
+- `BACKEND_URL`: The URL of your backend server.
+- `SUMMARY_CONVO_SIDEBAR_ADDRESS`: Possibly an address or endpoint for a conversation summary sidebar feature.
+
 ### Flowchart
 
 ```mermaid
