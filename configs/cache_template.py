@@ -21,7 +21,7 @@ def init_lookup_templates_cache():
     lookup_templates = get_lookup_templates()
     lookup_templates_dict = {template['name']: template['content'] for template in lookup_templates}
     # TODO: Expect it to be cached infinitely
-    cache.set("lookup_templates", lookup_templates_dict, timeout=60 * 60 * 24 * 30 * 365)
+    cache.set("lookup_templates", lookup_templates_dict)
 
 
 def get_template_content_by_name(name):
@@ -72,6 +72,7 @@ app = Flask(__name__)
 cache.init_app(app=app, config={
     "CACHE_TYPE": "FileSystemCache",
     'CACHE_DIR': Path('./cache'),
+    'CACHE_DEFAULT_TIMEOUT': 60 * 60 * 24 * 365
 })
 # Cache must be initialized before the app import
 with app.app_context():
