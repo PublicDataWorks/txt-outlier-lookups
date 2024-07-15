@@ -34,7 +34,7 @@ def get_template_content_by_name(name):
     # Fallback to sms_templates if the key is not found in the cache
     fallback_template = templates.get(name, '')
     if fallback_template:
-        logger.info(f"Fallback: {name} - {template[:50]}{'...' if len(template) > 50 else ''}")
+        logger.info(f"Fallback: {name} - {fallback_template[:50]}{'...' if len(fallback_template) > 50 else ''}")
         return fallback_template
     logger.error(f"Could not get template: {name}")
     return None
