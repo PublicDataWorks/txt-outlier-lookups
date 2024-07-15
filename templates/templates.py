@@ -135,4 +135,7 @@ templates = {
         Given the following list of messages history, generate a short summary of major themes and topics discussed:
         """
     ),
+    "comments_title": "Reporter notes",
+    "outcome_title": "Impact and outcomes",
+    "messages_title": "Communication patterns",
 }
