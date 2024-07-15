@@ -68,7 +68,11 @@ def get_rental_message(rental_status):
 
 
 app = Flask(__name__)
-cache.init_app(app=app, config={"CACHE_TYPE": "FileSystemCache", 'CACHE_DIR': Path('./cache')})
+cache.init_app(app=app, config={
+    "CACHE_TYPE": "FileSystemCache",
+    'CACHE_DIR': Path('./cache'),
+    'CACHE_DEFAULT_TIMEOUT': 4294967295,
+})
 # Cache must be initialized before the app import
 with app.app_context():
     init_lookup_templates_cache()
