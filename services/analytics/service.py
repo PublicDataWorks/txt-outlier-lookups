@@ -52,7 +52,7 @@ class AnalyticsService:
         return session.execute(GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT).fetchall()
 
     def get_weekly_broadcast_sent(self, session):
-        return session.execute(GET_WEEKLY_BROADCAST_SENT).fetchall()
+        return session.execute(GET_WEEKLY_BROADCAST_CONTENT).fetchall()
 
     def get_weekly_messages_history(self, session, broadcast_sent):
         broadcast_messages = []
