@@ -55,7 +55,7 @@ logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 app = Flask(__name__)
 SUMMARY_CONVO_SIDEBAR_ADDRESS = os.getenv('SUMMARY_CONVO_SIDEBAR_ADDRESS')
 if not SUMMARY_CONVO_SIDEBAR_ADDRESS:
-    logger.error("Error: SUMMARY_CONVO_URL is not set. Aborting server startup.")
+    logger.error("Error: SUMMARY_CONVO_SIDEBAR_ADDRESS is not set. Aborting server startup.")
     sys.exit(1)
 
 JWT_SECRET = os.getenv('JWT_SECRET')

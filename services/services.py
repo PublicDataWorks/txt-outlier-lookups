@@ -402,7 +402,12 @@ def get_conversation_data(conversation_id, query_phone_number):
                 Author.zipcode, Author.email
             ).filter(Author.phone_number == query_phone_number).first() or (None, None)
 
-            conversation_summary = get_conversation_data_with_cache(comments, messages, conversation_id, query_phone_number)
+            conversation_summary = get_conversation_data_with_cache(
+                comments, messages, conversation_id, query_phone_number
+            )
+            conversation_summary['messages_title'] = get_template_content_by_name("messages_title")
+            conversation_summary['comments_title'] = get_template_content_by_name("comments_title")
+            conversation_summary['outcome_title'] = get_template_content_by_name("outcome_title")
             if author_zipcode:
                 conversation_summary['author_zipcode'] = author_zipcode
             if author_email:
