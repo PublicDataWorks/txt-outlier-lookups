@@ -13,7 +13,7 @@
 
 ## 2. Config Variables Description
 
-# Variable Descriptions
+### Variable Descriptions
 
 1. `all_good`: A message sent when the user is finished with their inquiry.
 
@@ -81,11 +81,12 @@
 
 33. `messages_title`: Title for the communication patterns section in convo sidebar.
 
-## 3. Deploy Steps: 
-```markdown
-# Full Flow of Deploying Backend
+34. `number of recipients for each batch`: Update the `no_users` column in the `broadcasts` table for the most recent broadcast (the one with the largest `id`)
 
-## 1. AWS Console Access and Security Group Configuration
+## 3. Deploy Steps:
+### Full Flow of Deploying Backend
+
+#### 1. AWS Console Access and Security Group Configuration
 
 1. Log in to the AWS Management Console.
 2. Navigate to the EC2 service.
@@ -103,15 +104,15 @@
 10. (Optional) Add a description for the rule to help you remember why it was added.
 11. Click "Save rules" to apply the changes.
 
-## 2. Connecting to EC2 Instance
+#### 2. Connecting to EC2 Instance
 
 1. Request the pem file from developers/admins.
 2. Use this command to connect:
-   ```
-   ssh -i PEM_FILE EC2_IP_ADDRESS
-   ```
+```
+ssh -i PEM_FILE EC2_IP_ADDRESS
+```
 
-## 3. Accessing Tmux Instances
+#### 3. Accessing Tmux Instances
 
 Once inside the EC2 instance, check for 2 tmux instances:
 
@@ -125,32 +126,15 @@ Once inside the EC2 instance, check for 2 tmux instances:
    tmux a -t lookup
    ```
 
-## 4. Deploying Backend
+#### 4. Deploying Backend
 
-1. Press Ctrl + C to exit the current running server.
-2. Pull the latest code.
-3. Run the following commands:
-   ```
-   docker compose down
-   docker compose up
-   ```
+[Lookup](https://github.com/PublicDataWorks/txt-outlier-lookups?tab=readme-ov-file#docker-quick-start)
 
-## 5. Deploying Lookup
 
-1. Press Ctrl + C to exit the current running server.
-2. Pull the latest code.
-3. Run the following commands:
-   ```
-   docker rm lookup_app
-   docker build -t lookup .
-   docker run -p 5000:5000 --name lookup_app --restart unless-stopped lookup
-   ```
-```
 
-This Markdown format provides a clear, step-by-step guide for the deployment process, making it easy to read and follow.
+### 4. Migrations and database schema
+Refer to [user-actions](https://github.com/PublicDataWorks/txt-outlier-import/tree/main/supabase/functions/user-actions/drizzle) for more information
 
-## 4. Migration: https://github.com/PublicDataWorks/txt-outlier-import/tree/main/supabase/functions/user-actions/drizzle
-
-## Important Note on Environment Variables
+### Important Note on Environment Variables
 🔐 **Security Notice**: 
 All environment variables and sensitive configuration data mentioned in this document are securely stored in 1Password. For access to these variables, please refer to the project's vault in 1Password. Never share these credentials openly or store them in unsecured locations.
