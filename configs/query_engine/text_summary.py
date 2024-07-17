@@ -1,12 +1,11 @@
-from loguru import logger
 import os
 
 from dotenv import load_dotenv
+from llama_index.llms.openai import OpenAI
+from loguru import logger
 
 from configs.cache_template import get_template_content_by_name
 from configs.database import Session
-from llama_index.llms.openai import OpenAI
-
 from models import LookupTemplate
 
 load_dotenv(override=True)
