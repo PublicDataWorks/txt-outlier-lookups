@@ -43,6 +43,12 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
 
     # Run query engine to get address
     normalized_address = get_first_valid_normalized_address([query])
+    if not normalized_address:
+        logger.error("Couldn't parse address from query", query)
+        return (
+            jsonify({"message": "Couldn't parse address from query"}),
+            200,
+        )
     address, sunit = extract_address_information(normalized_address)
     rental_status_case = case(
         (ResidentialRentalRegistrations.lat.isnot(None), "REGISTERED"), else_="UNREGISTERED"
@@ -385,16 +391,16 @@ def get_conversation_data(conversation_id, query_phone_number):
             phone_number = os.getenv('PHONE_NUMBER')
             if not phone_number:
                 return None
-            phone_pair_1 = [query_phone_number + phone_number]
-            phone_pair_2 = [phone_number + query_phone_number]
-
+            phone_pair_1 = f"{query_phone_number}{phone_number}"
+            phone_pair_2 = f"{query_phone_number}{phone_number[:3]}0{phone_number[3:]}"
+            ref = [phone_pair_1, phone_pair_2]
             comments = session.query(Comments.body).filter(Comments.conversation_id == conversation_id).all()
 
             messages = session.query(TwilioMessage.from_field, TwilioMessage.delivered_at,
                                      TwilioMessage.preview).filter(
                 and_(
                     or_(TwilioMessage.from_field == query_phone_number, TwilioMessage.to_field == query_phone_number),
-                    or_(TwilioMessage.references == phone_pair_1, TwilioMessage.references == phone_pair_2)
+                    or_(TwilioMessage.references == ref)
                 )
             ).order_by(TwilioMessage.delivered_at).all()
 
