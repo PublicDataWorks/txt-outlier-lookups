@@ -45,7 +45,9 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
     # Run query engine to get address
     normalized_address = get_first_valid_normalized_address([query])
     if not normalized_address:
-        logger.error("Couldn't parse address from query", query)
+        print(f"An error occurred at lookup /search: {traceback.format_exc()}")
+        print(query)
+        logger.error("Couldn't parse address from query: ")
         return (
             {"message": "Couldn't parse address from query"},
             500,
@@ -179,6 +181,8 @@ def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_e
     messages = missive_client.extract_preview_content(conversation_id=conversation_id)
     normalized_address = extract_latest_address(messages, conversation_id, to_phone)
     if not normalized_address:
+        print(f"An error occurred at lookup /more: {traceback.format_exc()}")
+        print(messages)
         logger.error("Couldn't parse address from history messages", messages)
         return (
             jsonify({"message": "Couldn't parse address from history messages"}),
