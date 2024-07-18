@@ -114,7 +114,7 @@ def search():
     except Exception as e:
         print(f"An error occurred at lookup /search: {traceback.format_exc()}")
         logger.error(e)
-        return jsonify({"error": str(e)}), 200
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/yes", methods=["POST"])
@@ -141,7 +141,7 @@ def yes():
             logger.error("Couldn't parse address from history messages", messages)
             return (
                 jsonify({"message": "Couldn't parse address from history messages"}),
-                200,
+                500,
             )
 
         address, sunit = extract_address_information(normalized_address)
@@ -163,7 +163,7 @@ def yes():
     except Exception as e:
         print(f"An error occurred at lookup /yes: {traceback.format_exc()}")
         logger.error(e)
-        return jsonify({"error": str(e)}), 200
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/more", methods=["POST"])
@@ -193,7 +193,7 @@ def more():
     except Exception as e:
         print(f"An error occurred at lookup /more: {traceback.format_exc()}")
         logger.error("", e)
-        return jsonify({"error": str(e)}), 200
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/fetch_property", methods=["GET"])
