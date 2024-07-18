@@ -138,6 +138,7 @@ def yes():
 
         if not normalized_address:
             print(f"An error occurred at lookup /yes: {traceback.format_exc()}")
+            print(messages)
             logger.error("Couldn't parse address from history messages", messages)
             return (
                 jsonify({"message": "Couldn't parse address from history messages"}),
