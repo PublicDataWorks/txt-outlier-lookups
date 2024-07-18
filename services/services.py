@@ -48,7 +48,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
         logger.error("Couldn't parse address from query", query)
         return (
             {"message": "Couldn't parse address from query"},
-            200,
+            500,
         )
     address, sunit = extract_address_information(normalized_address)
     rental_status_case = case(
@@ -159,7 +159,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
 
     if "result" not in query_result.metadata:
         logger.error(query_result)
-        return "", 200
+        return "", 500
 
     owner_data = map_keys_to_result(query_result.metadata)
 
@@ -182,7 +182,7 @@ def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_e
         logger.error("Couldn't parse address from history messages", messages)
         return (
             jsonify({"message": "Couldn't parse address from history messages"}),
-            200,
+            500,
         )
 
     address, sunit = extract_address_information(normalized_address)
@@ -194,7 +194,7 @@ def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_e
 
     if "result" not in query_result.metadata:
         logger.error(query_result)
-        return "", 200
+        return "", 500
 
     tax_status, rental_status = check_property_status(query_result)
     process_statuses(tax_status, rental_status, conversation_id, to_phone)
@@ -213,7 +213,7 @@ def handle_no_match(query, conversation_id, to_phone):
         return {"result": formatted_content}, 200
     else:
         logger.exception("Could not find template no_match")
-        return {"result": ""}, 200
+        return {"result": ""}, 500
 
 
 def handle_ambiguous(query, conversation_id, to_phone):
@@ -229,7 +229,7 @@ def handle_ambiguous(query, conversation_id, to_phone):
         return {"result": formatted_content}, 200
     else:
         logger.exception("Could not find template closest_match")
-        return {"result": ""}, 200
+        return {"result": ""}, 500
 
 
 def handle_match(
@@ -285,7 +285,7 @@ def handle_wrong_format(conversation_id, to_phone):
         return {"result": content}, 200
     else:
         logger.exception("Could not find template wrong_format")
-        return {"result": ""}, 200
+        return {"result": ""}, 500
 
 
 def process_statuses(tax_status, rental_status, conversation_id, phone):
