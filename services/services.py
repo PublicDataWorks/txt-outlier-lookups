@@ -1,5 +1,6 @@
 import os
 import time
+import traceback
 
 from flask import jsonify
 from loguru import logger
@@ -46,7 +47,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
     if not normalized_address:
         logger.error("Couldn't parse address from query", query)
         return (
-            jsonify({"message": "Couldn't parse address from query"}),
+            {"message": "Couldn't parse address from query"},
             200,
         )
     address, sunit = extract_address_information(normalized_address)
@@ -421,7 +422,7 @@ def get_conversation_data(conversation_id, query_phone_number):
             return conversation_summary
 
     except Exception as e:
-        logger.error(f"Error occurred while retrieving conversation summary: {str(e)}")
+        logger.error(f"Error occurred while retrieving conversation summary: {traceback.format_exc()}")
         raise
 
 
@@ -493,7 +494,7 @@ def get_conversation_data_with_cache(comments, messages, conversation_id, query_
             return conversation_summary
 
     except Exception as e:
-        logger.error(f"Error occurred while generating LLM summary: {str(e)}")
+        logger.error(f"Error occurred while generating LLM summary: {traceback.format_exc()}")
         raise
 
 
@@ -512,6 +513,6 @@ def update_author_and_missive(phone_number, email, zipcode):
     except Exception as e:
         session.rollback()
         error_type = "email" if email else "zipcode"
-        error_message = f"Failed to update {error_type}: {str(e)}"
-        logger.error(f"Error occurred while updating contact email/zipcode: {str(e)}")
+        error_message = f"Failed to update {error_type}: {traceback.format_exc()}"
+        logger.error(f"Error occurred while updating contact email/zipcode: {traceback.format_exc()}")
         return {"type": error_type, "msg": error_message}, 500
