@@ -1,5 +1,6 @@
 import os
 import time
+import traceback
 
 from flask import jsonify
 from loguru import logger
@@ -46,8 +47,8 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
     if not normalized_address:
         logger.error("Couldn't parse address from query", query)
         return (
-            jsonify({"message": "Couldn't parse address from query"}),
-            200,
+            {"message": "Couldn't parse address from query"},
+            500,
         )
     address, sunit = extract_address_information(normalized_address)
     rental_status_case = case(
@@ -158,7 +159,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
 
     if "result" not in query_result.metadata:
         logger.error(query_result)
-        return "", 200
+        return "", 500
 
     owner_data = map_keys_to_result(query_result.metadata)
 
@@ -181,7 +182,7 @@ def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_e
         logger.error("Couldn't parse address from history messages", messages)
         return (
             jsonify({"message": "Couldn't parse address from history messages"}),
-            200,
+            500,
         )
 
     address, sunit = extract_address_information(normalized_address)
@@ -193,7 +194,7 @@ def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_e
 
     if "result" not in query_result.metadata:
         logger.error(query_result)
-        return "", 200
+        return "", 500
 
     tax_status, rental_status = check_property_status(query_result)
     process_statuses(tax_status, rental_status, conversation_id, to_phone)
@@ -212,7 +213,7 @@ def handle_no_match(query, conversation_id, to_phone):
         return {"result": formatted_content}, 200
     else:
         logger.exception("Could not find template no_match")
-        return {"result": ""}, 200
+        return {"result": ""}, 500
 
 
 def handle_ambiguous(query, conversation_id, to_phone):
@@ -228,7 +229,7 @@ def handle_ambiguous(query, conversation_id, to_phone):
         return {"result": formatted_content}, 200
     else:
         logger.exception("Could not find template closest_match")
-        return {"result": ""}, 200
+        return {"result": ""}, 500
 
 
 def handle_match(
@@ -284,7 +285,7 @@ def handle_wrong_format(conversation_id, to_phone):
         return {"result": content}, 200
     else:
         logger.exception("Could not find template wrong_format")
-        return {"result": ""}, 200
+        return {"result": ""}, 500
 
 
 def process_statuses(tax_status, rental_status, conversation_id, phone):
@@ -421,7 +422,7 @@ def get_conversation_data(conversation_id, query_phone_number):
             return conversation_summary
 
     except Exception as e:
-        logger.error(f"Error occurred while retrieving conversation summary: {str(e)}")
+        logger.error(f"Error occurred while retrieving conversation summary: {traceback.format_exc()}")
         raise
 
 
@@ -493,7 +494,7 @@ def get_conversation_data_with_cache(comments, messages, conversation_id, query_
             return conversation_summary
 
     except Exception as e:
-        logger.error(f"Error occurred while generating LLM summary: {str(e)}")
+        logger.error(f"Error occurred while generating LLM summary: {traceback.format_exc()}")
         raise
 
 
@@ -512,6 +513,6 @@ def update_author_and_missive(phone_number, email, zipcode):
     except Exception as e:
         session.rollback()
         error_type = "email" if email else "zipcode"
-        error_message = f"Failed to update {error_type}: {str(e)}"
-        logger.error(f"Error occurred while updating contact email/zipcode: {str(e)}")
+        error_message = f"Failed to update {error_type}: {traceback.format_exc()}"
+        logger.error(f"Error occurred while updating contact email/zipcode: {traceback.format_exc()}")
         return {"type": error_type, "msg": error_message}, 500

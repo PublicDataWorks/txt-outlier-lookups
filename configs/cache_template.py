@@ -30,7 +30,6 @@ def get_template_content_by_name(name):
         if lookup_templates_dict:
             template = lookup_templates_dict.get(name, '')
             if template:
-                logger.info(f"Cache: {name} - {template[:50]}{'...' if len(template) > 50 else ''}")
                 return template
     # Fallback to sms_templates if the key is not found in the cache
     fallback_template = templates.get(name, '')

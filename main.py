@@ -1,6 +1,7 @@
 import os
 import sys
 import threading
+import traceback
 
 import sentry_sdk
 from dotenv import load_dotenv
@@ -111,7 +112,7 @@ def search():
         return jsonify(response), status
 
     except Exception as e:
-        print(f"An error occurred at lookup /search: {str(e)}")
+        print(f"An error occurred at lookup /search: {traceback.format_exc()}")
         logger.error(e)
         return jsonify({"error": str(e)}), 500
 
@@ -136,10 +137,11 @@ def yes():
             )
 
         if not normalized_address:
+            print(f"An error occurred at lookup /yes: {traceback.format_exc()}")
             logger.error("Couldn't parse address from history messages", messages)
             return (
                 jsonify({"message": "Couldn't parse address from history messages"}),
-                200,
+                500,
             )
 
         address, sunit = extract_address_information(normalized_address)
@@ -159,7 +161,7 @@ def yes():
         )
         return jsonify({"message": "Success"}), 200
     except Exception as e:
-        print(f"An error occurred at lookup /yes: {str(e)}")
+        print(f"An error occurred at lookup /yes: {traceback.format_exc()}")
         logger.error(e)
         return jsonify({"error": str(e)}), 500
 
@@ -189,7 +191,7 @@ def more():
             )
 
     except Exception as e:
-        print(f"An error occurred at lookup /more: {str(e)}")
+        print(f"An error occurred at lookup /more: {traceback.format_exc()}")
         logger.error("", e)
         return jsonify({"error": str(e)}), 500
 
@@ -242,7 +244,7 @@ def get_conversation(conversation_id):
         ), 200
 
     except Exception as e:
-        logger.error({'error occurred at getting conversation summary /conversations/<conversation_id>': str(e)})
+        logger.error({'error occurred at getting conversation summary /conversations/<conversation_id>': traceback.format_exc()})
         return jsonify({'error': str(e)}), 500
 
 
