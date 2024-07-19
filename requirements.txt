@@ -158,8 +158,9 @@ llama-index-indices-managed-llama-cloud==0.1.6
     # via llama-index
 llama-index-legacy==0.9.48
     # via llama-index
-llama-index-llms-openai==0.1.22
+llama-index-llms-openai==0.1.26
     # via
+    #   -r requirements.in
     #   llama-index
     #   llama-index-agent-openai
     #   llama-index-cli
