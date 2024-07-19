@@ -166,7 +166,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
     following_message_type = ""
     if "owner" in owner_data:
         if "LAND BANK" in owner_data["owner"].upper():
-            following_message_type = FollowingMessageType.LAND_BACK
+            following_message_type = FollowingMessageType.LAND_BANK
         elif "UNCONFIRMED" in owner_data["tax_status"].upper():
             following_message_type = FollowingMessageType.UNCONFIRMED_TAX_STATUS
         else:
@@ -254,12 +254,12 @@ def handle_match(
     time.sleep(2)
 
     match following_message_type:
-        case FollowingMessageType.LAND_BACK:
-            following_message = get_template_content_by_name(FollowingMessageType.LAND_BACK)
+        case FollowingMessageType.LAND_BANK:
+            following_message = get_template_content_by_name(FollowingMessageType.LAND_BANK.value)
         case FollowingMessageType.UNCONFIRMED_TAX_STATUS:
-            following_message = get_template_content_by_name(FollowingMessageType.UNCONFIRMED_TAX_STATUS)
+            following_message = get_template_content_by_name(FollowingMessageType.UNCONFIRMED_TAX_STATUS.value)
         case FollowingMessageType.DEFAULT:
-            following_message = get_template_content_by_name(FollowingMessageType.DEFAULT)
+            following_message = get_template_content_by_name(FollowingMessageType.DEFAULT.value)
         case _:
             following_message = ""
 
