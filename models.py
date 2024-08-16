@@ -394,3 +394,10 @@ class Comments(Base):
 
     def __repr__(self):
         return f"<Comment(id={self.id}, body='{self.body}', user_id={self.user_id})>"
+
+
+class CommentsMentions(Base):
+    __tablename__ = 'comments_mentions'
+    id = Column(Integer, primary_key=True)
+    comment_id = Column(UUID)
+    user_id = Column(UUID)

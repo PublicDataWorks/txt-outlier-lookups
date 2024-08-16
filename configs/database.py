@@ -18,6 +18,7 @@ engine = create_engine(
         "keepalives_interval": 10,
         "keepalives_count": 5,
     },
+    pool_recycle=3600
 )
 
 Session = sessionmaker(bind=engine)

@@ -26,7 +26,7 @@ from models import (
     MiWayneDetroit,
     ResidentialRentalRegistrations,
     TwilioMessage,
-    User, LookupTemplate,
+    User, LookupTemplate, CommentsMentions,
 )
 from utils.address_normalizer import (
     extract_latest_address,
@@ -48,7 +48,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
         logger.error(f"Couldn't parse address from query: {query}")
         return (
             {"message": "Couldn't parse address from query"},
-            500,
+            200,
         )
     address, sunit = extract_address_information(normalized_address)
     rental_status_case = case(
@@ -159,7 +159,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
 
     if "result" not in query_result.metadata:
         logger.error(query_result)
-        return "", 500
+        return "", 200
 
     owner_data = map_keys_to_result(query_result.metadata)
 
@@ -182,7 +182,7 @@ def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_e
         logger.error(f"Couldn't parse address from history messages: {messages}")
         return (
             jsonify({"message": "Couldn't parse address from history messages"}),
-            500,
+            200,
         )
 
     address, sunit = extract_address_information(normalized_address)
@@ -194,7 +194,7 @@ def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_e
 
     if "result" not in query_result.metadata:
         logger.error(query_result)
-        return "", 500
+        return "", 200
 
     tax_status, rental_status = check_property_status(query_result)
     process_statuses(tax_status, rental_status, conversation_id, to_phone)
@@ -258,8 +258,6 @@ def handle_match(
             following_message = get_template_content_by_name(FollowingMessageType.LAND_BANK.value)
         case FollowingMessageType.UNCONFIRMED_TAX_STATUS:
             following_message = get_template_content_by_name(FollowingMessageType.UNCONFIRMED_TAX_STATUS.value)
-        case FollowingMessageType.DEFAULT:
-            following_message = get_template_content_by_name(FollowingMessageType.DEFAULT.value)
         case _:
             following_message = ""
 
@@ -270,7 +268,15 @@ def handle_match(
             to_phone=to_phone,
             add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
         )
-    # Remove tags
+        time.sleep(2)
+
+    missive_client.send_sms_sync(
+        get_template_content_by_name(FollowingMessageType.DEFAULT.value),
+        conversation_id=conversation_id,
+        to_phone=to_phone,
+        add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
+    )
+
     return {"result": str(response)}, 200
 
 
@@ -395,7 +401,54 @@ def get_conversation_data(conversation_id, query_phone_number):
             phone_pair_1 = f"{query_phone_number}{phone_number}"
             phone_pair_2 = f"{query_phone_number}{phone_number[:3]}0{phone_number[3:]}"
             ref = [phone_pair_1, phone_pair_2]
-            comments = session.query(Comments.body).filter(Comments.conversation_id == conversation_id).all()
+            comments_query = (
+                session.query(
+                    Comments,
+                    User.name.label('author_name')
+                )
+                .outerjoin(User, Comments.user_id == User.id)
+                .filter(Comments.conversation_id == conversation_id)
+            )
+            comments = comments_query.all()
+
+            comment_ids = [str(comment.Comments.id) for comment in comments]
+            mentioned_users = session.query(
+                CommentsMentions.comment_id,
+                User.email,
+                User.name
+            ).join(
+                User, CommentsMentions.user_id == User.id
+            ).filter(CommentsMentions.comment_id.in_(comment_ids)).all()
+
+            comment_data = {
+                str(Comments.id): {
+                    "author": author_name,
+                    "body": Comments.body,
+                    "mentions": []
+                } for Comments, author_name in comments
+            }
+
+            for mention in mentioned_users:
+                comment_id, email, name = mention
+                comment_id = str(comment_id)
+
+                if comment_id not in comment_data:
+                    comment_data[comment_id] = {"body": "Comment not found", "mentions": []}
+
+                comment_data[comment_id]["mentions"].append({
+                    "email": email,
+                    "name": name
+                })
+
+            final_comments = [
+                {
+                    "id": comment_id,
+                    "author": data["author"],
+                    "body": data["body"],
+                    "mentions": data["mentions"]
+                }
+                for comment_id, data in comment_data.items()
+            ]
 
             messages = session.query(TwilioMessage.from_field, TwilioMessage.delivered_at,
                                      TwilioMessage.preview).filter(
@@ -410,7 +463,7 @@ def get_conversation_data(conversation_id, query_phone_number):
             ).filter(Author.phone_number == query_phone_number).first() or (None, None)
 
             conversation_summary = get_conversation_data_with_cache(
-                comments, messages, conversation_id, query_phone_number
+                final_comments, messages, conversation_id, query_phone_number
             )
             conversation_summary['messages_title'] = get_template_content_by_name("messages_title")
             conversation_summary['comments_title'] = get_template_content_by_name("comments_title")
@@ -461,9 +514,9 @@ def get_conversation_data_with_cache(comments, messages, conversation_id, query_
                                                 message.from_field == query_phone_number]
 
             first_message = int(messages_from_query_phone_number[
-                0].delivered_at.timestamp()) if messages_from_query_phone_number else None
+                                    0].delivered_at.timestamp()) if messages_from_query_phone_number else None
             last_message = int(messages_from_query_phone_number[
-                -1].delivered_at.timestamp()) if messages_from_query_phone_number else None
+                                   -1].delivered_at.timestamp()) if messages_from_query_phone_number else None
 
             template_names = ["comment_summary_prompt", "impact_summary_prompt", "message_summary_prompt"]
             results = session.query(LookupTemplate.name, LookupTemplate.content).filter(
