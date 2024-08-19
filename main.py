@@ -2,10 +2,11 @@ import os
 import sys
 import threading
 import traceback
+from functools import wraps
 
 import sentry_sdk
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, current_app, copy_current_request_context
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required
 from loguru import logger
@@ -85,6 +86,19 @@ def handle_invalid_usage(error):
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 missive_client = MissiveAPI()
+
+
+def async_long_running(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        @copy_current_request_context
+        def run_with_context():
+            f(*args, **kwargs)
+
+        threading.Thread(target=run_with_context).start()
+        return jsonify({"message": "Weekly report generation started"}), 202
+
+    return wrapper
 
 
 @app.before_request
@@ -215,6 +229,7 @@ def fetch_rental():
 
 @app.route("/weekly_report", methods=["GET"])
 @require_authentication
+@async_long_running
 def send_weekly_report():
     analytics = AnalyticsService()
     analytics.send_weekly_report()
@@ -243,7 +258,8 @@ def get_conversation(conversation_id):
         ), 200
 
     except Exception as e:
-        logger.error({'error occurred at getting conversation summary /conversations/<conversation_id>': traceback.format_exc()})
+        logger.error(
+            {'error occurred at getting conversation summary /conversations/<conversation_id>': traceback.format_exc()})
         return jsonify({'error': str(e)}), 500
 
 
