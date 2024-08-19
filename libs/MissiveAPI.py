@@ -101,8 +101,9 @@ class MissiveAPI:
         body = {
             "posts": {
                 "conversation": conversation_id,
+                "organization": self.organization,
                 "notification": {"title": "Weekly Report", "body": "Summary"},
-                "username": "Weekly report",
+                "username": "TXT Outlier",
                 "username_icon": "https://s3.amazonaws.com/missive-assets/missive-avatar.png",
                 "attachments": attachments,
             },

@@ -114,7 +114,7 @@ def search():
     except Exception as e:
         print(f"An error occurred at lookup /search: {traceback.format_exc()}")
         logger.error(e)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 200
 
 
 @app.route("/yes", methods=["POST"])
@@ -140,7 +140,7 @@ def yes():
             logger.error(f"Couldn't parse address from history messages: {messages}", )
             return (
                 jsonify({"message": "Couldn't parse address from history messages"}),
-                500,
+                200,
             )
 
         address, sunit = extract_address_information(normalized_address)
@@ -162,7 +162,7 @@ def yes():
     except Exception as e:
         print(f"An error occurred at lookup /yes: {traceback.format_exc()}")
         logger.error(e)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 200
 
 
 @app.route("/more", methods=["POST"])
@@ -192,7 +192,7 @@ def more():
     except Exception as e:
         print(f"An error occurred at lookup /more: {traceback.format_exc()}")
         logger.error("", e)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 200
 
 
 @app.route("/fetch_property", methods=["GET"])
@@ -231,7 +231,7 @@ def get_conversation(conversation_id):
         return jsonify({'error': 'Reference is required'}), 400
 
     if not reference.strip().startswith('+'):
-        reference = '+' + reference
+        reference = '+' + reference.strip()
 
     try:
         conversation_data = get_conversation_data(conversation_id, reference)

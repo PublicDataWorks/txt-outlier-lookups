@@ -14,4 +14,4 @@ supabase
 flask-cors
 gunicorn
 flask-jwt-extended
-llama-index-llms-openai==0.1.26
+llama-index-llms-openai

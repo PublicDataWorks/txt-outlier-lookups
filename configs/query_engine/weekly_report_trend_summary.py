@@ -32,7 +32,7 @@ def generate_report_summary(messages_history):
     except Exception as e:
         logger.error(f"Error fetching template from database: {e}")
         return None
-    documents = [Document(doc_id=str(i), text=str(conversation)) for i, conversation in enumerate(messages_history.values())]
+    documents = [Document(text=str(conversation)) for i, conversation in enumerate(messages_history.values())]
 
     summary_index = DocumentSummaryIndex.from_documents(documents)
 

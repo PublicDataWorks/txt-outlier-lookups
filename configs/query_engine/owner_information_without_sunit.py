@@ -33,7 +33,6 @@ def init_owner_query_engine_without_sunit():
     function_llm = OpenAI(temperature=0.1, model=model, api_key=key)
 
     city_stats_text = get_template_content_by_name("search_context")
-
     table_node_mapping = SQLTableNodeMapping(sql_database)
     table_schema_objs = [(SQLTableSchema(table_name="mi_wayne_detroit", context_str=city_stats_text))]
     obj_index = ObjectIndex.from_objects(

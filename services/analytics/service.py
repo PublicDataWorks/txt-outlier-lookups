@@ -55,20 +55,25 @@ class AnalyticsService:
         return session.execute(GET_WEEKLY_BROADCAST_CONTENT).fetchall()
 
     def get_weekly_messages_history(self, session, broadcast_sent):
-        broadcast_messages = []
+        broadcast_messages = set()
         for broadcast in broadcast_sent:
-            broadcast_messages.append(broadcast["first_message"])
-            broadcast_messages.append(broadcast["second_message"])
+            broadcast_messages.add(broadcast["first_message"])
+            broadcast_messages.add(broadcast["second_message"])
 
-        if broadcast_messages:
-            placeholders = ', '.join([f':msg{i + 1}' for i in range(len(broadcast_messages))])
-            not_in_clause = f"AND preview NOT IN ({placeholders})"
-            params = {f'msg{i + 1}': msg for i, msg in enumerate(broadcast_messages)}
+        like_conditions = []
+        params = {}
+
+        for i, msg in enumerate(broadcast_messages):
+            param_name = f'msg{i + 1}'
+            like_conditions.append(f"preview NOT LIKE :{param_name}")
+            params[param_name] = f"%{msg[:100]}%"
+
+        if like_conditions:
+            not_like_clause = f"AND ({' AND '.join(like_conditions)})"
         else:
-            not_in_clause = ""
-            params = {}
+            not_like_clause = ""
 
-        query = text(GET_WEEKLY_MESSAGES_HISTORY + "\n" + not_in_clause).bindparams(**params)
+        query = text(GET_WEEKLY_MESSAGES_HISTORY + "\n" + not_like_clause).bindparams(**params)
 
         messages = session.execute(query).fetchall()
 

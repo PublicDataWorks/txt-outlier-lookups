@@ -30,7 +30,7 @@ def fetch_data():
             zip_ref.extractall(temp_dir)
 
         try:
-            process = Popen(["./cron/property.sh"], shell=True, stdin=PIPE, stderr=PIPE)
+            process = Popen(["bash ./cron/property.sh"], shell=True, stdin=PIPE, stderr=PIPE)
             stdout, stderr = process.communicate()
             if stdout:
                 logger.info(f"Property script output: {stdout.decode()}")
