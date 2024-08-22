@@ -287,7 +287,7 @@ def update_contact(phone_number):
 
 @async_long_running
 @app.route('/refresh-summary/<conversation_id>', methods=['GET'])
-def get_conversation(conversation_id):
+def refresh_conversation_summary(conversation_id):
     reference = request.args.get('reference')
 
     if not conversation_id:
