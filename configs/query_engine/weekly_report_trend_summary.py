@@ -1,15 +1,15 @@
 import logging
 import os
-from configs.cache_template import get_template_content_by_name
-from models import LookupTemplate
 
 from dotenv import load_dotenv
-
-from configs.database import Session
-from templates.templates import templates
 from llama_index.core import DocumentSummaryIndex
-from llama_index.llms.openai import OpenAI
 from llama_index.core.schema import Document
+from llama_index.llms.openai import OpenAI
+
+from configs.cache_template import get_template_content_by_name
+from configs.database import Session
+from models import LookupTemplate
+from templates.templates import templates
 
 load_dotenv(override=True)
 key = os.environ.get("OPENAI_API_KEY")
@@ -32,8 +32,20 @@ def generate_report_summary(messages_history):
     except Exception as e:
         logger.error(f"Error fetching template from database: {e}")
         return None
-    documents = [Document(text=str(conversation)) for i, conversation in enumerate(messages_history.values())]
-
+    documents = []
+    for ref, conversations in messages_history.items():
+        conversation_text = "\n".join(
+            [f"{msg['from_field']} to {msg['to_field']}: {msg['preview']}" for msg in conversations])
+        metadata = {
+            'reference': ref,
+            'from_fields': list(set(msg['from_field'] for msg in conversations)),
+            'to_fields': list(set(msg['to_field'] for msg in conversations))
+        }
+        doc = Document(
+            text=conversation_text,
+            metadata=metadata
+        )
+        documents.append(doc)
     summary_index = DocumentSummaryIndex.from_documents(documents)
 
     # Get model from template 

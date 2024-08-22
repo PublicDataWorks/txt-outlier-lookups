@@ -1,11 +1,27 @@
+import datetime
+from collections import defaultdict
+
 from dotenv import load_dotenv
 from sqlalchemy import text
-import datetime
 
 from configs.database import Session
+from libs.MissiveAPI import MissiveAPI
+from models import WeeklyReport
 from .config import (
     IMPACT_LABEL_IDS,
     REPORTER_LABEL_IDS,
+)
+from .queries import (
+    GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT,
+    GET_WEEKLY_FAILED_MESSAGE,
+    GET_WEEKLY_TEXT_INS,
+    GET_WEEKLY_IMPACT_CONVERSATIONS,
+    GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT,
+    GET_WEEKLY_REPORTER_CONVERSATION,
+    GET_WEEKLY_DATA_LOOKUP,
+    GET_WEEKLY_TOP_ZIP_CODE,
+    GET_WEEKLY_MESSAGES_HISTORY,
+    GET_WEEKLY_BROADCAST_CONTENT
 )
 from .utils import (
     process_conversation_metrics,
@@ -24,22 +40,6 @@ from .utils import (
     FetchDataResult,
     generate_broadcast_info_section, get_conversation_id,
 )
-from .queries import (
-    GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT,
-    GET_WEEKLY_BROADCAST_SENT,
-    GET_WEEKLY_FAILED_MESSAGE,
-    GET_WEEKLY_TEXT_INS,
-    GET_WEEKLY_IMPACT_CONVERSATIONS,
-    GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT,
-    GET_WEEKLY_REPORTER_CONVERSATION,
-    GET_WEEKLY_DATA_LOOKUP,
-    GET_WEEKLY_TOP_ZIP_CODE,
-    GET_WEEKLY_MESSAGES_HISTORY,
-    GET_WEEKLY_BROADCAST_CONTENT
-)
-from collections import defaultdict
-from libs.MissiveAPI import MissiveAPI
-from models import WeeklyReport
 
 load_dotenv(override=True)
 
@@ -81,7 +81,13 @@ class AnalyticsService:
         for message in messages:
             refs = message["references"]
             preview = message["preview"]
-            grouped_messages[refs[0]].append(preview)
+            from_field = message["from_field"]
+            to_field = message["to_field"]
+            grouped_messages[refs[0]].append({
+                "preview": preview,
+                "from_field": from_field,
+                "to_field": to_field
+            })
 
         return grouped_messages
 

@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  txt-outlier-backend:
+  txt-outlier-lookup:
     build: .
     container_name: outlier-backend-python-container
     image: outlier-backend-python-image
