@@ -6,7 +6,6 @@ from flask import jsonify
 from loguru import logger
 from sqlalchemy import and_, case, func, or_, text
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import aliased
 
 from configs.cache_template import (
     get_rental_message,

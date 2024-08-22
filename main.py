@@ -2,19 +2,19 @@ import os
 import sys
 import threading
 import traceback
+from functools import wraps
+from urllib.parse import unquote
 
 import sentry_sdk
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import jsonify, request, copy_current_request_context
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager, jwt_required
+from flask_jwt_extended import JWTManager
 from loguru import logger
 from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
-from urllib.parse import unquote
 
 from configs.cache_template import app
-
 from configs.query_engine.owner_information import init_owner_query_engine
 from configs.query_engine.owner_information_without_sunit import (
     init_owner_query_engine_without_sunit,
@@ -85,6 +85,19 @@ def handle_invalid_usage(error):
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 missive_client = MissiveAPI()
+
+
+def async_long_running(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        @copy_current_request_context
+        def run_with_context():
+            f(*args, **kwargs)
+
+        threading.Thread(target=run_with_context).start()
+        return jsonify({"message": "Weekly report generation started"}), 202
+
+    return wrapper
 
 
 @app.before_request
@@ -215,6 +228,7 @@ def fetch_rental():
 
 @app.route("/weekly_report", methods=["GET"])
 @require_authentication
+@async_long_running
 def send_weekly_report():
     analytics = AnalyticsService()
     analytics.send_weekly_report()
@@ -243,7 +257,8 @@ def get_conversation(conversation_id):
         ), 200
 
     except Exception as e:
-        logger.error({'error occurred at getting conversation summary /conversations/<conversation_id>': traceback.format_exc()})
+        logger.error(
+            {'error occurred at getting conversation summary /conversations/<conversation_id>': traceback.format_exc()})
         return jsonify({'error': str(e)}), 500
 
 
@@ -268,6 +283,28 @@ def update_contact(phone_number):
     result, status_code = update_author_and_missive(phone_number, email, zipcode)
 
     return jsonify(result), status_code
+
+
+@async_long_running
+@app.route('/refresh-summary/<conversation_id>', methods=['GET'])
+def get_conversation(conversation_id):
+    reference = request.args.get('reference')
+
+    if not conversation_id:
+        return jsonify({'error': 'Conversation ID is required'}), 400
+    if not reference:
+        return jsonify({'error': 'Reference is required'}), 400
+
+    if not reference.strip().startswith('+'):
+        reference = '+' + reference.strip()
+
+    try:
+        get_conversation_data(conversation_id, reference)
+        print(f"Successfully refreshed summary for conversation: {conversation_id}")
+    except Exception as e:
+        print(f"Error refreshing summary for conversation {conversation_id}: {str(e)}")
+
+    return jsonify({"message": f"Refreshing conversation summary for: {conversation_id}"}), 200
 
 
 def start_mqtt():
