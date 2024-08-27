@@ -100,7 +100,7 @@ class MissiveAPI:
         ]
         body = {
             "posts": {
-                "conversation": 'f5363cd8-4a50-4249-84b0-741cd1870aea',
+                "conversation": conversation_id,
                 "organization": self.organization,
                 "notification": {"title": "Weekly Report", "body": "Summary"},
                 "username": "TXT Outlier",
