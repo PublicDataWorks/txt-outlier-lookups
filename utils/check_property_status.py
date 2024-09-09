@@ -1,4 +1,7 @@
 def check_property_status(rental_status, tax_status, tax_due):
+    if tax_due is None:
+        tax_due = 0
+
     if rental_status:
         match rental_status:
             case "IS":
@@ -25,10 +28,7 @@ def check_property_status(rental_status, tax_status, tax_due):
                 tax_status = None
                 pass
 
-    if (
-            tax_due > 0
-        and not tax_status
-    ):
+    if tax_due > 0 and not tax_status:
         tax_status = "TAX_DEBT"
 
     return tax_status, rental_status
