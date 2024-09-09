@@ -15,13 +15,9 @@ from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from configs.cache_template import app
-from configs.query_engine.owner_information import init_owner_query_engine
+from configs.database import Session
 from configs.query_engine.owner_information_without_sunit import (
-    init_owner_query_engine_without_sunit,
-)
-from configs.query_engine.tax_information import init_tax_query_engine
-from configs.query_engine.tax_information_without_sunit import (
-    init_tax_query_engine_without_sunit,
+    owner_query_engine_without_sunit,
 )
 from configs.supabase import run_websocket_listener
 from exceptions import APIException
@@ -34,7 +30,7 @@ from services.services import (
     get_conversation_data,
     handle_match,
     more_search_service,
-    search_service, update_author_and_missive,
+    search_service, update_author_and_missive, query_mi_wayne_detroit,
 )
 from utils.address_normalizer import extract_latest_address
 
@@ -68,11 +64,6 @@ jwt = JWTManager(app)
 
 CORS(app, origins=[SUMMARY_CONVO_SIDEBAR_ADDRESS])
 os.makedirs('cache', exist_ok=True)
-
-owner_query_engine = init_owner_query_engine()
-owner_query_engine_without_sunit = init_owner_query_engine_without_sunit()
-tax_query_engine = init_tax_query_engine()
-tax_query_engine_without_sunit = init_tax_query_engine_without_sunit()
 
 
 @app.errorhandler(APIException)
@@ -110,6 +101,7 @@ def health_check():
     return "OK"
 
 
+@async_long_running
 @app.route("/search", methods=["POST"])
 # @require_authentication
 def search():
@@ -119,8 +111,7 @@ def search():
         to_phone = data.get("message", {}).get("from_field", {}).get("id")
         message = data.get("message", {}).get("preview")
         response, status = search_service(
-            query=message, conversation_id=conversation_id, to_phone=to_phone,
-            owner_query_engine_without_sunit=owner_query_engine_without_sunit
+            query=message, conversation_id=conversation_id, to_phone=to_phone
         )
         return jsonify(response), status
 
@@ -157,14 +148,15 @@ def yes():
             )
 
         address, sunit = extract_address_information(normalized_address)
+        session = Session()
 
-        if sunit:
-            query_result = owner_query_engine.query(str({"address": address, "sunit": sunit}))
-        else:
-            query_result = owner_query_engine_without_sunit.query(str({"address": {address}}))
+        results = query_mi_wayne_detroit(session, address, sunit)
 
-        if "result" not in query_result.metadata:
-            logger.error(query_result)
+        if not results:
+            logger.error(results)
+            return "", 200
+
+        query_result = owner_query_engine_without_sunit(str(results[0]))
 
         handle_match(
             response=query_result,
@@ -172,6 +164,7 @@ def yes():
             to_phone=to_phone,
         )
         return jsonify({"message": "Success"}), 200
+
     except Exception as e:
         print(f"An error occurred at lookup /yes: {traceback.format_exc()}")
         logger.error(e)
@@ -190,8 +183,7 @@ def more():
         if shared_label_ids and os.environ.get("MISSIVE_LOOKUP_TAG_ID") in shared_label_ids:
 
             more_search_service(
-                conversation_id=conversation_id, to_phone=to_phone,
-                tax_query_engine=tax_query_engine, tax_query_engine_without_sunit=tax_query_engine_without_sunit
+                conversation_id=conversation_id, to_phone=to_phone
             )
 
             return jsonify({"message": "Success"}), 200

@@ -1,7 +1,9 @@
-import asyncio
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock
+
 from flask import Flask
 from flask_caching import Cache
+
 from configs.cache_template import (
     get_lookup_templates,
     init_lookup_templates_cache,
@@ -10,11 +12,7 @@ from configs.cache_template import (
     get_tax_message,
     get_rental_message,
 )
-from configs.query_engine.owner_information import init_owner_query_engine
-from configs.query_engine.owner_information_without_sunit import init_owner_query_engine_without_sunit
-from configs.query_engine.tax_information import init_tax_query_engine
-from configs.query_engine.tax_information_without_sunit import init_tax_query_engine_without_sunit
-from configs.supabase import connect_to_supabase_websocket, run_websocket_listener
+from configs.supabase import run_websocket_listener
 
 # Mock data
 mock_templates = [
