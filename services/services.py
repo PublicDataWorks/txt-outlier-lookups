@@ -13,6 +13,7 @@ from configs.cache_template import (
     get_template_content_by_name, cache,
 )
 from configs.database import Session
+from configs.query_engine.owner_information_without_sunit import owner_query_engine_without_sunit
 from configs.query_engine.text_summary import generate_text_summary
 from constants.following_message import FollowingMessageType
 from libs.MissiveAPI import MissiveAPI
@@ -32,16 +33,14 @@ from utils.address_normalizer import (
     get_first_valid_normalized_address,
 )
 from utils.check_property_status import check_property_status
-from utils.map_keys_to_result import map_keys_to_result
 
 missive_client = MissiveAPI()
 CACHE_TTL = 24 * 60 * 60
 
 
-def search_service(query, conversation_id, to_phone, owner_query_engine_without_sunit):
+def search_service(query, conversation_id, to_phone):
     session = Session()
 
-    # Run query engine to get address
     normalized_address = get_first_valid_normalized_address([query])
     if not normalized_address:
         logger.error(f"Couldn't parse address from query: {query}")
@@ -49,84 +48,21 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
             {"message": "Couldn't parse address from query"},
             200,
         )
+
     address, sunit = extract_address_information(normalized_address)
-    rental_status_case = case(
-        (ResidentialRentalRegistrations.lat.isnot(None), "REGISTERED"), else_="UNREGISTERED"
-    ).label("rental_status")
 
     if not address:
         logger.error("Wrong format address", query)
         return handle_wrong_format(conversation_id=conversation_id, to_phone=to_phone)
     else:
-        if sunit:
-            results = (
-                session.query(
-                    MiWayneDetroit.address,
-                    rental_status_case,
-                    MiWayneDetroit.tax_status,
-                    MiWayneDetroit.szip5,
-                    MiWayneDetroit.tax_due,
-                )
-                .outerjoin(
-                    ResidentialRentalRegistrations,
-                    and_(
-                        func.ST_DWithin(
-                            MiWayneDetroit.wkb_geometry,
-                            ResidentialRentalRegistrations.wkb_geometry,
-                            0.001,
-                        ),
-                        func.strict_word_similarity(
-                            func.upper(MiWayneDetroit.saddstr),
-                            func.upper(ResidentialRentalRegistrations.street_name),
-                        )
-                        > 0.8,
-                        MiWayneDetroit.saddno == ResidentialRentalRegistrations.street_num,
-                    ),
-                )
-                .filter(
-                    MiWayneDetroit.address.ilike(f"{address.strip()}%"),
-                    or_(
-                        MiWayneDetroit.sunit.ilike(f"%{sunit}%"),
-                    ),
-                )
-                .all()
-            )
-        else:
-            results = (
-                session.query(
-                    MiWayneDetroit.address,
-                    rental_status_case,
-                    MiWayneDetroit.tax_status,
-                    MiWayneDetroit.szip5,
-                    MiWayneDetroit.tax_due,
-                )
-                .outerjoin(
-                    ResidentialRentalRegistrations,
-                    and_(
-                        func.ST_DWithin(
-                            MiWayneDetroit.wkb_geometry,
-                            ResidentialRentalRegistrations.wkb_geometry,
-                            0.001,
-                        ),
-                        func.strict_word_similarity(
-                            func.upper(MiWayneDetroit.saddstr),
-                            func.upper(ResidentialRentalRegistrations.street_name),
-                        )
-                        > 0.8,
-                        MiWayneDetroit.saddno == ResidentialRentalRegistrations.street_num,
-                    ),
-                )
-                .filter(
-                    MiWayneDetroit.address.ilike(f"{address.strip()}%"),
-                )
-                .all()
-            )
+        results = query_mi_wayne_detroit(session, address, sunit)
 
     display_address = address if not sunit else address + " " + sunit
+
     if not results:
         return handle_no_match(display_address, conversation_id, to_phone)
 
-    address, rental_status, tax_status, zip_code, tax_due = results[0]
+    owner, address, rental_status, tax_status, zip_code, tax_due = results[0]
 
     if not tax_status and tax_due and int(tax_due) > 0:
         add_data_lookup_to_db(
@@ -153,20 +89,17 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
     if len(results) > 1:
         return handle_ambiguous(display_address, conversation_id, to_phone)
 
-    # Missive API to adding tags
-    query_result = owner_query_engine_without_sunit.query(address)
+    query_result = owner_query_engine_without_sunit(str(results[0]))
 
-    if "result" not in query_result.metadata:
+    if not query_result:
         logger.error(query_result)
         return "", 200
 
-    owner_data = map_keys_to_result(query_result.metadata)
-
     following_message_type = ""
-    if "owner" in owner_data:
-        if "LAND BANK" in owner_data["owner"].upper():
+    if owner:
+        if "LAND BANK" in owner.upper():
             following_message_type = FollowingMessageType.LAND_BANK
-        elif "UNCONFIRMED" in owner_data["tax_status"].upper():
+        elif "UNCONFIRMED" in owner.upper():
             following_message_type = FollowingMessageType.UNCONFIRMED_TAX_STATUS
         else:
             following_message_type = FollowingMessageType.DEFAULT
@@ -174,7 +107,7 @@ def search_service(query, conversation_id, to_phone, owner_query_engine_without_
     return handle_match(query_result, conversation_id, to_phone, rental_status, following_message_type)
 
 
-def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_engine_without_sunit):
+def more_search_service(conversation_id, to_phone):
     messages = missive_client.extract_preview_content(conversation_id=conversation_id)
     normalized_address = extract_latest_address(messages, conversation_id, to_phone)
     if not normalized_address:
@@ -185,17 +118,17 @@ def more_search_service(conversation_id, to_phone, tax_query_engine, tax_query_e
         )
 
     address, sunit = extract_address_information(normalized_address)
+    session = Session()
+    results = query_mi_wayne_detroit(session, address, sunit)
 
-    if sunit:
-        query_result = tax_query_engine.query(str({"address": address, "sunit": sunit}))
-    else:
-        query_result = tax_query_engine_without_sunit.query(str({"address": {address}}))
+    display_address = address if not sunit else address + " " + sunit
 
-    if "result" not in query_result.metadata:
-        logger.error(query_result)
-        return "", 200
+    if not results:
+        return handle_no_match(display_address, conversation_id, to_phone)
 
-    tax_status, rental_status = check_property_status(query_result)
+    _, _, rental_status, tax_status, _, tax_due = results[0]
+
+    tax_status, rental_status = check_property_status(rental_status, tax_status, tax_due)
     process_statuses(tax_status, rental_status, conversation_id, to_phone)
 
 
@@ -239,7 +172,7 @@ def handle_match(
         following_message_type="",
 ):
     response = str(response)
-    if rental_status == "REGISTERED":
+    if rental_status == "IS":
         response += "It is registered as a residential rental property"
 
     # Missive API -> Send SMS template
@@ -568,3 +501,45 @@ def update_author_and_missive(phone_number, email, zipcode):
         error_message = f"Failed to update {error_type}: {traceback.format_exc()}"
         logger.error(f"Error occurred while updating contact email/zipcode: {traceback.format_exc()}")
         return {"type": error_type, "msg": error_message}, 500
+
+
+def query_mi_wayne_detroit(session, address, sunit):
+    rental_status_case = case(
+        (ResidentialRentalRegistrations.lat.isnot(None), "IS"),
+        else_="IS NOT"
+    ).label("rental_status")
+
+    base_query = session.query(
+        MiWayneDetroit.owner,
+        MiWayneDetroit.address,
+        rental_status_case,
+        MiWayneDetroit.tax_status,
+        MiWayneDetroit.szip5,
+        MiWayneDetroit.tax_due,
+    ).outerjoin(
+        ResidentialRentalRegistrations,
+        and_(
+            func.ST_DWithin(
+                MiWayneDetroit.wkb_geometry,
+                ResidentialRentalRegistrations.wkb_geometry,
+                0.001,
+            ),
+            func.strict_word_similarity(
+                func.upper(MiWayneDetroit.saddstr),
+                func.upper(ResidentialRentalRegistrations.street_name),
+            ) > 0.8,
+            MiWayneDetroit.saddno == ResidentialRentalRegistrations.street_num,
+        ),
+    )
+
+    if sunit:
+        results = base_query.filter(
+            MiWayneDetroit.address.ilike(f"{address.strip()}%"),
+            MiWayneDetroit.sunit.ilike(f"%{sunit}%"),
+        ).all()
+    else:
+        results = base_query.filter(
+            MiWayneDetroit.address.ilike(f"{address.strip()}%"),
+        ).all()
+
+    return results
