@@ -33,9 +33,11 @@ def generate_report_summary(messages_history):
         logger.error(f"Error fetching template from database: {e}")
         return None
     documents = []
+    conversationMessages = []
     for ref, conversations in messages_history.items():
         conversation_text = "\n".join(
             [f"{msg['from_field']} to {msg['to_field']}: {msg['preview']}" for msg in conversations])
+        conversationMessages.append(conversation_text)
         metadata = {
             'reference': ref,
             'from_fields': list(set(msg['from_field'] for msg in conversations)),
@@ -53,5 +55,12 @@ def generate_report_summary(messages_history):
     query_engine = summary_index.as_query_engine(llm=OpenAI(model=model))
 
     summary = query_engine.query(text)
+    if not summary:
+        logger.error(f"Error generating summary")
+        function_llm = OpenAI(temperature=0.1, model=model, api_key=key)
+        prompt = f"{lookup_template.content}\n{conversationMessages}"
+
+        human_readable_result = function_llm.complete(prompt)
+        return human_readable_result
 
     return summary

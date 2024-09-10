@@ -4,7 +4,7 @@ import os
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/dbname")
 
 # Constants
-BROADCAST_SOURCE_PHONE_NUMBER = os.getenv("BROADCAST_SOURCE_PHONE_NUMBER", "source_phone_number")
+BROADCAST_SOURCE_PHONE_NUMBER = os.getenv("PHONE_NUMBER", "source_phone_number")
 IMPACT_LABEL_IDS = [
     "804b1066-c77f-4000-85af-ad77c4f1bb76", # Outlier Staff Use/accountability gap
     "01b68845-c2c3-4882-8d38-1dba9cf49b5b", # Outlier Staff Use/crisis averted

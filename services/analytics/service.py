@@ -21,7 +21,7 @@ from .queries import (
     GET_WEEKLY_DATA_LOOKUP,
     GET_WEEKLY_TOP_ZIP_CODE,
     GET_WEEKLY_MESSAGES_HISTORY,
-    GET_WEEKLY_BROADCAST_CONTENT
+    GET_WEEKLY_BROADCAST_CONTENT, GET_WEEKLY_BROADCAST_STARTERS
 )
 from .utils import (
     process_conversation_metrics,
@@ -53,6 +53,10 @@ class AnalyticsService:
 
     def get_weekly_broadcast_sent(self, session):
         return session.execute(GET_WEEKLY_BROADCAST_CONTENT).fetchall()
+
+    def get_broadcasts_starters(self, session, broadcast_sent):
+        broadcast_ids = [broadcast["id"] for broadcast in broadcast_sent]
+        return session.execute(GET_WEEKLY_BROADCAST_STARTERS, {'ids': tuple(broadcast_ids)}).fetchall()
 
     def get_weekly_messages_history(self, session, broadcast_sent):
         broadcast_messages = set()
@@ -147,6 +151,7 @@ class AnalyticsService:
             # Fetch all the data here synchronously
             unsubscribed_messages = self.get_weekly_unsubscribe_by_audience_segment(session)
             broadcasts = self.get_weekly_broadcast_sent(session)
+            broadcast_starters = self.get_broadcasts_starters(session, broadcasts)
             messages_history = self.get_weekly_messages_history(session, broadcasts)
             failed_deliveries = self.get_weekly_failed_message(session)
             text_ins = self.get_weekly_text_ins(session)
@@ -160,6 +165,7 @@ class AnalyticsService:
         return FetchDataResult(
             unsubscribed_messages,
             broadcasts,
+            broadcast_starters,
             messages_history,
             failed_deliveries,
             text_ins,

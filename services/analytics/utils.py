@@ -1,6 +1,6 @@
-from loguru import logger
-import os
 from typing import NamedTuple
+
+from loguru import logger
 
 from configs.query_engine.weekly_report_trend_summary import generate_report_summary
 from models import LookupTemplate
@@ -65,18 +65,16 @@ _{second_message}_
 
 
 def process_conversation_metrics(data):
-    total_broadcasts = (
-        len(data["broadcasts"])
-        if "broadcasts" in data and data["broadcasts"]
+    total_broadcasts_first_messages = (
+        data["broadcast_starters"][0][0]
+        if data["broadcast_starters"]
         else 0
     )
     total_text_ins = (
-        data["text_ins"]["count"] if isinstance(data["text_ins"], dict) and data["text_ins"] else 0
+        data["text_ins"]["count"] if data["text_ins"] else 0
     )
     failed_deliveries = (
-        data["failed_deliveries"]["count"]
-        if isinstance(data["failed_deliveries"], dict) and data["failed_deliveries"]
-        else 0
+        data["failed_deliveries"]["count"] if data["failed_deliveries"]["count"] else 0
     )
     total_unsubscribed_messages = (
         sum(int(conversation["count"]) for conversation in data["unsubscribed_messages"])
@@ -95,7 +93,7 @@ def process_conversation_metrics(data):
     )
 
     conversation_metrics = {
-        "conversation_starters_sent": total_broadcasts,
+        "conversation_starters_sent": int(total_broadcasts_first_messages),
         "broadcast_replies": total_replies,
         "text_ins": total_text_ins,
         "reporter_conversations": total_report_conversations,
@@ -388,6 +386,7 @@ def get_conversation_id(session):
 class FetchDataResult(NamedTuple):
     unsubscribed_messages: any
     broadcasts: any
+    broadcast_starters: any
     messages_history: any
     failed_deliveries: any
     text_ins: any

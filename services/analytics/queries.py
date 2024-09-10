@@ -1,8 +1,8 @@
 # app/queries/weekly_queries.py
 
 from sqlalchemy.sql import text
+
 from .config import (
-    DATABASE_URL,
     IMPACT_LABEL_IDS,
     REPORTER_LABEL_IDS,
     BROADCAST_SOURCE_PHONE_NUMBER,
@@ -39,6 +39,13 @@ GET_WEEKLY_BROADCAST_SENT = text("""
     created_at < DATE_TRUNC('week', CURRENT_DATE) 
 """)
 
+GET_WEEKLY_BROADCAST_STARTERS = text("""
+    SELECT COUNT(*) AS COUNT
+    FROM BROADCAST_SENT_MESSAGE_STATUS
+    WHERE BROADCAST_ID IN :ids
+    AND IS_SECOND = FALSE;
+""")
+
 GET_WEEKLY_MESSAGES_HISTORY = """
             SELECT *
             FROM public.twilio_messages
@@ -52,7 +59,7 @@ GET_WEEKLY_FAILED_MESSAGE = text("""
     SELECT COUNT(*) AS count
     FROM public.broadcast_sent_message_status
     WHERE 
-    twilio_sent_status = 'failed' 
+    twilio_sent_status = 'undelivered' 
     AND
     created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
     AND 
@@ -60,16 +67,13 @@ GET_WEEKLY_FAILED_MESSAGE = text("""
 """)
 
 GET_WEEKLY_TEXT_INS = text(f"""
-    SELECT COUNT(*) AS count
+    SELECT COUNT(DISTINCT from_field) AS count
     FROM public.twilio_messages
     WHERE 
-    is_broadcast_reply = false
-    AND 
-    from_field != '{BROADCAST_SOURCE_PHONE_NUMBER}'
-    AND
-    created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-    AND 
-    created_at < DATE_TRUNC('week', CURRENT_DATE) 
+        is_broadcast_reply = false
+        AND from_field != '{BROADCAST_SOURCE_PHONE_NUMBER}'
+        AND created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
+        AND created_at < DATE_TRUNC('week', CURRENT_DATE) 
 """)
 
 impact_label_ids = ", ".join(f"'{id}'" for id in IMPACT_LABEL_IDS)
@@ -143,7 +147,7 @@ GET_WEEKLY_TOP_ZIP_CODE = text("""
 """)
 
 GET_WEEKLY_BROADCAST_CONTENT = text("""
-   SELECT first_message, second_message, run_at
+   SELECT id, first_message, second_message, run_at
     FROM broadcasts
     WHERE 
     run_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
