@@ -53,13 +53,4 @@ def extract_latest_address(messages, conversation_id, to_phone):
         return None
 
     address = get_first_valid_normalized_address(messages)
-
-    if address is None:
-        missive_client.send_sms_sync(
-            "Can't parse address from history messages",
-            conversation_id=conversation_id,
-            to_phone=to_phone,
-        )
-        return None
-
     return address
