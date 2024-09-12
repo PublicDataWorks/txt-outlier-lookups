@@ -30,7 +30,10 @@ from services.services import (
     get_conversation_data,
     handle_match,
     more_search_service,
-    search_service, update_author_and_missive, query_mi_wayne_detroit,
+    search_service,
+    update_author_and_missive,
+    query_mi_wayne_detroit,
+
 )
 from utils.address_normalizer import extract_latest_address
 
@@ -127,18 +130,10 @@ def yes():
         data = request.get_json()
         conversation_id = data.get("conversation", {}).get("id")
         to_phone = data.get("message", {}).get("from_field", {}).get("id")
-        messages = missive_client.extract_preview_content(conversation_id=conversation_id)
+        messages = extract_address_messages_from_supabase(to_phone)
         normalized_address = extract_latest_address(
             messages=messages, conversation_id=conversation_id, to_phone=to_phone
         )
-
-        if not normalized_address:
-            extra_messages = extract_address_messages_from_supabase(to_phone)
-            normalized_address = extract_latest_address(
-                messages=extra_messages,
-                conversation_id=conversation_id,
-                to_phone=to_phone,
-            )
 
         if not normalized_address:
             logger.error(f"Couldn't parse address from history messages: {messages}", )

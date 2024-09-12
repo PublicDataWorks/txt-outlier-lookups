@@ -1,6 +1,5 @@
-from typing import NamedTuple
-
 from loguru import logger
+from typing import NamedTuple
 
 from configs.query_engine.weekly_report_trend_summary import generate_report_summary
 from models import LookupTemplate

@@ -108,7 +108,7 @@ def search_service(query, conversation_id, to_phone):
 
 
 def more_search_service(conversation_id, to_phone):
-    messages = missive_client.extract_preview_content(conversation_id=conversation_id)
+    messages = extract_address_messages_from_supabase(phone=to_phone)
     normalized_address = extract_latest_address(messages, conversation_id, to_phone)
     if not normalized_address:
         logger.error(f"Couldn't parse address from history messages: {messages}")
@@ -165,11 +165,11 @@ def handle_ambiguous(query, conversation_id, to_phone):
 
 
 def handle_match(
-        response,
-        conversation_id,
-        to_phone,
-        rental_status="UNREGISTERED",
-        following_message_type="",
+    response,
+    conversation_id,
+    to_phone,
+    rental_status="UNREGISTERED",
+    following_message_type="",
 ):
     response = str(response)
     if rental_status == "IS":
@@ -413,15 +413,15 @@ def get_conversation_data(conversation_id, query_phone_number):
 
 def extract_address_messages_from_supabase(phone):
     session = Session()
-    messages = (
-        session.query(TwilioMessage)
-        .filter(TwilioMessage.from_field == phone)
-        .order_by(text("delivered_at desc"))
+    query = (
+        session.query(TwilioMessage.preview)
+        .filter(or_(TwilioMessage.from_field == phone, TwilioMessage.to_field == phone))
+        .order_by(TwilioMessage.delivered_at.desc())
         .limit(30)
         .all()
     )
 
-    return list(map(lambda a: a.preview, messages))
+    return [row[0] for row in query]
 
 
 @cache.memoize(timeout=CACHE_TTL)
