@@ -99,12 +99,10 @@ def search_service(query, conversation_id, to_phone):
     if owner:
         if "LAND BANK" in owner.upper():
             following_message_type = FollowingMessageType.LAND_BANK
-        elif "UNCONFIRMED" in owner.upper():
-            following_message_type = FollowingMessageType.UNCONFIRMED_TAX_STATUS
         else:
             following_message_type = FollowingMessageType.DEFAULT
 
-    return handle_match(query_result, conversation_id, to_phone, rental_status, following_message_type)
+    return handle_match(query_result, conversation_id, to_phone, rental_status, following_message_type, tax_status)
 
 
 def more_search_service(conversation_id, to_phone):
@@ -170,6 +168,7 @@ def handle_match(
     to_phone,
     rental_status="UNREGISTERED",
     following_message_type="",
+    tax_status=None,
 ):
     response = str(response)
     if rental_status == "IS":
@@ -177,19 +176,26 @@ def handle_match(
 
     # Missive API -> Send SMS template
     missive_client.send_sms_sync(
-        str(response),
+        response,
         conversation_id=conversation_id,
         to_phone=to_phone,
         add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
     )
-
     time.sleep(2)
+
+    if tax_status and "UNCONFIRMED" in tax_status.upper():
+        next_message = get_template_content_by_name(FollowingMessageType.UNCONFIRMED_TAX_STATUS.value)
+        missive_client.send_sms_sync(
+            next_message,
+            conversation_id=conversation_id,
+            to_phone=to_phone,
+            add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
+        )
+        time.sleep(2)
 
     match following_message_type:
         case FollowingMessageType.LAND_BANK:
             following_message = get_template_content_by_name(FollowingMessageType.LAND_BANK.value)
-        case FollowingMessageType.UNCONFIRMED_TAX_STATUS:
-            following_message = get_template_content_by_name(FollowingMessageType.UNCONFIRMED_TAX_STATUS.value)
         case _:
             following_message = ""
 
