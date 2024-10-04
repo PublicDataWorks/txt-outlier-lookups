@@ -100,13 +100,15 @@ GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT = text("""
     GROUP BY bsms.audience_segment_id, asg.name
 """)
 
-reporter_label_ids = ", ".join(f"'{id}'" for id in REPORTER_LABEL_IDS)
 GET_WEEKLY_REPORTER_CONVERSATION = lambda reporter_label_ids: text(f"""
-    SELECT l.name as label_name, COUNT(*) as count
+    SELECT COUNT(distinct cl.conversation_id) as count
     FROM public.conversations_labels cl 
     JOIN public.labels l ON cl.label_id = l.id
-    WHERE label_id IN ({reporter_label_ids})
-    GROUP BY l.name;
+    WHERE cl.label_id IN ({reporter_label_ids})
+    AND
+    cl.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
+    AND 
+    cl.created_at < DATE_TRUNC('week', CURRENT_DATE)
 """)
 
 GET_WEEKLY_DATA_LOOKUP = text("""
