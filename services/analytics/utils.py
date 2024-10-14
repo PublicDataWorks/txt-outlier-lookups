@@ -171,9 +171,7 @@ def generate_geographic_region_markdown(zip_codes):
     return ""
 
 
-def generate_lookup_history_markdown(
-        status_counts, percentage_changes, percentage_changes_4_week
-):
+def generate_lookup_history_markdown(status_counts, percentage_changes, percentage_changes_4_week):
     return (
         "### Data Lookups by Property Status\n"
         "| Status                         | Count |  Change (weekly) | Change (4-weeks avg) |\n"
@@ -187,9 +185,7 @@ def generate_lookup_history_markdown(
     )
 
 
-def generate_conversation_outcomes_markdown(
-        outcome_counts, percentage_changes, percentage_changes_4_week
-):
+def generate_conversation_outcomes_markdown(outcome_counts, percentage_changes, percentage_changes_4_week):
     return (
         "### Conversation Outcomes\n"
         "| Outcome                         | Count |  Change (weekly) | Change (4-weeks avg) |\n"
@@ -204,11 +200,9 @@ def generate_conversation_outcomes_markdown(
     )
 
 
-def generate_data_by_audience_segment_markdown(
-        segment_counts, percentage_changes, percentage_changes_4_week
-):
+def generate_data_by_audience_segment_markdown(title, segment_counts, percentage_changes, percentage_changes_4_week):
     return (
-        "### Broadcast Replies by Audience Segment\n"
+        f"### {title}\n"
         "| Segment                         | Count |  Change (weekly) | Change (4-weeks avg) |\n"
         "|-------------------------------  |-------|----------------|---------------------|\n"
         f"| Proactive              | {segment_counts['Proactive']}|   {format_percentage_change(percentage_changes['Proactive'])}  | {format_percentage_change(percentage_changes_4_week['Proactive'])}  \n"
@@ -255,9 +249,7 @@ def generate_major_themes_section(messages_history):
     return ""
 
 
-def generate_conversation_metrics_section(
-        conversation_metrics, percentage_changes, percentage_changes_4_week
-):
+def generate_conversation_metrics_section(conversation_metrics, percentage_changes, percentage_changes_4_week):
     return (
         "### Conversation Metrics\n"
         "| Metric                         | Count | Change (weekly)| Change (4-weeks avg) |\n"
