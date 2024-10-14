@@ -7,11 +7,11 @@ from sqlalchemy import text
 from configs.database import Session
 from libs.MissiveAPI import MissiveAPI
 from models import WeeklyReport
-from .config import (
+from config import (
     IMPACT_LABEL_IDS,
     REPORTER_LABEL_IDS,
 )
-from .queries import (
+from queries import (
     GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT,
     GET_WEEKLY_FAILED_MESSAGE,
     GET_WEEKLY_TEXT_INS,
@@ -23,7 +23,7 @@ from .queries import (
     GET_WEEKLY_MESSAGES_HISTORY,
     GET_WEEKLY_BROADCAST_CONTENT, GET_WEEKLY_BROADCAST_STARTERS
 )
-from .utils import (
+from utils import (
     process_conversation_metrics,
     process_conversation_outcomes,
     process_audience_segment_related_data,
@@ -266,11 +266,13 @@ class AnalyticsService:
             ),
         )
         replies_by_audience_segment_section = generate_data_by_audience_segment_markdown(
+            "Broadcast Replies by Audience Segment",
             replies_by_audience_segment,
             calculate_percentage_change(last_week_data["replies"], replies_by_audience_segment),
             calculate_percentage_change(last_4_week_data["replies"], replies_by_audience_segment),
         )
         unsubscribe_by_audience_segment_section = generate_data_by_audience_segment_markdown(
+            "Broadcast Unsubscribes by Audience Segment",
             unsubscribes_by_audience_segment,
             calculate_percentage_change(
                 last_week_data["unsubscribed_messages"], unsubscribes_by_audience_segment
