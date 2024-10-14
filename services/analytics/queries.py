@@ -154,5 +154,6 @@ GET_WEEKLY_BROADCAST_CONTENT = text("""
     WHERE 
     run_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
     AND 
-    run_at < DATE_TRUNC('week', CURRENT_DATE)                                 
+    run_at < DATE_TRUNC('week', CURRENT_DATE)
+    ORDER BY id                                 
 """)
