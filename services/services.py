@@ -4,7 +4,7 @@ import traceback
 
 from flask import jsonify
 from loguru import logger
-from sqlalchemy import and_, case, func, or_, text
+from sqlalchemy import and_, case, func, or_
 from sqlalchemy.exc import NoResultFound
 
 from configs.cache_template import (
@@ -26,7 +26,10 @@ from models import (
     MiWayneDetroit,
     ResidentialRentalRegistrations,
     TwilioMessage,
-    User, LookupTemplate, CommentsMentions,
+    User,
+    LookupTemplate,
+    CommentsMentions,
+    PosibleHomeownerWindfall,
 )
 from utils.address_normalizer import (
     extract_latest_address,
@@ -48,22 +51,19 @@ def search_service(query, conversation_id, to_phone):
             {"message": "Couldn't parse address from query"},
             200,
         )
-
     address, sunit = extract_address_information(normalized_address)
 
     if not address:
         logger.error("Wrong format address", query)
         return handle_wrong_format(conversation_id=conversation_id, to_phone=to_phone)
-    else:
-        results = query_mi_wayne_detroit(session, address, sunit)
 
+    results = query_mi_wayne_detroit(session, address, sunit)
     display_address = address if not sunit else address + " " + sunit
 
     if not results:
         return handle_no_match(display_address, conversation_id, to_phone)
 
-    owner, address, rental_status, tax_status, zip_code, tax_due = results[0]
-
+    owner, address, rental_status, tax_status, zip_code, tax_due, windfall_profit = results[0]
     if not tax_status and tax_due and int(tax_due) > 0:
         add_data_lookup_to_db(
             address,
@@ -522,6 +522,7 @@ def query_mi_wayne_detroit(session, address, sunit):
         MiWayneDetroit.tax_status,
         MiWayneDetroit.szip5,
         MiWayneDetroit.tax_due,
+        PosibleHomeownerWindfall.windfall_profit
     ).outerjoin(
         ResidentialRentalRegistrations,
         and_(
@@ -536,6 +537,9 @@ def query_mi_wayne_detroit(session, address, sunit):
             ) > 0.8,
             MiWayneDetroit.saddno == ResidentialRentalRegistrations.street_num,
         ),
+    ).outerjoin(
+        PosibleHomeownerWindfall,
+        MiWayneDetroit.parcelnumb == PosibleHomeownerWindfall.parcel_id
     )
 
     if sunit:
@@ -547,5 +551,4 @@ def query_mi_wayne_detroit(session, address, sunit):
         results = base_query.filter(
             MiWayneDetroit.address.ilike(f"{address.strip()}%"),
         ).all()
-
     return results

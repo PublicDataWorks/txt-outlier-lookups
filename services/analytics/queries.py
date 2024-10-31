@@ -4,7 +4,6 @@ from sqlalchemy.sql import text
 
 from .config import (
     IMPACT_LABEL_IDS,
-    REPORTER_LABEL_IDS,
     BROADCAST_SOURCE_PHONE_NUMBER,
 )
 
