@@ -7,11 +7,11 @@ from sqlalchemy import text
 from configs.database import Session
 from libs.MissiveAPI import MissiveAPI
 from models import WeeklyReport
-from .config import (
+from services.analytics.config import (
     IMPACT_LABEL_IDS,
     REPORTER_LABEL_IDS,
 )
-from .queries import (
+from services.analytics.queries import (
     GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT,
     GET_WEEKLY_FAILED_MESSAGE,
     GET_WEEKLY_TEXT_INS,
@@ -23,7 +23,7 @@ from .queries import (
     GET_WEEKLY_MESSAGES_HISTORY,
     GET_WEEKLY_BROADCAST_CONTENT, GET_WEEKLY_BROADCAST_STARTERS
 )
-from .utils import (
+from services.analytics.utils import (
     process_conversation_metrics,
     process_conversation_outcomes,
     process_audience_segment_related_data,
@@ -178,14 +178,14 @@ class AnalyticsService:
         )
 
     def insert_weekly_report(
-            self,
-            session,
-            current_date,
-            conversation_metrics,
-            conversation_outcomes,
-            property_statuses,
-            broadcast_replies,
-            unsubscribes,
+        self,
+        session,
+        current_date,
+        conversation_metrics,
+        conversation_outcomes,
+        property_statuses,
+        broadcast_replies,
+        unsubscribes,
     ):
         new_report = WeeklyReport(
             created_at=current_date,

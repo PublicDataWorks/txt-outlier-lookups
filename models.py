@@ -13,6 +13,8 @@ from sqlalchemy import (
     Integer,
     String,
     text,
+    Text,
+    SmallInteger
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.declarative import declarative_base
@@ -401,3 +403,22 @@ class CommentsMentions(Base):
     id = Column(Integer, primary_key=True)
     comment_id = Column(UUID)
     user_id = Column(UUID)
+
+
+class PosibleHomeownerWindfall(Base):
+    __tablename__ = 'posible_homeowner_windfalls'
+    __table_args__ = {'schema': 'address_lookup', 'comment': 'Likely and Possible Homeowner Windfalls 2015 - 2019'}
+
+    created_at = Column(DateTime(True), nullable=False, server_default=text("now()"))
+    status = Column(Text)
+    tax_auction_year = Column(SmallInteger)
+    parcel_id = Column(Text, primary_key=True)
+    street_address = Column(Text)
+    city = Column(Text)
+    minimum_bid = Column(Float(53))
+    auction_sale_price = Column(Float(53))
+    windfall_profit = Column(Float(53))
+    pre_at_foreclosure = Column(Float(53))
+    owner_name_at_foreclosure = Column(Text)
+    lat = Column(Text)
+    lon = Column(Text)
