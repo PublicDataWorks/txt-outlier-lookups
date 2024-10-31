@@ -84,13 +84,12 @@ class AnalyticsService:
         grouped_messages = defaultdict(list)
         for message in messages:
             refs = message["references"]
-            preview = message["preview"]
-            from_field = message["from_field"]
-            to_field = message["to_field"]
             grouped_messages[refs[0]].append({
-                "preview": preview,
-                "from_field": from_field,
-                "to_field": to_field
+                "preview": message["preview"],
+                "from_field": message["from_field"],
+                "to_field": message["to_field"],
+                "sender_name": message["name"],
+                "sender_email": message["email"]
             })
 
         return grouped_messages
