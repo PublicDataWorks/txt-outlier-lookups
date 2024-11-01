@@ -49,7 +49,7 @@ GET_WEEKLY_MESSAGES_HISTORY = """
             SELECT tm.*, u.name, u.email
             FROM public.twilio_messages tm LEFT JOIN public.users u on tm.sender_id = u.id
             WHERE 
-            tm.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
+            tm.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '3 week'
             AND 
             tm.created_at < DATE_TRUNC('week', CURRENT_DATE)
         """
