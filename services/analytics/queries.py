@@ -46,12 +46,12 @@ GET_WEEKLY_BROADCAST_STARTERS = text("""
 """)
 
 GET_WEEKLY_MESSAGES_HISTORY = """
-            SELECT *
-            FROM public.twilio_messages
+            SELECT tm.*, u.name, u.email
+            FROM public.twilio_messages tm LEFT JOIN public.users u on tm.sender_id = u.id
             WHERE 
-            created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
+            tm.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
             AND 
-            created_at < DATE_TRUNC('week', CURRENT_DATE)
+            tm.created_at < DATE_TRUNC('week', CURRENT_DATE)
         """
 
 GET_WEEKLY_FAILED_MESSAGE = text("""
