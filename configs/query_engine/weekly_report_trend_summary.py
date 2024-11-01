@@ -41,8 +41,8 @@ def generate_report_summary(messages_history):
         conversation_messages.append(conversation_text)
         metadata = {
             'reference': ref,
-            'from_fields': set(msg['from_field'] for msg in conversations),
-            'to_fields': set(msg['to_field'] for msg in conversations),
+            'from_fields': list(set(msg['from_field'] for msg in conversations)),
+            'to_fields': list(set(msg['to_field'] for msg in conversations)),
             'sender_name': next(
                 (msg['sender_name'] for msg in conversations if msg['from_field'] == BROADCAST_SOURCE_PHONE_NUMBER),
                 None
