@@ -43,15 +43,16 @@ def generate_report_summary(messages_history):
             'reference': ref,
             'from_fields': list(set(msg['from_field'] for msg in conversations)),
             'to_fields': list(set(msg['to_field'] for msg in conversations)),
-            'sender_name': next(
+            'staff_name': next(
                 (msg['sender_name'] for msg in conversations if msg['from_field'] == BROADCAST_SOURCE_PHONE_NUMBER),
                 None
             ),
-            'sender_email': next(
+            'staff_email': next(
                 (msg['sender_email'] for msg in conversations if msg['from_field'] == BROADCAST_SOURCE_PHONE_NUMBER),
                 None
             )
         }
+        print(metadata)
         doc = Document(
             text=conversation_text,
             metadata=metadata
