@@ -52,7 +52,6 @@ def generate_report_summary(messages_history):
                 None
             )
         }
-        print(metadata)
         doc = Document(
             text=conversation_text,
             metadata=metadata
