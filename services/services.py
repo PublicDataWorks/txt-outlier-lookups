@@ -43,7 +43,6 @@ CACHE_TTL = 24 * 60 * 60
 
 def search_service(query, conversation_id, to_phone):
     session = Session()
-
     normalized_address = get_first_valid_normalized_address([query])
     if not normalized_address:
         logger.error(f"Couldn't parse address from query: {query}")
@@ -63,7 +62,7 @@ def search_service(query, conversation_id, to_phone):
     if not results:
         return handle_no_match(display_address, conversation_id, to_phone)
 
-    owner, address, rental_status, tax_status, zip_code, tax_due, windfall_profit = results[0]
+    owner, address, rental_status, tax_status, zip_code, tax_due, windfall_profit, windfall_auction_year = results[0]
     if not tax_status and tax_due and int(tax_due) > 0:
         add_data_lookup_to_db(
             address,
@@ -89,20 +88,25 @@ def search_service(query, conversation_id, to_phone):
     if len(results) > 1:
         return handle_ambiguous(display_address, conversation_id, to_phone)
 
-    query_result = owner_query_engine_without_sunit(str(results[0]))
+    query_result = owner_query_engine_without_sunit(str(results[0][:-2]))
 
     if not query_result:
         logger.error(query_result)
         return "", 200
 
-    following_message_type = ""
+    following_messages = []
     if owner:
         if "LAND BANK" in owner.upper():
-            following_message_type = FollowingMessageType.LAND_BANK
-        else:
-            following_message_type = FollowingMessageType.DEFAULT
-
-    return handle_match(query_result, conversation_id, to_phone, rental_status, following_message_type, tax_status)
+            following_messages.append(get_template_content_by_name(FollowingMessageType.LAND_BANK.value))
+    if windfall_profit and windfall_auction_year:
+        template = get_template_content_by_name(FollowingMessageType.WINDFALL.value)
+        message = template.format(
+            address=address,
+            windfall_auction_year=windfall_auction_year,
+            windfall_profit=windfall_profit
+        )
+        following_messages.append(message)
+    return handle_match(query_result, conversation_id, to_phone, rental_status, following_messages, tax_status)
 
 
 def more_search_service(conversation_id, to_phone):
@@ -167,9 +171,11 @@ def handle_match(
     conversation_id,
     to_phone,
     rental_status="UNREGISTERED",
-    following_message_type="",
+    following_messages=None,
     tax_status=None,
 ):
+    if following_messages is None:
+        following_messages = []
     response = str(response)
     if rental_status == "IS":
         response += "It is registered as a residential rental property"
@@ -193,15 +199,9 @@ def handle_match(
         )
         time.sleep(2)
 
-    match following_message_type:
-        case FollowingMessageType.LAND_BANK:
-            following_message = get_template_content_by_name(FollowingMessageType.LAND_BANK.value)
-        case _:
-            following_message = ""
-
-    if following_message:
+    for message in following_messages:
         missive_client.send_sms_sync(
-            following_message,
+            message,
             conversation_id=conversation_id,
             to_phone=to_phone,
             add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
@@ -522,7 +522,8 @@ def query_mi_wayne_detroit(session, address, sunit):
         MiWayneDetroit.tax_status,
         MiWayneDetroit.szip5,
         MiWayneDetroit.tax_due,
-        PosibleHomeownerWindfall.windfall_profit
+        PosibleHomeownerWindfall.windfall_profit,
+        PosibleHomeownerWindfall.tax_auction_year,
     ).outerjoin(
         ResidentialRentalRegistrations,
         and_(
