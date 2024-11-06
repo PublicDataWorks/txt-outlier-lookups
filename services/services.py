@@ -91,7 +91,7 @@ def search_service(query, conversation_id, to_phone):
     query_result = owner_query_engine_without_sunit(str(results[0][:-2]))
 
     if not query_result:
-        logger.error(query_result)
+        logger.error(f"[search_service] Query returned empty results. result: {results[0]}")
         return "", 200
 
     following_messages = []
