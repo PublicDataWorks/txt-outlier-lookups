@@ -14,12 +14,13 @@ from loguru import logger
 from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from configs.cache_template import app
+from configs.cache_template import app, get_template_content_by_name
 from configs.database import Session
 from configs.query_engine.owner_information_without_sunit import (
     owner_query_engine_without_sunit,
 )
 from configs.supabase import run_websocket_listener
+from constants.following_message import FollowingMessageType
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from middlewares.jwt_middleware import require_authentication
@@ -141,22 +142,32 @@ def yes():
                 jsonify({"message": "Couldn't parse address from history messages"}),
                 200,
             )
-
         address, sunit = extract_address_information(normalized_address)
         session = Session()
 
         results = query_mi_wayne_detroit(session, address, sunit)
 
         if not results:
-            logger.error(results)
+            logger.error(f"Query returned empty results. Extra: address: {address} sunit: {sunit}")
             return "", 200
+        data = results[0]
+        query_result = owner_query_engine_without_sunit(str(data[:-2]))
 
-        query_result = owner_query_engine_without_sunit(str(results[0]))
-
+        following_messages = []
+        windfall_profit, windfall_auction_year = data[-2:]
+        if windfall_auction_year and windfall_profit:
+            template = get_template_content_by_name(FollowingMessageType.WINDFALL.value)
+            message = template.format(
+                address=address,
+                windfall_auction_year=windfall_auction_year,
+                windfall_profit=windfall_profit
+            )
+            following_messages.append(message)
         handle_match(
             response=query_result,
             conversation_id=conversation_id,
             to_phone=to_phone,
+            following_messages=following_messages,
         )
         return jsonify({"message": "Success"}), 200
 
