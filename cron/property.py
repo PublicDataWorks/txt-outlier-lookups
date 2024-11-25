@@ -30,11 +30,12 @@ def fetch_data():
             zip_ref.extractall(temp_dir)
 
         try:
+            logger.info("Starting running property script...")
             process = Popen(["bash ./cron/property.sh"], shell=True, stdin=PIPE, stderr=PIPE)
-            stdout, stderr = process.communicate()
-            if stdout:
-                logger.info(f"Property script output: {stdout.decode()}")
-            if stderr:
+            _, stderr = process.communicate()
+            if process.returncode == 0:
+                logger.info("Property data import completed successfully")
+            else:
                 logger.error(f"Property script error: {stderr.decode()}")
         except Exception as e:
             logger.error("Error running Property script:", e)
