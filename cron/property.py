@@ -4,7 +4,7 @@ from subprocess import PIPE, Popen
 from zipfile import ZipFile
 
 from dotenv import find_dotenv, load_dotenv
-from .sftp_client import SFTPServerClient
+from cron.sftp_client import SFTPServerClient
 
 load_dotenv(find_dotenv())
 

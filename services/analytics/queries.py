@@ -1,8 +1,6 @@
-# app/queries/weekly_queries.py
-
 from sqlalchemy.sql import text
 
-from .config import (
+from services.analytics.config import (
     IMPACT_LABEL_IDS,
     BROADCAST_SOURCE_PHONE_NUMBER,
 )

@@ -21,7 +21,8 @@ from services.analytics.queries import (
     GET_WEEKLY_DATA_LOOKUP,
     GET_WEEKLY_TOP_ZIP_CODE,
     GET_WEEKLY_MESSAGES_HISTORY,
-    GET_WEEKLY_BROADCAST_CONTENT, GET_WEEKLY_BROADCAST_STARTERS
+    GET_WEEKLY_BROADCAST_CONTENT,
+    GET_WEEKLY_BROADCAST_STARTERS
 )
 from services.analytics.utils import (
     process_conversation_metrics,
@@ -55,6 +56,8 @@ class AnalyticsService:
         return session.execute(GET_WEEKLY_BROADCAST_CONTENT).fetchall()
 
     def get_broadcasts_starters(self, session, broadcast_sent):
+        if not broadcast_sent:
+            return []
         broadcast_ids = [broadcast["id"] for broadcast in broadcast_sent]
         return session.execute(GET_WEEKLY_BROADCAST_STARTERS, {'ids': tuple(broadcast_ids)}).fetchall()
 
