@@ -93,7 +93,11 @@ GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT = text("""
     ON tm.reply_to_broadcast = bsms.broadcast_id
     LEFT JOIN public.audience_segments asg 
     ON bsms.audience_segment_id = asg.id
-    WHERE tm.is_broadcast_reply = true and tm.from_field = bsms.recipient_phone_number
+    WHERE tm.is_broadcast_reply = TRUE 
+    AND 
+    tm.from_field = bsms.recipient_phone_number
+    AND
+    tm.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
     GROUP BY bsms.audience_segment_id, asg.name
 """)
 
