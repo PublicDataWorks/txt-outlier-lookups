@@ -336,14 +336,8 @@ def get_conversation_data(conversation_id, query_phone_number):
             phone_number = os.getenv('PHONE_NUMBER')
             if not phone_number:
                 return None
-            phone_pair_1 = f"{query_phone_number}{phone_number}"
-            phone_pair_2 = f"{query_phone_number}{phone_number[:3]}0{phone_number[3:]}"
-            ref = [phone_pair_1, phone_pair_2]
             comments_query = (
-                session.query(
-                    Comments,
-                    User.name.label('author_name')
-                )
+                session.query(Comments, User.name.label('author_name'))
                 .outerjoin(User, Comments.user_id == User.id)
                 .filter(Comments.conversation_id == conversation_id)
             )
@@ -390,10 +384,7 @@ def get_conversation_data(conversation_id, query_phone_number):
 
             messages = session.query(TwilioMessage.from_field, TwilioMessage.delivered_at,
                                      TwilioMessage.preview).filter(
-                and_(
-                    or_(TwilioMessage.from_field == query_phone_number, TwilioMessage.to_field == query_phone_number),
-                    or_(TwilioMessage.references == ref)
-                )
+                or_(TwilioMessage.from_field == query_phone_number, TwilioMessage.to_field == query_phone_number),
             ).order_by(TwilioMessage.delivered_at).all()
 
             author_zipcode, author_email = session.query(

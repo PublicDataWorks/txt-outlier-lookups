@@ -422,3 +422,27 @@ class PosibleHomeownerWindfall(Base):
     owner_name_at_foreclosure = Column(Text)
     lat = Column(Text)
     lon = Column(Text)
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    messages_count = Column(Integer, nullable=False, default=0)
+    drafts_count = Column(Integer, nullable=False, default=0)
+    send_later_messages_count = Column(Integer, nullable=False, default=0)
+    attachments_count = Column(Integer, nullable=False, default=0)
+    tasks_count = Column(Integer, nullable=False, default=0)
+    completed_tasks_count = Column(Integer, nullable=False, default=0)
+    subject = Column(String)
+    latest_message_subject = Column(String)
+    assignee_names = Column(String)
+    assignee_emails = Column(String)
+    shared_label_names = Column(String)
+    web_url = Column(String, nullable=False)
+    app_url = Column(String, nullable=False)
+    updated_at = Column(DateTime(timezone=True))
+    closed = Column(Boolean)
+    organization_id = Column(UUID(as_uuid=True))
+    team_id = Column(UUID(as_uuid=True))
