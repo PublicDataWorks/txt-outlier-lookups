@@ -7,11 +7,11 @@ from sqlalchemy import text
 from configs.database import Session
 from libs.MissiveAPI import MissiveAPI
 from models import WeeklyReport
-from services.analytics.config import (
+from services.constants import (
     IMPACT_LABEL_IDS,
     REPORTER_LABEL_IDS,
 )
-from services.analytics.queries import (
+from services.queries import (
     GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT,
     GET_WEEKLY_FAILED_MESSAGE,
     GET_WEEKLY_TEXT_INS,
@@ -45,7 +45,7 @@ from services.analytics.utils import (
 load_dotenv(override=True)
 
 
-class AnalyticsService:
+class WeeklyReportService:
     def __init__(self):
         self.Session = Session()
 

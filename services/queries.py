@@ -1,6 +1,6 @@
 from sqlalchemy.sql import text
 
-from services.analytics.config import (
+from services.constants import (
     IMPACT_LABEL_IDS,
     BROADCAST_SOURCE_PHONE_NUMBER,
 )
