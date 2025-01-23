@@ -24,8 +24,8 @@ from constants.following_message import FollowingMessageType
 from exceptions import APIException
 from libs.MissiveAPI import MissiveAPI
 from middlewares.jwt_middleware import require_authentication
-from services.analytics.weekly_report_service import WeeklyReportService
-from services.common import (
+from services.analytics.service import AnalyticsService
+from services.services import (
     extract_address_information,
     extract_address_messages_from_supabase,
     get_conversation_data,
@@ -228,7 +228,7 @@ def fetch_rental():
 @require_authentication
 @async_long_running
 def send_weekly_report():
-    analytics = WeeklyReportService()
+    analytics = AnalyticsService()
     analytics.send_weekly_report()
     return jsonify({"message": "Weekly report sent"}), 200
 

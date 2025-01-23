@@ -9,7 +9,7 @@ from llama_index.llms.openai import OpenAI
 from configs.cache_template import get_template_content_by_name
 from configs.database import Session
 from models import LookupTemplate
-from services.constants import BROADCAST_SOURCE_PHONE_NUMBER
+from services.analytics.config import BROADCAST_SOURCE_PHONE_NUMBER
 from templates.templates import templates
 
 load_dotenv(override=True)
