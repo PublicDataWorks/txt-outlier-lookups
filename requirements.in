@@ -6,7 +6,7 @@ Flask
 SQLAlchemy~=1.4.52
 psycopg2-binary
 GeoAlchemy2
-llama-index
+llama-index~=0.12.13
 realtime~=1.0.5
 usaddress-scourgify
 paramiko
