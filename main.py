@@ -100,6 +100,12 @@ def log_request_info():
     logger.info(f'Request: {request.path}')
 
 
+@app.after_request
+def log_response_info(response):
+    logger.info(f'Response Status: {response.status_code} for {request.path}')
+    return response
+
+
 @app.route("/", methods=["GET"])
 def health_check():
     return "OK"
