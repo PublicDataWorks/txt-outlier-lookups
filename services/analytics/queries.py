@@ -9,7 +9,7 @@ GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT = text("""
     SELECT 
         asg.id,
         asg.name as audience_segment_name,
-        COUNT(*) AS count
+        COUNT(distinct bsms.recipient_phone_number) AS count
     FROM public.unsubscribed_messages um 
     INNER JOIN public.broadcast_sent_message_status bsms 
         ON um.reply_to = bsms.id
