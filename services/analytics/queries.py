@@ -7,22 +7,16 @@ from services.analytics.config import (
 
 GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT = text("""
     SELECT 
-    bsms.audience_segment_id,
-    asg.name as audience_segment_name,
-    COUNT(*) AS count
-    FROM 
-        public.unsubscribed_messages um 
-    LEFT JOIN 
-        public.broadcast_sent_message_status bsms 
-    ON 
-        um.reply_to = bsms.id
-    LEFT JOIN public.audience_segments asg 
-    ON bsms.audience_segment_id = asg.id
-    WHERE
-        um.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-        AND 
-        um.created_at < DATE_TRUNC('week', CURRENT_DATE) 
-    GROUP BY bsms.audience_segment_id, asg.name
+        asg.id,
+        asg.name as audience_segment_name,
+        COUNT(distinct bsms.recipient_phone_number) AS count
+    FROM public.unsubscribed_messages um 
+    INNER JOIN public.broadcast_sent_message_status bsms 
+        ON um.reply_to = bsms.id
+    INNER JOIN public.audience_segments asg 
+        ON bsms.audience_segment_id = asg.id
+    WHERE um.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
+    GROUP BY asg.id
 """)
 
 GET_WEEKLY_BROADCAST_SENT = text("""
@@ -37,10 +31,10 @@ GET_WEEKLY_BROADCAST_SENT = text("""
 """)
 
 GET_WEEKLY_BROADCAST_STARTERS = text("""
-    SELECT COUNT(*) AS COUNT
+    SELECT COUNT(distinct recipient_phone_number) AS COUNT
     FROM BROADCAST_SENT_MESSAGE_STATUS
     WHERE BROADCAST_ID IN :ids
-    AND IS_SECOND = FALSE;
+        AND IS_SECOND = FALSE;
 """)
 
 GET_WEEKLY_MESSAGES_HISTORY = """
@@ -53,24 +47,19 @@ GET_WEEKLY_MESSAGES_HISTORY = """
         """
 
 GET_WEEKLY_FAILED_MESSAGE = text("""
-    SELECT COUNT(*) AS count
+    SELECT COUNT(DISTINCT recipient_phone_number) AS count
     FROM public.broadcast_sent_message_status
-    WHERE 
-    twilio_sent_status = 'undelivered' 
-    AND
-    created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-    AND 
-    created_at < DATE_TRUNC('week', CURRENT_DATE) 
+    WHERE twilio_sent_status IN ('undelivered', 'failed') 
+        AND is_second = FALSE
+        AND created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'   
 """)
 
 GET_WEEKLY_TEXT_INS = text(f"""
     SELECT COUNT(DISTINCT from_field) AS count
     FROM public.twilio_messages
-    WHERE 
-        is_broadcast_reply = false
+    WHERE is_broadcast_reply = false
         AND from_field != '{BROADCAST_SOURCE_PHONE_NUMBER}'
-        AND created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-        AND created_at < DATE_TRUNC('week', CURRENT_DATE) 
+        AND created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
 """)
 
 impact_label_ids = ", ".join(f"'{id}'" for id in IMPACT_LABEL_IDS)
@@ -87,18 +76,16 @@ GET_WEEKLY_IMPACT_CONVERSATIONS = lambda impact_label_ids: text(f"""
 """)
 
 GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT = text("""
-    SELECT bsms.audience_segment_id, asg.name as audience_segment_name, COUNT(distinct tm.id) as count
+    SELECT asg.id, asg.name as audience_segment_name, COUNT(distinct tm.from_field) as count
     FROM public.twilio_messages tm 
     LEFT JOIN public.broadcast_sent_message_status bsms 
-    ON tm.reply_to_broadcast = bsms.broadcast_id
-    LEFT JOIN public.audience_segments asg 
-    ON bsms.audience_segment_id = asg.id
-    WHERE tm.is_broadcast_reply = TRUE 
-    AND 
-    tm.from_field = bsms.recipient_phone_number
-    AND
-    tm.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-    GROUP BY bsms.audience_segment_id, asg.name
+        ON tm.reply_to_broadcast = bsms.broadcast_id 
+        AND tm.from_field = bsms.recipient_phone_number
+    INNER JOIN public.audience_segments asg 
+        ON bsms.audience_segment_id = asg.id
+    WHERE tm.reply_to_broadcast IS NOT NULL
+        AND tm.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
+    GROUP BY asg.id
 """)
 
 GET_WEEKLY_REPORTER_CONVERSATION = lambda reporter_label_ids: text(f"""
@@ -106,10 +93,7 @@ GET_WEEKLY_REPORTER_CONVERSATION = lambda reporter_label_ids: text(f"""
     FROM public.conversations_labels cl 
     JOIN public.labels l ON cl.label_id = l.id
     WHERE cl.label_id IN ({reporter_label_ids})
-    AND
-    cl.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-    AND 
-    cl.created_at < DATE_TRUNC('week', CURRENT_DATE)
+        AND cl.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
 """)
 
 GET_WEEKLY_DATA_LOOKUP = text("""
