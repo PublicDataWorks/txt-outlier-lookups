@@ -3,6 +3,7 @@ from sqlalchemy.sql import text
 from services.analytics.config import (
     IMPACT_LABEL_IDS,
     BROADCAST_SOURCE_PHONE_NUMBER,
+    AUTOMATED_SENDER_IDS,
 )
 
 GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT = text("""
@@ -88,12 +89,24 @@ GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT = text("""
     GROUP BY asg.id
 """)
 
-GET_WEEKLY_REPORTER_CONVERSATION = lambda reporter_label_ids: text(f"""
-    SELECT COUNT(distinct cl.conversation_id) as count
-    FROM public.conversations_labels cl 
-    JOIN public.labels l ON cl.label_id = l.id
-    WHERE cl.label_id IN ({reporter_label_ids})
-        AND cl.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
+GET_WEEKLY_REPORTER_CONVERSATION = text(f"""
+    WITH previous_texters AS (
+        SELECT DISTINCT from_field as phone_number
+        FROM twilio_messages
+        WHERE is_broadcast_reply = false
+            AND from_field != '{BROADCAST_SOURCE_PHONE_NUMBER}'
+            AND created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
+    )
+    SELECT COUNT(DISTINCT tm.to_field)
+    FROM twilio_messages tm 
+    WHERE tm.sender_id IS NOT NULL
+        AND tm.sender_id NOT IN ({AUTOMATED_SENDER_IDS})
+        AND tm.from_field = '{BROADCAST_SOURCE_PHONE_NUMBER}'
+        AND tm.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
+        AND tm.to_field NOT IN (
+            SELECT phone_number 
+            FROM previous_texters
+        )
 """)
 
 GET_WEEKLY_DATA_LOOKUP = text("""
