@@ -14,7 +14,6 @@ IMPACT_LABEL_IDS = [
     "bbe46c64-0637-4407-be02-b2c58bf8c98a",  # Outlier Staff Use/unsatisfied
     "17885c20-2b30-44f1-a57c-2bfc402ef758",  # Outlier Staff Use/user satisfaction
 ]
-REPORTER_LABEL_IDS = [
-    "0cf16332-2d8f-424b-af6e-07d62399cfc3",  # Automatic/Follow-up needed
-    "123338fc-695d-48f2-aeac-4470f37206eb",  # Automatic/Reporter requested
-]
+# ENV: AUTOMATED_SENDER_IDS='id1','id2','id3','id4'
+# Already in correct format for Postgres ANY operator
+AUTOMATED_SENDER_IDS = os.environ.get('AUTOMATED_SENDER_IDS', '')
