@@ -7,10 +7,7 @@ from sqlalchemy import text
 from configs.database import Session
 from libs.MissiveAPI import MissiveAPI
 from models import WeeklyReport
-from services.analytics.config import (
-    IMPACT_LABEL_IDS,
-    REPORTER_LABEL_IDS,
-)
+from services.analytics.config import IMPACT_LABEL_IDS
 from services.analytics.queries import (
     GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT,
     GET_WEEKLY_FAILED_MESSAGE,
@@ -111,8 +108,7 @@ class AnalyticsService:
         return session.execute(GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT).fetchall()
 
     def get_weekly_reporter_conversation(self, session):
-        reporter_label_ids = ", ".join(f"'{id}'" for id in REPORTER_LABEL_IDS)
-        return session.execute(GET_WEEKLY_REPORTER_CONVERSATION(reporter_label_ids)).fetchall()
+        return session.execute(GET_WEEKLY_REPORTER_CONVERSATION).fetchall()
 
     def get_weekly_data_look_up(self, session):
         return session.execute(GET_WEEKLY_DATA_LOOKUP).fetchall()
