@@ -12,7 +12,7 @@ GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT = text("""
         asg.name as audience_segment_name,
         COUNT(distinct bsms.recipient_phone_number) AS count
     FROM public.unsubscribed_messages um 
-    INNER JOIN public.broadcast_sent_message_status bsms 
+    INNER JOIN public.message_statuses bsms 
         ON um.reply_to = bsms.id
     INNER JOIN public.audience_segments asg 
         ON bsms.audience_segment_id = asg.id
@@ -22,7 +22,7 @@ GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT = text("""
 
 GET_WEEKLY_BROADCAST_SENT = text("""
     SELECT *
-    FROM public.broadcast_sent_message_status
+    FROM public.message_statuses
     WHERE 
     is_second = False
     AND
@@ -33,7 +33,7 @@ GET_WEEKLY_BROADCAST_SENT = text("""
 
 GET_WEEKLY_BROADCAST_STARTERS = text("""
     SELECT COUNT(distinct recipient_phone_number) AS COUNT
-    FROM BROADCAST_SENT_MESSAGE_STATUS
+    FROM MESSAGE_STATUSES
     WHERE BROADCAST_ID IN :ids
         AND IS_SECOND = FALSE;
 """)
@@ -49,7 +49,7 @@ GET_WEEKLY_MESSAGES_HISTORY = """
 
 GET_WEEKLY_FAILED_MESSAGE = text("""
     SELECT COUNT(DISTINCT recipient_phone_number) AS count
-    FROM public.broadcast_sent_message_status
+    FROM public.message_statuses
     WHERE twilio_sent_status IN ('undelivered', 'failed') 
         AND is_second = FALSE
         AND created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'   
@@ -79,7 +79,7 @@ GET_WEEKLY_IMPACT_CONVERSATIONS = lambda impact_label_ids: text(f"""
 GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT = text("""
     SELECT asg.id, asg.name as audience_segment_name, COUNT(distinct tm.from_field) as count
     FROM public.twilio_messages tm 
-    LEFT JOIN public.broadcast_sent_message_status bsms 
+    LEFT JOIN public.message_statuses bsms 
         ON tm.reply_to_broadcast = bsms.broadcast_id 
         AND tm.from_field = bsms.recipient_phone_number
     INNER JOIN public.audience_segments asg 
