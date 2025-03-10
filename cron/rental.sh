@@ -36,9 +36,10 @@ psql "$DATABASE_URL" -c "DROP TABLE IF EXISTS public.rental;"
 psql "$DATABASE_URL" -a -f "$FINAL_SQL" > /dev/null
 
 psql "$DATABASE_URL" -c "
-ALTER TABLE public.rental RENAME TO residential_rental_registrations;
 DROP TABLE IF EXISTS address_lookup.residential_rental_registrations;
-ALTER TABLE public.residential_rental_registrations SET SCHEMA address_lookup;
+CREATE TABLE address_lookup.residential_rental_registrations (LIKE public.rental INCLUDING ALL);
+INSERT INTO address_lookup.residential_rental_registrations SELECT * FROM public.rental;
+DROP TABLE IF EXISTS public.rental CASCADE;
 "
 
 rm "$FINAL_GEOJSON"
