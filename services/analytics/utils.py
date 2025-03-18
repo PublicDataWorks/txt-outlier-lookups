@@ -145,20 +145,6 @@ def process_conversation_outcomes(outcomes):
     return outcome_counts
 
 
-def process_audience_segment_related_data(data):
-    # Initialize the segment counts
-    segment_counts = {"Proactive": 0, "Receptive": 0, "Connected": 0, "Passive": 0, "Inactive": 0}
-
-    # Map the fetched data to segment_counts
-    for row in data:
-        segment_name = row["audience_segment_name"]
-        if segment_name in segment_counts:
-            count = row["count"]
-            segment_counts[segment_name] = count
-
-    return segment_counts
-
-
 def generate_geographic_region_markdown(zip_codes):
     zip_code_section = format_geographic_regions(zip_codes)
     if zip_code_section.strip():
@@ -197,19 +183,6 @@ def generate_conversation_outcomes_markdown(outcome_counts, percentage_changes, 
         f"| Source                        | {outcome_counts['source']} |   {format_percentage_change(percentage_changes['source'])} |  {format_percentage_change(percentage_changes_4_week['source'])} \n"
         f"| Unsatisfied                    | {outcome_counts['unsatisfied']} |   {format_percentage_change(percentage_changes['unsatisfied'])} |  {format_percentage_change(percentage_changes_4_week['unsatisfied'])} \n"
         f"| Future Keyword                | {outcome_counts['future keyword']} |   {format_percentage_change(percentage_changes['future keyword'])} | {format_percentage_change(percentage_changes_4_week['future keyword'])} \n"
-    )
-
-
-def generate_data_by_audience_segment_markdown(title, segment_counts, percentage_changes, percentage_changes_4_week):
-    return (
-        f"### {title}\n"
-        "| Segment                         | Count |  Change (weekly) | Change (4-weeks avg) |\n"
-        "|-------------------------------  |-------|----------------|---------------------|\n"
-        f"| Proactive              | {segment_counts['Proactive']}|   {format_percentage_change(percentage_changes['Proactive'])}  | {format_percentage_change(percentage_changes_4_week['Proactive'])}  \n"
-        f"| Receptive             | {segment_counts['Receptive']}|   {format_percentage_change(percentage_changes['Receptive'])}   | {format_percentage_change(percentage_changes_4_week['Receptive'])}   \n"
-        f"| Connected                | {segment_counts['Connected']}|   {format_percentage_change(percentage_changes['Connected'])}  | {format_percentage_change(percentage_changes_4_week['Connected'])}  \n"
-        f"| Passive            | {segment_counts['Passive']}|   {format_percentage_change(percentage_changes['Passive'])}  | {format_percentage_change(percentage_changes_4_week['Passive'])}  \n"
-        f"| Inactive                        | {segment_counts['Inactive']}|   {format_percentage_change(percentage_changes['Inactive'])}  | {format_percentage_change(percentage_changes_4_week['Inactive'])}  \n"
     )
 
 

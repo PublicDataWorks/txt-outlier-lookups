@@ -9,11 +9,11 @@ from libs.MissiveAPI import MissiveAPI
 from models import WeeklyReport
 from services.analytics.config import IMPACT_LABEL_IDS
 from services.analytics.queries import (
-    GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT,
+    GET_WEEKLY_TOTAL_UNSUBSCRIBES,
     GET_WEEKLY_FAILED_MESSAGE,
     GET_WEEKLY_TEXT_INS,
     GET_WEEKLY_IMPACT_CONVERSATIONS,
-    GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT,
+    GET_WEEKLY_TOTAL_REPLIES,
     GET_WEEKLY_REPORTER_CONVERSATION,
     GET_WEEKLY_DATA_LOOKUP,
     GET_WEEKLY_TOP_ZIP_CODE,
@@ -24,19 +24,16 @@ from services.analytics.queries import (
 from services.analytics.utils import (
     process_conversation_metrics,
     process_conversation_outcomes,
-    process_audience_segment_related_data,
     process_lookup_history,
     generate_geographic_region_markdown,
-    generate_data_by_audience_segment_markdown,
     generate_conversation_outcomes_markdown,
     generate_lookup_history_markdown,
     generate_intro_section,
-    generate_major_themes_section,
     generate_conversation_metrics_section,
     format_weekly_report_data,
     calculate_percentage_change,
     FetchDataResult,
-    generate_broadcast_info_section, get_conversation_id,
+    generate_broadcast_info_section, get_conversation_id, generate_major_themes_section,
 )
 
 load_dotenv(override=True)
@@ -46,8 +43,8 @@ class AnalyticsService:
     def __init__(self):
         self.Session = Session()
 
-    def get_weekly_unsubscribe_by_audience_segment(self, session):
-        return session.execute(GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT).fetchall()
+    def get_weekly_total_unsubscribes(self, session):
+        return session.execute(GET_WEEKLY_TOTAL_UNSUBSCRIBES).fetchall()
 
     def get_weekly_broadcast_sent(self, session):
         return session.execute(GET_WEEKLY_BROADCAST_CONTENT).fetchall()
@@ -104,8 +101,8 @@ class AnalyticsService:
         impact_label_ids = ", ".join(f"'{id}'" for id in IMPACT_LABEL_IDS)
         return session.execute(GET_WEEKLY_IMPACT_CONVERSATIONS(impact_label_ids)).fetchall()
 
-    def get_weekly_replies_by_audience_segment(self, session):
-        return session.execute(GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT).fetchall()
+    def get_weekly_total_replies(self, session):
+        return session.execute(GET_WEEKLY_TOTAL_REPLIES).fetchall()
 
     def get_weekly_reporter_conversation(self, session):
         return session.execute(GET_WEEKLY_REPORTER_CONVERSATION).fetchall()
@@ -147,14 +144,14 @@ class AnalyticsService:
     def fetch_data(self):
         with self.Session as session:
             # Fetch all the data here synchronously
-            unsubscribed_messages = self.get_weekly_unsubscribe_by_audience_segment(session)
+            unsubscribed_messages = self.get_weekly_total_unsubscribes(session)
             broadcasts = self.get_weekly_broadcast_sent(session)
             broadcast_starters = self.get_broadcasts_starters(session, broadcasts)
             messages_history = self.get_weekly_messages_history(session, broadcasts)
             failed_deliveries = self.get_weekly_failed_message(session)
             text_ins = self.get_weekly_text_ins(session)
             impact_conversations = self.get_weekly_impact_conversations(session)
-            replies = self.get_weekly_replies_by_audience_segment(session)
+            replies = self.get_weekly_total_replies(session)
             report_conversations = self.get_weekly_reporter_conversation(session)
             lookup_history = self.get_weekly_data_look_up(session)
             zip_codes = self.get_weekly_top_zip_code(session)
@@ -182,8 +179,8 @@ class AnalyticsService:
         conversation_metrics,
         conversation_outcomes,
         property_statuses,
-        broadcast_replies,
-        unsubscribes,
+        total_broadcast_replies,
+        total_unsubscribes,
     ):
         new_report = WeeklyReport(
             created_at=current_date,
@@ -206,18 +203,8 @@ class AnalyticsService:
             status_no_tax_debt=property_statuses["NO_TAX_DEBT"],
             status_compliant=property_statuses["COMPLIANT"],
             status_foreclosed=property_statuses["FORECLOSED"],
-            replies_total=sum(broadcast_replies.values()),
-            replies_proactive=broadcast_replies["Proactive"],
-            replies_receptive=broadcast_replies["Receptive"],
-            replies_connected=broadcast_replies["Connected"],
-            replies_passive=broadcast_replies["Passive"],
-            replies_inactive=broadcast_replies["Inactive"],
-            unsubscribes_total=sum(unsubscribes.values()),
-            unsubscribes_proactive=unsubscribes["Proactive"],
-            unsubscribes_receptive=unsubscribes["Receptive"],
-            unsubscribes_connected=unsubscribes["Connected"],
-            unsubscribes_passive=unsubscribes["Passive"],
-            unsubscribes_inactive=unsubscribes["Inactive"],
+            replies_total=total_broadcast_replies,
+            unsubscribes_total=total_unsubscribes,
         )
         session.add(new_report)
         session.commit()
@@ -231,15 +218,12 @@ class AnalyticsService:
         conversation_metrics = process_conversation_metrics(data)
         property_statuses = process_lookup_history(data["lookup_history"])
         conversations_outcomes = process_conversation_outcomes(data["impact_conversations"])
-        replies_by_audience_segment = process_audience_segment_related_data(data["replies"])
-        unsubscribes_by_audience_segment = process_audience_segment_related_data(
-            data["unsubscribed_messages"]
-        )
 
         intro_section = generate_intro_section()
         broadcast_and_summary_section = generate_broadcast_info_section(data["broadcasts_content"])
         major_themes_section = generate_major_themes_section(data["messages_history"])
         zip_code_section = generate_geographic_region_markdown(data["zip_codes"])
+
         conversation_metrics_section = generate_conversation_metrics_section(
             conversation_metrics,
             calculate_percentage_change(
@@ -263,26 +247,7 @@ class AnalyticsService:
                 last_4_week_data["conversation_outcomes"], conversations_outcomes
             ),
         )
-        replies_by_audience_segment_section = generate_data_by_audience_segment_markdown(
-            "Broadcast Replies by Audience Segment",
-            replies_by_audience_segment,
-            calculate_percentage_change(last_week_data["replies"], replies_by_audience_segment),
-            calculate_percentage_change(last_4_week_data["replies"], replies_by_audience_segment),
-        )
-        unsubscribe_by_audience_segment_section = generate_data_by_audience_segment_markdown(
-            "Broadcast Unsubscribes by Audience Segment",
-            unsubscribes_by_audience_segment,
-            calculate_percentage_change(
-                last_week_data["unsubscribed_messages"], unsubscribes_by_audience_segment
-            ),
-            calculate_percentage_change(
-                last_4_week_data["unsubscribed_messages"], unsubscribes_by_audience_segment
-            ),
-        )
-
-        markdown_report = [
-            intro_section,
-        ]
+        markdown_report = [intro_section]
 
         if major_themes_section:
             markdown_report.append(major_themes_section)
@@ -296,17 +261,10 @@ class AnalyticsService:
             markdown_report.append(zip_code_section)
         if conversation_outcomes_section:
             markdown_report.append(conversation_outcomes_section)
-        if replies_by_audience_segment_section:
-            markdown_report.append(replies_by_audience_segment_section)
-        if unsubscribe_by_audience_segment_section:
-            markdown_report.append(unsubscribe_by_audience_segment_section)
 
         conversation_id = get_conversation_id(self.Session)
         missive_client = MissiveAPI()
-        missive_client.send_post_sync(
-            markdown_report, conversation_id=conversation_id
-        )
-
+        missive_client.send_post_sync(markdown_report, conversation_id=conversation_id)
         with self.Session as session:
             self.insert_weekly_report(
                 session,
@@ -314,8 +272,8 @@ class AnalyticsService:
                 conversation_metrics,
                 conversations_outcomes,
                 property_statuses,
-                replies_by_audience_segment,
-                unsubscribes_by_audience_segment,
+                data["replies"][0][0],
+                data["unsubscribed_messages"][0][0],
             )
 
     def fetch_average_data_last_4_weeks(self):

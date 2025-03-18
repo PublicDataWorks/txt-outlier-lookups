@@ -6,18 +6,12 @@ from services.analytics.config import (
     AUTOMATED_SENDER_IDS,
 )
 
-GET_WEEKLY_UNSUBSCRIBE_BY_AUDIENCE_SEGMENT = text("""
-    SELECT 
-        asg.id,
-        asg.name as audience_segment_name,
-        COUNT(distinct bsms.recipient_phone_number) AS count
+GET_WEEKLY_TOTAL_UNSUBSCRIBES = text("""
+    SELECT COUNT(DISTINCT bsms.recipient_phone_number) AS count
     FROM public.unsubscribed_messages um 
     INNER JOIN public.message_statuses bsms 
         ON um.reply_to = bsms.id
-    INNER JOIN public.audience_segments asg 
-        ON bsms.audience_segment_id = asg.id
-    WHERE um.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-    GROUP BY asg.id
+    WHERE um.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
 """)
 
 GET_WEEKLY_BROADCAST_SENT = text("""
@@ -39,13 +33,13 @@ GET_WEEKLY_BROADCAST_STARTERS = text("""
 """)
 
 GET_WEEKLY_MESSAGES_HISTORY = """
-            SELECT tm.*, u.name, u.email
-            FROM public.twilio_messages tm LEFT JOIN public.users u on tm.sender_id = u.id
-            WHERE 
-            tm.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
-            AND 
-            tm.created_at < DATE_TRUNC('week', CURRENT_DATE)
-        """
+    SELECT tm.*, u.name, u.email
+    FROM public.twilio_messages tm LEFT JOIN public.users u on tm.sender_id = u.id
+    WHERE 
+    tm.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
+    AND 
+    tm.created_at < DATE_TRUNC('week', CURRENT_DATE)
+"""
 
 GET_WEEKLY_FAILED_MESSAGE = text("""
     SELECT COUNT(DISTINCT recipient_phone_number) AS count
@@ -76,17 +70,14 @@ GET_WEEKLY_IMPACT_CONVERSATIONS = lambda impact_label_ids: text(f"""
     GROUP BY l.name;
 """)
 
-GET_WEEKLY_REPLIES_BY_AUDIENCE_SEGMENT = text("""
-    SELECT asg.id, asg.name as audience_segment_name, COUNT(distinct tm.from_field) as count
+GET_WEEKLY_TOTAL_REPLIES = text("""
+    SELECT COUNT(DISTINCT tm.from_field) as count
     FROM public.twilio_messages tm 
     LEFT JOIN public.message_statuses bsms 
         ON tm.reply_to_broadcast = bsms.broadcast_id 
         AND tm.from_field = bsms.recipient_phone_number
-    INNER JOIN public.audience_segments asg 
-        ON bsms.audience_segment_id = asg.id
     WHERE tm.reply_to_broadcast IS NOT NULL
-        AND tm.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
-    GROUP BY asg.id
+        AND tm.created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
 """)
 
 GET_WEEKLY_REPORTER_CONVERSATION = text(f"""
