@@ -16,17 +16,15 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from configs.cache_template import app, get_template_content_by_name
 from configs.database import Session
-from configs.query_engine.owner_information_without_sunit import (
-    owner_query_engine_without_sunit,
-)
+from configs.query_engine.owner_information_without_sunit import owner_query_engine_without_sunit
 from configs.supabase import run_websocket_listener
 from constants.following_message import FollowingMessageType
 from exceptions import APIException
+from helpers import extract_address_information_with_llm
 from libs.MissiveAPI import MissiveAPI
 from middlewares.jwt_middleware import require_authentication
 from services.analytics.service import AnalyticsService
 from services.services import (
-    extract_address_information,
     extract_address_messages_from_supabase,
     get_conversation_data,
     handle_match,
@@ -36,7 +34,6 @@ from services.services import (
     query_mi_wayne_detroit,
 
 )
-from utils.address_normalizer import extract_latest_address
 
 load_dotenv(override=True)
 
@@ -138,17 +135,20 @@ def yes():
         conversation_id = data.get("conversation", {}).get("id")
         to_phone = data.get("message", {}).get("from_field", {}).get("id")
         messages = extract_address_messages_from_supabase(to_phone)
-        normalized_address = extract_latest_address(
-            messages=messages, conversation_id=conversation_id, to_phone=to_phone
-        )
-
-        if not normalized_address:
-            logger.error(f"Couldn't parse address from history messages: {messages}", )
-            return (
-                jsonify({"message": "Couldn't parse address from history messages"}),
-                200,
+        if not messages:
+            missive_client.send_sms_sync(
+                "There was a problem getting message history, try again later",
+                conversation_id=conversation_id,
+                to_phone=to_phone,
             )
-        address, sunit = extract_address_information(normalized_address)
+            logger.error(f"There was a problem getting message history. Data: {data}", )
+            return jsonify({"message": "There was a problem getting message history"}), 200
+
+        address, sunit = extract_address_information_with_llm(messages)
+        if not address:
+            logger.error(f"Couldn't parse address from history messages at /yes: {messages}. Data: {data}", )
+            return jsonify({"message": "Couldn't parse address from history messages"}), 200
+
         session = Session()
 
         results = query_mi_wayne_detroit(session, address, sunit)
