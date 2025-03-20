@@ -1,8 +1,10 @@
+import json
 import os
 import time
 import traceback
 
 from flask import jsonify
+from llama_index.llms.openai import OpenAI
 from loguru import logger
 from sqlalchemy import and_, case, func, or_
 from sqlalchemy.exc import NoResultFound
@@ -16,6 +18,7 @@ from configs.database import Session
 from configs.query_engine.owner_information_without_sunit import owner_query_engine_without_sunit
 from configs.query_engine.text_summary import generate_text_summary
 from constants.following_message import FollowingMessageType
+from helpers import extract_address_information_with_llm
 from libs.MissiveAPI import MissiveAPI
 from models import (
     Author,
@@ -31,10 +34,6 @@ from models import (
     CommentsMentions,
     PosibleHomeownerWindfall,
 )
-from utils.address_normalizer import (
-    extract_latest_address,
-    get_first_valid_normalized_address,
-)
 from utils.check_property_status import check_property_status
 
 missive_client = MissiveAPI()
@@ -43,18 +42,10 @@ CACHE_TTL = 24 * 60 * 60
 
 def search_service(query, conversation_id, to_phone):
     session = Session()
-    normalized_address = get_first_valid_normalized_address([query])
-    if not normalized_address:
-        logger.error(f"Couldn't parse address from query: {query}")
-        return (
-            {"message": "Couldn't parse address from query"},
-            200,
-        )
-    address, sunit = extract_address_information(normalized_address)
-
+    address, sunit = extract_address_information_with_llm([query])
     if not address:
-        logger.error("Wrong format address", query)
-        return handle_wrong_format(conversation_id=conversation_id, to_phone=to_phone)
+        logger.error(f"Couldn't parse address from query at search_service: {query}. Data: {conversation_id}, {to_phone}.")
+        return {"message": "Couldn't parse address from query"}, 200
 
     results = query_mi_wayne_detroit(session, address, sunit)
     display_address = address if not sunit else address + " " + sunit
@@ -111,15 +102,16 @@ def search_service(query, conversation_id, to_phone):
 
 def more_search_service(conversation_id, to_phone):
     messages = extract_address_messages_from_supabase(phone=to_phone)
-    normalized_address = extract_latest_address(messages, conversation_id, to_phone)
-    if not normalized_address:
-        logger.error(f"Couldn't parse address from history messages: {messages}")
-        return (
-            jsonify({"message": "Couldn't parse address from history messages"}),
-            200,
+    if messages is None:
+        missive_client.send_sms_sync(
+            "There was a problem getting message history, try again later",
+            conversation_id=conversation_id,
+            to_phone=to_phone,
         )
+        logger.error(f"Couldn't parse address from history messages at more_search_service: {messages}. Data: {conversation_id}, {to_phone}.")
+        return jsonify({"message": "Couldn't parse address from history messages"}), 200
 
-    address, sunit = extract_address_information(normalized_address)
+    address, sunit = extract_address_information_with_llm(messages)
     session = Session()
     results = query_mi_wayne_detroit(session, address, sunit)
 
@@ -258,17 +250,6 @@ def process_statuses(tax_status, rental_status, conversation_id, phone):
         )
 
 
-def extract_address_information(normalized_address):
-    address = normalized_address.get("address_line_1", "")
-    address_line_2 = normalized_address.get("address_line_2")
-    if address_line_2 is not None:
-        sunit = " ".join(address_line_2.replace("UNIT", "").replace("#", "").split())
-    else:
-        sunit = ""
-
-    return address, sunit
-
-
 def add_data_lookup_to_db(address, zip_code, tax_status, rental_status):
     session = Session()
     try:
@@ -285,8 +266,7 @@ def add_data_lookup_to_db(address, zip_code, tax_status, rental_status):
 
 
 def get_address_information(session, address):
-    normalized_address = get_first_valid_normalized_address([address])
-    address, sunit = extract_address_information(normalized_address)
+    address, sunit = extract_address_information_with_llm([address])
 
     rental_status_case = case(
         (ResidentialRentalRegistrations.lat.isnot(None), "IS"), else_="IS NOT"
