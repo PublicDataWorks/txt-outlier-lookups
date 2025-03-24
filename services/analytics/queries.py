@@ -52,7 +52,7 @@ GET_WEEKLY_FAILED_MESSAGE = text("""
 GET_WEEKLY_TEXT_INS = text(f"""
     SELECT COUNT(DISTINCT from_field) AS count
     FROM public.twilio_messages
-    WHERE is_broadcast_reply = false
+    WHERE is_reply = false
         AND from_field != '{BROADCAST_SOURCE_PHONE_NUMBER}'
         AND created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
 """)
@@ -84,7 +84,7 @@ GET_WEEKLY_REPORTER_CONVERSATION = text(f"""
     WITH previous_texters AS (
         SELECT DISTINCT from_field as phone_number
         FROM twilio_messages
-        WHERE is_broadcast_reply = false
+        WHERE is_reply = false
             AND from_field != '{BROADCAST_SOURCE_PHONE_NUMBER}'
             AND created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'
     )

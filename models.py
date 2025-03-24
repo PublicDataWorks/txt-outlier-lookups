@@ -331,7 +331,7 @@ class TwilioMessage(Base):
     attachments = Column(String, nullable=True)
     from_field = Column(String, nullable=True)
     to_field = Column(String, nullable=True)
-    is_broadcast_reply = Column(Boolean, nullable=True, default=False)
+    is_reply = Column(Boolean, nullable=True, default=False)
     reply_to_broadcast = Column(Integer, nullable=True)
 
     def __repr__(self):
