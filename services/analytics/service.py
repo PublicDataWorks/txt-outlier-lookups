@@ -58,8 +58,11 @@ class AnalyticsService:
     def get_weekly_messages_history(self, session, broadcast_sent):
         broadcast_messages = set()
         for broadcast in broadcast_sent:
-            broadcast_messages.add(broadcast["first_message"])
-            broadcast_messages.add(broadcast["second_message"])
+            # Missive webhook seems to discard new lines
+            first_message = broadcast["first_message"].replace('\n', '')
+            second_message = broadcast["second_message"].replace('\n', '')
+            broadcast_messages.add(first_message)
+            broadcast_messages.add(second_message)
 
         like_conditions = []
         params = {}
