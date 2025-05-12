@@ -73,9 +73,9 @@ class AnalyticsService:
             not_like_clause = f"AND ({' AND '.join(like_conditions)})"
         else:
             not_like_clause = ""
-
+        print(not_like_clause, "ky debug")
         query = text(GET_WEEKLY_MESSAGES_HISTORY + "\n" + not_like_clause).bindparams(**params)
-
+        print(query, str(query), "ky debug")
         messages = session.execute(query).fetchall()
 
         grouped_messages = defaultdict(list)
