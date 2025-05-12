@@ -75,11 +75,12 @@ class AnalyticsService:
             not_like_clause = ""
         print(not_like_clause, "ky debug")
         query = text(GET_WEEKLY_MESSAGES_HISTORY + "\n" + not_like_clause).bindparams(**params)
-        print(query, str(query), "ky debug")
+        print(query, str(query), params, "ky debug")
         messages = session.execute(query).fetchall()
-
+        cnt = 0
         grouped_messages = defaultdict(list)
         for message in messages:
+            cnt += 1
             refs = message["references"]
             grouped_messages[refs[0]].append({
                 "preview": message["preview"],
@@ -88,7 +89,7 @@ class AnalyticsService:
                 "sender_name": message["name"],
                 "sender_email": message["email"]
             })
-
+        print(cnt)
         return grouped_messages
 
     def get_weekly_failed_message(self, session):
