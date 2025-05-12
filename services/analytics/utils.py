@@ -275,21 +275,7 @@ def format_weekly_report_data(report_data):
             "crisis averted": int(report_data.crisis_averted if report_data else 0),
             "future keyword": int(report_data.future_keyword if report_data else 0),
             "source": int(report_data.source if report_data else 0),
-        },
-        "unsubscribed_messages": {
-            "Proactive": int(report_data.unsubscribes_proactive if report_data else 0),
-            "Receptive": int(report_data.unsubscribes_receptive if report_data else 0),
-            "Connected": int(report_data.unsubscribes_connected if report_data else 0),
-            "Passive": int(report_data.unsubscribes_passive if report_data else 0),
-            "Inactive": int(report_data.unsubscribes_inactive if report_data else 0),
-        },
-        "replies": {
-            "Proactive": int(report_data.replies_proactive if report_data else 0),
-            "Receptive": int(report_data.replies_receptive if report_data else 0),
-            "Connected": int(report_data.replies_connected if report_data else 0),
-            "Passive": int(report_data.replies_passive if report_data else 0),
-            "Inactive": int(report_data.replies_inactive if report_data else 0),
-        },
+        }
     }
 
     return formatted_data
