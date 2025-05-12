@@ -101,28 +101,24 @@ GET_WEEKLY_REPORTER_CONVERSATION = text(f"""
 """)
 
 GET_WEEKLY_DATA_LOOKUP = text("""
-    SELECT 
-        status,
-        COUNT(*) AS count
+    SELECT status, COUNT(*) AS count
     FROM (
-        SELECT 
-            rental_status AS status
-        FROM 
-            lookup_history
+        SELECT rental_status AS status
+        FROM lookup_history
         WHERE
-        created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
+            created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
         AND 
-        created_at < DATE_TRUNC('week', CURRENT_DATE) 
+            created_at < DATE_TRUNC('week', CURRENT_DATE) 
         UNION ALL
-        SELECT 
-            tax_status AS status
-        FROM 
-            lookup_history
+        SELECT tax_status AS status
+        FROM lookup_history
+        WHERE
+            created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week'  
+        AND 
+            created_at < DATE_TRUNC('week', CURRENT_DATE)
     ) AS combined_statuses
-    GROUP BY 
-        status
-    ORDER BY 
-        status;
+    GROUP BY status
+    ORDER BY status;
 """)
 
 GET_WEEKLY_TOP_ZIP_CODE = text("""

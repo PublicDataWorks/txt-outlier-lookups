@@ -292,18 +292,18 @@ class WeeklyReport(Base):
     status_foreclosed = Column(Integer)
 
     replies_total = Column(Integer)
-    replies_proactive = Column(Integer)
-    replies_receptive = Column(Integer)
-    replies_connected = Column(Integer)
-    replies_passive = Column(Integer)
-    replies_inactive = Column(Integer)
+    replies_proactive = Column(Integer, default=0)
+    replies_receptive = Column(Integer, default=0)
+    replies_connected = Column(Integer, default=0)
+    replies_passive = Column(Integer, default=0)
+    replies_inactive = Column(Integer, default=0)
 
     unsubscribes_total = Column(Integer)
-    unsubscribes_proactive = Column(Integer)
-    unsubscribes_receptive = Column(Integer)
-    unsubscribes_connected = Column(Integer)
-    unsubscribes_passive = Column(Integer)
-    unsubscribes_inactive = Column(Integer)
+    unsubscribes_proactive = Column(Integer, default=0)
+    unsubscribes_receptive = Column(Integer, default=0)
+    unsubscribes_connected = Column(Integer, default=0)
+    unsubscribes_passive = Column(Integer, default=0)
+    unsubscribes_inactive = Column(Integer, default=0)
 
 
 class Author(Base):
