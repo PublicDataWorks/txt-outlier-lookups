@@ -32,7 +32,6 @@ from models import (
     User,
     LookupTemplate,
     CommentsMentions,
-    PosibleHomeownerWindfall,
 )
 from utils.check_property_status import check_property_status
 
@@ -53,7 +52,7 @@ def search_service(query, conversation_id, to_phone):
     if not results:
         return handle_no_match(display_address, conversation_id, to_phone)
 
-    owner, address, rental_status, tax_status, zip_code, tax_due, windfall_profit, windfall_auction_year = results[0]
+    owner, address, rental_status, tax_status, zip_code, tax_due = results[0]
     if not tax_status and tax_due and int(tax_due) > 0:
         add_data_lookup_to_db(
             address,
@@ -89,14 +88,6 @@ def search_service(query, conversation_id, to_phone):
     if owner:
         if "LAND BANK" in owner.upper():
             following_messages.append(get_template_content_by_name(FollowingMessageType.LAND_BANK.value))
-    if windfall_profit and windfall_auction_year:
-        template = get_template_content_by_name(FollowingMessageType.WINDFALL.value)
-        message = template.format(
-            address=address,
-            windfall_auction_year=windfall_auction_year,
-            windfall_profit=windfall_profit
-        )
-        following_messages.append(message)
     return handle_match(query_result, conversation_id, to_phone, rental_status, following_messages, tax_status)
 
 
@@ -495,9 +486,7 @@ def query_mi_wayne_detroit(session, address, sunit):
         rental_status_case,
         MiWayneDetroit.tax_status,
         MiWayneDetroit.szip5,
-        MiWayneDetroit.tax_due,
-        PosibleHomeownerWindfall.windfall_profit,
-        PosibleHomeownerWindfall.tax_auction_year,
+        MiWayneDetroit.tax_due
     ).outerjoin(
         ResidentialRentalRegistrations,
         and_(
@@ -512,9 +501,6 @@ def query_mi_wayne_detroit(session, address, sunit):
             ) > 0.8,
             MiWayneDetroit.saddno == ResidentialRentalRegistrations.street_num,
         ),
-    ).outerjoin(
-        PosibleHomeownerWindfall,
-        MiWayneDetroit.parcelnumb == PosibleHomeownerWindfall.parcel_id
     )
 
     if sunit:
