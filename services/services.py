@@ -89,14 +89,15 @@ def search_service(query, conversation_id, to_phone):
     if owner:
         if "LAND BANK" in owner.upper():
             following_messages.append(get_template_content_by_name(FollowingMessageType.LAND_BANK.value))
-    if windfall_profit and windfall_auction_year:
-        template = get_template_content_by_name(FollowingMessageType.WINDFALL.value)
-        message = template.format(
-            address=address,
-            windfall_auction_year=windfall_auction_year,
-            windfall_profit=windfall_profit
-        )
-        following_messages.append(message)
+    # Comment it out as requested here: https://eastagile.slack.com/archives/C052XHL7BSA/p1755722303065449
+    # if windfall_profit and windfall_auction_year:
+    #     template = get_template_content_by_name(FollowingMessageType.WINDFALL.value)
+    #     message = template.format(
+    #         address=address,
+    #         windfall_auction_year=windfall_auction_year,
+    #         windfall_profit=windfall_profit
+    #     )
+    #     following_messages.append(message)
     return handle_match(query_result, conversation_id, to_phone, rental_status, following_messages, tax_status)
 
 
