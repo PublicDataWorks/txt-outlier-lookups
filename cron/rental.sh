@@ -37,9 +37,9 @@ psql "$DATABASE_URL" -a -f "$FINAL_SQL" > /dev/null
 
 psql "$DATABASE_URL" -c "
 SELECT pg_terminate_backend(pid)
-  FROM pg_stat_activity
-  WHERE query LIKE '%residential_rental_registrations%'
-  AND pid != pg_backend_pid();
+  FROM pg_locks
+  WHERE relation = to_regclass('address_lookup.residential_rental_registrations')
+    AND pid != pg_backend_pid();
 DROP TABLE IF EXISTS address_lookup.residential_rental_registrations;
 CREATE TABLE address_lookup.residential_rental_registrations (LIKE public.rental INCLUDING ALL);
 INSERT INTO address_lookup.residential_rental_registrations SELECT * FROM public.rental;

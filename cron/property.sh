@@ -7,9 +7,9 @@ psql "$DATABASE_URL" -a  -f /tmp/mi_wayne_detroit.sql > /dev/null
 
 psql "$DATABASE_URL" -c "
 SELECT pg_terminate_backend(pid)
-  FROM pg_stat_activity
-  WHERE query LIKE '%mi_wayne_detroit%'
-  AND pid != pg_backend_pid();
+  FROM pg_locks
+  WHERE relation = to_regclass('address_lookup.mi_wayne_detroit')
+    AND pid != pg_backend_pid();
 DROP TABLE IF EXISTS address_lookup.mi_wayne_detroit;
 CREATE TABLE address_lookup.mi_wayne_detroit (LIKE public.mi_wayne_detroit INCLUDING ALL);
 INSERT INTO address_lookup.mi_wayne_detroit SELECT * FROM public.mi_wayne_detroit;
