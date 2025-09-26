@@ -385,14 +385,14 @@ def get_conversation_data(conversation_id, query_phone_number):
 def extract_address_messages_from_supabase(phone):
     session = Session()
     query = (
-        session.query(TwilioMessage.preview)
+        session.query(TwilioMessage.preview, TwilioMessage.delivered_at)
         .filter(or_(TwilioMessage.from_field == phone, TwilioMessage.to_field == phone))
         .order_by(TwilioMessage.delivered_at.desc())
         .limit(30)
         .all()
     )
 
-    return [row[0] for row in query]
+    return [(row[0], str(row[1])) for row in query]
 
 
 @cache.memoize(timeout=CACHE_TTL)
