@@ -22,7 +22,12 @@ def extract_address_information_with_llm(addresses):
     try:
         response = function_llm.complete(get_address_parser_prompt(addresses))
         parsed_data = json.loads(response.text)
-        return parsed_data["address"], parsed_data["sunit"]
+        address = parsed_data["address"]
+        sunit = parsed_data["sunit"]
+        logger.info(
+            f"[extract_address_information_with_llm]: Extracted address info - address='{address}', sunit='{sunit}'"
+        )
+        return address, sunit
     except Exception as e:
         print(f"An error occurred at extract_address_information_with_llm: {traceback.format_exc()}. Data: {addresses}")
         logger.error(e)
