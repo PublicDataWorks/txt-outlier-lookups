@@ -40,6 +40,7 @@ CACHE_TTL = 24 * 60 * 60
 
 
 def search_service(query, conversation_id, to_phone):
+    logger.info(f"[search_service] query='{query}', conversation_id={conversation_id}, to_phone={to_phone}")
     session = Session()
     address, sunit = extract_address_information_with_llm([query])
     if not address:
@@ -50,6 +51,10 @@ def search_service(query, conversation_id, to_phone):
     display_address = address if not sunit else address + " " + sunit
 
     if not results:
+        logger.info(
+            f"No results found for '{display_address}'. "
+            f"query='{query}', conversation_id={conversation_id}, to_phone={to_phone}"
+        )
         return handle_no_match(display_address, conversation_id, to_phone)
 
     owner, address, rental_status, tax_status, zip_code, tax_due = results[0]
@@ -78,7 +83,7 @@ def search_service(query, conversation_id, to_phone):
     if len(results) > 1:
         return handle_ambiguous(display_address, conversation_id, to_phone)
 
-    query_result = owner_query_engine_without_sunit(str(results[0][:-2]))
+    query_result = owner_query_engine_without_sunit(str(results[0]))
 
     if not query_result:
         logger.error(f"[search_service] Query returned empty results. result: {results[0]}")
@@ -512,4 +517,6 @@ def query_mi_wayne_detroit(session, address, sunit):
         results = base_query.filter(
             MiWayneDetroit.address.ilike(f"{address.strip()}%"),
         ).all()
+
+    logger.info(f"[query_mi_wayne_detroit]address='{address}', sunit='{sunit}', results={results}")
     return results
