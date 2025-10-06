@@ -25,11 +25,11 @@ def extract_address_information_with_llm(addresses):
         address = parsed_data["address"]
         sunit = parsed_data["sunit"]
         logger.info(
-            f"[extract_address_information_with_llm]: Extracted address info - address='{address}', sunit='{sunit}'"
+            f"[extract_address_information_with_llm] address: '{address}', sunit: '{sunit}'"
         )
         return address, sunit
     except Exception as e:
-        print(f"An error occurred at extract_address_information_with_llm: {traceback.format_exc()}. Data: {addresses}")
-        logger.error(e)
-
+        logger.error(
+            f"An error occurred at extract_address_information_with_llm {e}: {traceback.format_exc()}. Data: {addresses}"
+        )
         return None, None
