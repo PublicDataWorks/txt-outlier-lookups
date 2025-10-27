@@ -73,15 +73,13 @@
 
 29. `summary_model`: The AI model used for generating summaries.
 
-30. `missive_secret`: Secret key for Missive API authentication.
+30. `outcome_title`: Title for the impact and outcomes section in convo sidebar.
 
-31. `outcome_title`: Title for the impact and outcomes section in convo sidebar.
+31. `comments_title`: Title for the reporter notes section in convo sidebar.
 
-32. `comments_title`: Title for the reporter notes section in convo sidebar.
+32. `messages_title`: Title for the communication patterns section in convo sidebar.
 
-33. `messages_title`: Title for the communication patterns section in convo sidebar.
-
-34. `number of recipients for each batch`: Update the `no_users` column in the `broadcasts` table for the most recent broadcast (the one with the largest `id`)
+33. `number of recipients for each batch`: Update the `no_users` column in the `broadcasts` table for the most recent broadcast (the one with the largest `id`)
 
 ## 3. Deploy Steps:
 ### Full Flow of Deploying Backend

@@ -20,10 +20,9 @@ class MissiveAPI:
     def __init__(self):
         self.email = os.environ.get("EMAIL")
         self.phone_number = os.environ.get("PHONE_NUMBER")
-        self.MISSIVE_SECRET = get_template_content_by_name("missive_secret")
         self.headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.MISSIVE_SECRET}",
+            "Authorization": f"Bearer {os.environ['MISSIVE_SECRET']}",
         }
         self.organization = os.environ.get("MISSIVE_ORGANIZATION")
 
