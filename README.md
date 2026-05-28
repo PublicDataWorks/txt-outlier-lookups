@@ -198,6 +198,17 @@ docker build -t lookup .
 docker run -p 5000:5000 --name lookup_app --restart unless-stopped lookup
 ```
 
+## Production Deployment
+
+This is hosted with Docker Compose inside an EC2 instance. To access it:
+
+```bash
+ssh -i Outlier-aws-ec2-key.pem ubuntu@<ec2-host-ip-or-dns>
+cd /home/ubuntu/outlier-experiments
+```
+
+Find the SSH key (`Outlier-aws-ec2-key.pem`) and other credentials in 1Password under `txt-outlier-lookups`.
+
 ## Setup
 ### Prerequisites
 
