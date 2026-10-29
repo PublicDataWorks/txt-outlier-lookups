@@ -12,8 +12,9 @@ load_dotenv(override=True)
 key = os.environ.get("OPENAI_API_KEY")
 
 EMBEDDING_MODEL = "text-embedding-3-small"
-# Only sent to reasoning models (gpt-5.x, gpt-6.x); gpt-4o-mini ignores it. Low keeps SMS replies quick.
-REASONING_EFFORT = "low"
+# Only sent to reasoning models (gpt-5.x, gpt-6.x). llama-index always sends temperature=1.0 for them, and
+# OpenAI only accepts a temperature when reasoning is off, so any other effort would be rejected.
+REASONING_EFFORT = "none"
 
 
 def build_llm(model_template_name, **kwargs):
