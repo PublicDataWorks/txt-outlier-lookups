@@ -214,15 +214,15 @@ def generate_broadcast_info_section(broadcasts):
 def generate_major_themes_section(messages_history):
     if messages_history:
         # The rest of the report is still worth posting when the LLM fails. Only the error is
-        # logged: a traceback would carry residents' messages.
+        # logged: a traceback would carry residents' messages. Template errors return None instead.
         try:
             summary = generate_report_summary(messages_history)
         except Exception as error:
             logger.error(f"Could not generate the weekly themes summary: {type(error).__name__}: {error}")
-            summary = "The summary could not be generated this week."
+            summary = None
         return (
             "## Summary of Major Themes/Topics\n"
-            f"{summary}"
+            f"{summary or 'The summary could not be generated this week.'}"
         )
     return ""
 

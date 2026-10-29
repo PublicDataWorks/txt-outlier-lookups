@@ -118,3 +118,10 @@ def test_themes_section_still_renders_when_the_summary_fails():
         section = generate_major_themes_section({"reference": [{"preview": "hello"}]})
 
     assert section == "## Summary of Major Themes/Topics\nThe summary could not be generated this week."
+
+
+def test_themes_section_still_renders_when_the_summary_template_is_missing():
+    with patch("services.analytics.utils.generate_report_summary", return_value=None):
+        section = generate_major_themes_section({"reference": [{"preview": "hello"}]})
+
+    assert section == "## Summary of Major Themes/Topics\nThe summary could not be generated this week."
