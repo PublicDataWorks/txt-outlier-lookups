@@ -1,8 +1,3 @@
-import os
-
-key = os.environ.get("OPENAI_API_KEY")
-
-
 def get_address_parser_prompt(addresses):
     return (
         "You are given a list of potential addresses along with their timestamps. For each address:\n"

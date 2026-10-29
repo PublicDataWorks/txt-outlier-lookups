@@ -1,19 +1,14 @@
 import logging
-import os
 
-from dotenv import load_dotenv
 from llama_index.core import DocumentSummaryIndex
 from llama_index.core.schema import Document
-from llama_index.llms.openai import OpenAI
 
-from configs.cache_template import get_template_content_by_name
 from configs.database import Session
+from configs.llm import build_llm
 from models import LookupTemplate
 from services.analytics.config import BROADCAST_SOURCE_PHONE_NUMBER
 from templates.templates import templates
 
-load_dotenv(override=True)
-key = os.environ.get("OPENAI_API_KEY")
 session = Session()
 logger = logging.getLogger(__name__)
 
@@ -57,16 +52,14 @@ def generate_report_summary(messages_history):
             metadata=metadata
         )
         documents.append(doc)
-    summary_index = DocumentSummaryIndex.from_documents(documents)
-
-    # Get model from template 
-    model = get_template_content_by_name("summary_model")
-    query_engine = summary_index.as_query_engine(llm=OpenAI(model=model))
+    llm = build_llm("summary_model")
+    summary_index = DocumentSummaryIndex.from_documents(documents, llm=llm)
+    query_engine = summary_index.as_query_engine(llm=llm)
 
     summary = query_engine.query(text)
     if not summary:
         logger.error(f"Error generating summary")
-        function_llm = OpenAI(temperature=0.1, model=model, api_key=key)
+        function_llm = build_llm("summary_model", temperature=0.1)
         prompt = f"{lookup_template.content}\n{conversation_messages}"
 
         human_readable_result = function_llm.complete(prompt)

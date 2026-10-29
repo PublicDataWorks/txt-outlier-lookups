@@ -1,21 +1,14 @@
-import os
-
-from dotenv import load_dotenv
 from llama_index.core import PromptTemplate, SQLDatabase, VectorStoreIndex
 from llama_index.core.indices.struct_store.sql_query import SQLTableRetrieverQueryEngine
 from llama_index.core.objects import ObjectIndex, SQLTableNodeMapping, SQLTableSchema
-from llama_index.llms.openai import OpenAI
 from sqlalchemy import MetaData
 
 from configs.cache_template import get_template_content_by_name
 from configs.database import engine
-
-load_dotenv(override=True)
-key = os.environ.get("OPENAI_API_KEY")
+from configs.llm import build_llm
 
 
 def init_tax_query_engine_without_sunit():
-    model = get_template_content_by_name("search_model")
     text = get_template_content_by_name("search_prompt")
 
     qa_prompt_tmpl = PromptTemplate(text)
@@ -27,7 +20,7 @@ def init_tax_query_engine_without_sunit():
         include_tables=["mi_wayne_detroit", "residential_rental_registrations"],
         metadata=metadata,
     )
-    function_llm = OpenAI(temperature=0.1, model=model, api_key=key)
+    function_llm = build_llm("search_model", temperature=0.1)
 
     city_stats_text = get_template_content_by_name("search_context")
 

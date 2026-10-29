@@ -1,0 +1,7 @@
+# .env holds production secrets; docker-compose mounts it at runtime, so it must not be baked into an image layer.
+.env
+.git
+.venv
+venv
+**/__pycache__
+cache
