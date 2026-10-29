@@ -1,25 +1,19 @@
 import logging
-import os
 import sys
 
-from dotenv import load_dotenv
 from llama_index.core import PromptTemplate, SQLDatabase, VectorStoreIndex
 from llama_index.core.indices.struct_store.sql_query import SQLTableRetrieverQueryEngine
 from llama_index.core.objects import ObjectIndex, SQLTableNodeMapping, SQLTableSchema
-from llama_index.llms.openai import OpenAI
 from sqlalchemy import MetaData
 
 from configs.cache_template import get_template_content_by_name
 from configs.database import engine
-
-load_dotenv(override=True)
-key = os.environ.get("OPENAI_API_KEY")
+from configs.llm import build_llm
 
 logging.basicConfig(stream=sys.stdout, level=logging.WARNING)
 
 
 def init_owner_query_engine():
-    model = get_template_content_by_name("search_model")
     text = get_template_content_by_name("search_prompt")
     qa_prompt_tmpl = PromptTemplate(text)
 
@@ -30,7 +24,7 @@ def init_owner_query_engine():
         include_tables=["mi_wayne_detroit"],
         metadata=metadata,
     )
-    function_llm = OpenAI(temperature=0.1, model=model, api_key=key)
+    function_llm = build_llm("search_model", temperature=0.1)
 
     city_stats_text = get_template_content_by_name("search_context_with_sunit")
 

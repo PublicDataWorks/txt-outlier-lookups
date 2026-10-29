@@ -6,7 +6,7 @@ Flask
 SQLAlchemy~=1.4.52
 psycopg2-binary
 GeoAlchemy2
-llama-index~=0.14.3
+llama-index-core~=0.14.25
 realtime~=1.0.5
 usaddress-scourgify==0.6.0
 usaddress==0.5.10
@@ -15,4 +15,5 @@ supabase
 flask-cors
 gunicorn
 flask-jwt-extended
-llama-index-llms-openai~=0.5
+llama-index-llms-openai~=0.8.3
+llama-index-embeddings-openai~=0.7.0

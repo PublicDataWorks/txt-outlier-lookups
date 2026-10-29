@@ -1,18 +1,16 @@
 import json
 import traceback
 
-from llama_index.llms.openai import OpenAI
 from loguru import logger
 
-from configs.cache_template import get_template_content_by_name
-from configs.settings import key, get_address_parser_prompt
+from configs.llm import build_llm
+from configs.settings import get_address_parser_prompt
 
 
 def extract_address_information_with_llm(addresses):
-    function_llm = OpenAI(
+    function_llm = build_llm(
+        "search_model",
         temperature=0.1,
-        model=get_template_content_by_name("search_model"),
-        api_key=key,
         additional_kwargs={
             "response_format": {
                 "type": "json_object"

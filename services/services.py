@@ -4,7 +4,6 @@ import time
 import traceback
 
 from flask import jsonify
-from llama_index.llms.openai import OpenAI
 from loguru import logger
 from sqlalchemy import and_, case, func, or_
 from sqlalchemy.exc import NoResultFound
