@@ -38,6 +38,12 @@ from services.analytics.utils import (
 
 load_dotenv(override=True)
 
+# Previews keep only the first 140 characters, and store a broadcast's line breaks sometimes as nothing
+# and sometimes as a space. Missive also rewrites the non-breaking spaces some broadcasts carry. So both
+# sides drop all of that whitespace, and only the start of each broadcast is compared.
+BROADCAST_WHITESPACE = r"[\s\u00a0\u202f]+"
+BROADCAST_PREFIX_LENGTH = 80
+
 
 class AnalyticsService:
     def __init__(self):
@@ -56,28 +62,31 @@ class AnalyticsService:
         return session.execute(GET_WEEKLY_BROADCAST_STARTERS, {'ids': tuple(broadcast_ids)}).fetchall()
 
     def get_weekly_messages_history(self, session, broadcast_sent):
-        broadcast_messages = set()
-        for broadcast in broadcast_sent:
-            # Missive webhook seems to discard new lines
-            first_message = broadcast["first_message"].replace('\n', '')
-            second_message = broadcast["second_message"].replace('\n', '')
-            broadcast_messages.add(first_message)
-            broadcast_messages.add(second_message)
+        broadcast_messages = {
+            message
+            for broadcast in broadcast_sent
+            for message in (broadcast["first_message"], broadcast["second_message"])
+            if message and message.strip()
+        }
 
-        like_conditions = []
+        exclusions = []
         params = {}
 
         for i, msg in enumerate(broadcast_messages):
             param_name = f'msg{i + 1}'
-            like_conditions.append(f"preview NOT LIKE :{param_name}")
-            params[param_name] = f"%{msg[:100]}%"
+            exclusions.append(
+                f"strpos(regexp_replace(preview, :whitespace, '', 'g'), "
+                f"left(regexp_replace(:{param_name}, :whitespace, '', 'g'), :prefix_length)) = 0"
+            )
+            params[param_name] = msg
 
-        if like_conditions:
-            not_like_clause = f"AND ({' AND '.join(like_conditions)})"
+        if exclusions:
+            exclusion_clause = f"AND ({' AND '.join(exclusions)})"
+            params.update(whitespace=BROADCAST_WHITESPACE, prefix_length=BROADCAST_PREFIX_LENGTH)
         else:
-            not_like_clause = ""
+            exclusion_clause = ""
 
-        query = text(GET_WEEKLY_MESSAGES_HISTORY + "\n" + not_like_clause).bindparams(**params)
+        query = text(GET_WEEKLY_MESSAGES_HISTORY + "\n" + exclusion_clause).bindparams(**params)
 
         messages = session.execute(query).fetchall()
 
