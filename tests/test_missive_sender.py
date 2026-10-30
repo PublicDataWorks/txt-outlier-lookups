@@ -119,6 +119,16 @@ def test_reply_that_waited_out_a_drained_window_is_still_sent_within_two_windows
     assert missive.sent == [(7 * QUARTER_HOUR + 1, "answer")]
 
 
+def test_reply_that_waited_behind_others_for_30_minutes_is_dropped_without_a_send():
+    clock = FakeClock(now=9 * QUARTER_HOUR)
+    attempts = []
+    sender = OrderedSender(lambda body: attempts.append(body) or missive_response(201), clock=clock, sleep=clock.sleep)
+
+    sender.deliver(draft("follow-up"), queued_at=clock() - 31 * 60)
+
+    assert attempts == []
+
+
 def test_dropping_a_reply_logs_one_fixed_error_for_sentry_to_group(logs):
     clock = FakeClock(now=5 * QUARTER_HOUR + 564)
     sender = OrderedSender(FakeMissive(clock, busy_until=9 * QUARTER_HOUR).post, clock=clock, sleep=clock.sleep)
@@ -147,7 +157,7 @@ def test_other_failures_are_not_retried():
         attempts.append(body)
         return missive_response(400, {"error": {"message": "Invalid phone number"}})
 
-    OrderedSender(post).deliver(draft("answer"), queued_at=0)
+    OrderedSender(post, clock=FakeClock(now=0)).deliver(draft("answer"), queued_at=0)
 
     assert len(attempts) == 1
 
@@ -156,7 +166,7 @@ def test_other_failures_log_the_status_without_the_draft(logs):
     def post(body):
         return missive_response(400, {"error": {"message": "Invalid phone number"}})
 
-    OrderedSender(post).deliver(draft("answer"), queued_at=0)
+    OrderedSender(post, clock=FakeClock(now=0)).deliver(draft("answer"), queued_at=0)
 
     assert [record["message"] for record in logs if record["level"].name == "ERROR"] == [
         "Missive send message failed with status code 400"
@@ -257,7 +267,8 @@ def child_exit_code(pid, timeout):
     raise AssertionError("the forked worker hung")
 
 
-def test_send_sms_sync_queues_the_same_draft_it_used_to_post():
+def test_send_sms_sync_queues_the_same_draft_it_used_to_post(monkeypatch):
+    monkeypatch.setenv("MISSIVE_SECRET", "test-secret")
     missive = MissiveAPI()
     with patch.object(missive.sms_sender, "submit") as submit:
         missive.send_sms_sync("answer", PHONE, conversation_id="conversation-1", add_label_list=["lookup"])
@@ -291,9 +302,10 @@ def test_network_error_logs_leave_out_the_phone_number_message_and_token(logs):
         headers = {"Authorization": "Bearer secret-token"}
         raise requests.ConnectionError(f"could not reach Missive with {headers} and {body}")
 
-    OrderedSender(post).deliver(draft("We don't have info for 1111 E. Jefferson"), queued_at=0)
+    OrderedSender(post, clock=FakeClock(now=0)).deliver(draft("We don't have info for 1111 E. Jefferson"), queued_at=0)
 
     logged = " ".join(record["message"] for record in logs)
+    assert "Missive send message failed: ConnectionError" in logged
     assert all(record["exception"] is None for record in logs)
     assert PHONE not in logged and "Jefferson" not in logged and "secret-token" not in logged
 

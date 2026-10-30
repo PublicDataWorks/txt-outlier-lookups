@@ -82,13 +82,13 @@ class OrderedSender:
 
     def deliver(self, body, queued_at):
         conversation = body["drafts"].get("conversation")
+        if self._clock() - queued_at > GIVE_UP_AFTER_SECONDS:
+            return self._drop(conversation, "waited behind earlier rate limited SMS for over 30 minutes")
         response = self._attempt(body)
         while response is not None and response.status_code == 429:
             wait = retry_after_seconds(response)
             if self._clock() + wait - queued_at > GIVE_UP_AFTER_SECONDS:
-                logger.warning(f"Missive still rate limited the SMS for conversation {conversation}, dropping it")
-                logger.error("Dropped a lookup SMS: Missive kept rate limiting it for 30 minutes")
-                return None
+                return self._drop(conversation, "still rate limited")
             logger.warning(f"Missive rate limited the SMS for conversation {conversation}, retrying in {wait}s")
             self._sleep(wait)
             response = self._attempt(body)
@@ -100,6 +100,11 @@ class OrderedSender:
             logger.error(f"Missive send message failed with status code {response.status_code}")
             return None
         return response
+
+    def _drop(self, conversation, reason):
+        logger.warning(f"Dropping the SMS for conversation {conversation}: {reason}")
+        logger.error("Dropped a lookup SMS: Missive kept rate limiting it for 30 minutes")
+        return None
 
     def _attempt(self, body):
         try:
