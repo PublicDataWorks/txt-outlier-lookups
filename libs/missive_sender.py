@@ -14,6 +14,8 @@ from sentry_sdk.scope import use_isolation_scope, use_scope
 GIVE_UP_AFTER_SECONDS = 30 * 60
 DEFAULT_RETRY_AFTER_SECONDS = 60
 GAP_BETWEEN_SENDS_SECONDS = 2
+# docker stop sends SIGKILL after 10 s, so a worker exiting on a deploy waits well under that.
+EXIT_DRAIN_SECONDS = 5
 
 
 def retry_after_seconds(response):
@@ -52,6 +54,12 @@ class OrderedSender:
             self._jobs_for_this_process().put(job)
             self._unsent += 1
 
+    def drain_then_report_unsent(self, timeout=EXIT_DRAIN_SECONDS):
+        deadline = time.monotonic() + timeout
+        while self._unsent and self._jobs_pid == os.getpid() and time.monotonic() < deadline:
+            time.sleep(0.1)
+        self.report_unsent()
+
     def report_unsent(self):
         if self._unsent and self._jobs_pid == os.getpid():
             logger.warning(f"Worker exiting with {self._unsent} lookup SMS not yet sent to Missive")
@@ -64,7 +72,7 @@ class OrderedSender:
             self._unsent = 0
             threading.Thread(target=self._run, args=(self._jobs,), name="missive-sender", daemon=True).start()
             if not self._exit_hook_registered:
-                atexit.register(self.report_unsent)
+                atexit.register(self.drain_then_report_unsent)
                 self._exit_hook_registered = True
         return self._jobs
 

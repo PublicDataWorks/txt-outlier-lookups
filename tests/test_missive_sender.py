@@ -379,6 +379,39 @@ def test_sentry_events_carry_the_breadcrumbs_of_the_request_that_queued_the_sms(
     assert "second request" in second_request_crumbs and "first request" not in second_request_crumbs
 
 
+def test_exiting_worker_lets_replies_already_in_flight_finish(logs):
+    sent = []
+
+    def slow_post(body):
+        threading.Event().wait(0.3)
+        sent.append(body["drafts"]["body"])
+        return missive_response(201)
+
+    sender = OrderedSender(slow_post, sleep=lambda seconds: None)
+    sender.submit(draft("answer"))
+    sender.submit(draft("follow-up"))
+
+    sender.drain_then_report_unsent(timeout=5)
+
+    assert sent == ["answer", "follow-up"] and logs == []
+
+
+def test_exiting_worker_stops_waiting_for_a_rate_limited_reply(logs):
+    release = threading.Event()
+
+    def stuck_post(body):
+        release.wait(timeout=5)
+        return missive_response(201)
+
+    sender = OrderedSender(stuck_post, sleep=lambda seconds: None)
+    sender.submit(draft("answer"))
+
+    sender.drain_then_report_unsent(timeout=0.3)
+    release.set()
+
+    assert "Worker exited with lookup SMS still queued for Missive" in [record["message"] for record in logs]
+
+
 def test_a_worker_that_sent_everything_exits_quietly(logs):
     sent = threading.Event()
     sender = OrderedSender(lambda body: sent.set() or missive_response(201), sleep=lambda seconds: None)
