@@ -3,6 +3,7 @@ import os
 import time
 import traceback
 
+import sentry_sdk
 from flask import jsonify
 from loguru import logger
 from sqlalchemy import and_, case, func, or_
@@ -43,7 +44,12 @@ def search_service(query, conversation_id, to_phone):
     session = Session()
     address, sunit = extract_address_information_with_llm([query])
     if not address:
-        logger.error(f"Couldn't parse address from query at search_service: {query}. Data: {conversation_id}, {to_phone}.")
+        # Mostly phone numbers, survey answers and suburban addresses, not app errors. One Sentry issue
+        # keeps them countable without alerting on each, and without the resident's text or number.
+        logger.info(f"Couldn't parse an address from the lookup text for conversation {conversation_id}")
+        sentry_sdk.capture_message(
+            "Couldn't parse an address from a lookup text", level="warning", fingerprint=["lookup-parse-failure"]
+        )
         return {"message": "Couldn't parse address from query"}, 200
 
     results = query_mi_wayne_detroit(session, address, sunit)
