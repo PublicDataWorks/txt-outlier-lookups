@@ -46,9 +46,9 @@ class OrderedSender:
         self._sleep = sleep
         self._pid = None
         self._start_lock = threading.Lock()
-        self._exit_hook_registered = False
         self._last_post_at = float("-inf")
         self._failed_at = {}
+        atexit.register(self.drain_then_report_unsent)
 
     def submit(self, body):
         # Handlers wrapped in async_long_running submit from their own threads, so two may race to start.
@@ -77,9 +77,6 @@ class OrderedSender:
         self._jobs = queue.Queue()
         self._unsent = 0
         threading.Thread(target=self._run, args=(self._jobs,), name="missive-sender", daemon=True).start()
-        if not self._exit_hook_registered:
-            atexit.register(self.drain_then_report_unsent)
-            self._exit_hook_registered = True
 
     def _run(self, jobs):
         while True:
