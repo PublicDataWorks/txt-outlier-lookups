@@ -40,7 +40,7 @@ CACHE_TTL = 24 * 60 * 60
 
 
 def search_service(query, conversation_id, to_phone):
-    logger.info(f"[search_service] query='{query}', conversation_id={conversation_id}, to_phone={to_phone}")
+    logger.info(f"[search_service] conversation_id={conversation_id}")
     session = Session()
     address, sunit = extract_address_information_with_llm([query])
     if not address:
@@ -56,10 +56,7 @@ def search_service(query, conversation_id, to_phone):
     display_address = address if not sunit else address + " " + sunit
 
     if not results:
-        logger.info(
-            f"No results found for '{display_address}'. "
-            f"query='{query}', conversation_id={conversation_id}, to_phone={to_phone}"
-        )
+        logger.info(f"No results found for the lookup in conversation {conversation_id}")
         return handle_no_match(display_address, conversation_id, to_phone)
 
     owner, address, rental_status, tax_status, zip_code, tax_due = results[0]
@@ -91,7 +88,7 @@ def search_service(query, conversation_id, to_phone):
     query_result = owner_query_engine_without_sunit(str(results[0]))
 
     if not query_result:
-        logger.error(f"[search_service] Query returned empty results. result: {results[0]}")
+        logger.error(f"[search_service] Query returned no results for conversation {conversation_id}")
         return "", 200
 
     following_messages = []
@@ -109,7 +106,7 @@ def more_search_service(conversation_id, to_phone):
             conversation_id=conversation_id,
             to_phone=to_phone,
         )
-        logger.error(f"Couldn't parse address from history messages at more_search_service: {messages}. Data: {conversation_id}, {to_phone}.")
+        logger.error(f"No message history at more_search_service for conversation {conversation_id}")
         return jsonify({"message": "Couldn't parse address from history messages"}), 200
 
     address, sunit = extract_address_information_with_llm(messages)
@@ -388,7 +385,7 @@ def get_conversation_data(conversation_id, query_phone_number):
             return conversation_summary
 
     except Exception as e:
-        logger.error(f"Error occurred while retrieving conversation summary: {traceback.format_exc()}")
+        logger.error(f"Error occurred while retrieving conversation summary: {type(e).__name__}")
         raise
 
 
@@ -460,7 +457,7 @@ def get_conversation_data_with_cache(comments, messages, conversation_id, query_
             return conversation_summary
 
     except Exception as e:
-        logger.error(f"Error occurred while generating LLM summary: {traceback.format_exc()}")
+        logger.error(f"Error occurred while generating LLM summary: {type(e).__name__}")
         raise
 
 
@@ -480,7 +477,8 @@ def update_author_and_missive(phone_number, email, zipcode):
         session.rollback()
         error_type = "email" if email else "zipcode"
         error_message = f"Failed to update {error_type}: {traceback.format_exc()}"
-        logger.error(f"Error occurred while updating contact email/zipcode: {traceback.format_exc()}")
+        print(f"An error occurred while updating contact email/zipcode: {error_message}")
+        logger.error(f"Error occurred while updating contact email/zipcode: {type(e).__name__}")
         return {"type": error_type, "msg": error_message}, 500
 
 
@@ -523,5 +521,5 @@ def query_mi_wayne_detroit(session, address, sunit):
             MiWayneDetroit.address.ilike(f"{address.strip()}%"),
         ).all()
 
-    logger.info(f"[query_mi_wayne_detroit]address='{address}', sunit='{sunit}', results={results}")
+    logger.info(f"[query_mi_wayne_detroit] {len(results)} results")
     return results

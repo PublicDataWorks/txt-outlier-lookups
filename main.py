@@ -5,17 +5,16 @@ import traceback
 from functools import wraps
 from urllib.parse import unquote
 
-import sentry_sdk
 from dotenv import load_dotenv
 from flask import jsonify, request, copy_current_request_context
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from loguru import logger
-from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from configs.cache_template import app
 from configs.database import Session
+from configs.sentry import init_sentry
 from configs.query_engine.owner_information_without_sunit import owner_query_engine_without_sunit
 from configs.supabase import run_websocket_listener
 from exceptions import APIException
@@ -36,18 +35,12 @@ from services.services import (
 
 load_dotenv(override=True)
 
-sentry_loguru = LoguruIntegration(
-    level=LoggingLevels.INFO.value,  # Capture info and above as breadcrumbs
-    event_level=LoggingLevels.ERROR.value,  # Send errors as events
-)
+init_sentry()
 
-sentry_sdk.init(
-    dsn=os.environ.get("SENTRY_DNS"),
-    enable_tracing=True,
-    integrations=[sentry_loguru],
-)
-
-logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
+# Loguru's default handler annotates tracebacks with local variable values, such as residents' phone numbers,
+# and printed every line a second time next to this one.
+logger.remove(0)
+logger.add(sys.stderr, format="{time} {level} {name}:{function}:{line} {message}", level="INFO", diagnose=False)
 
 SUMMARY_CONVO_SIDEBAR_ADDRESS = os.getenv('SUMMARY_CONVO_SIDEBAR_ADDRESS')
 if not SUMMARY_CONVO_SIDEBAR_ADDRESS:
@@ -93,12 +86,12 @@ def async_long_running(f):
 
 @app.before_request
 def log_request_info():
-    logger.info(f'Request: {request.path}')
+    logger.info(f'Request: {request.url_rule}')
 
 
 @app.after_request
 def log_response_info(response):
-    logger.info(f'Response Status: {response.status_code} for {request.path}')
+    logger.info(f'Response Status: {response.status_code} for {request.url_rule}')
     return response
 
 
@@ -123,7 +116,7 @@ def search():
 
     except Exception as e:
         print(f"An error occurred at lookup /search: {traceback.format_exc()}")
-        logger.error(e)
+        logger.error(f"Lookup /search failed: {type(e).__name__}")
         return jsonify({"error": str(e)}), 200
 
 
@@ -140,18 +133,18 @@ def yes():
                 conversation_id=conversation_id,
                 to_phone=to_phone,
             )
-            logger.error(f"There was a problem getting message history. Data: {data}", )
+            logger.error(f"There was a problem getting message history at /yes for conversation {conversation_id}")
             return jsonify({"message": "There was a problem getting message history"}), 200
 
         address, sunit = extract_address_information_with_llm(messages)
         if not address:
-            logger.error(f"Couldn't parse address from history messages at /yes: {messages}. Data: {data}", )
+            logger.error(f"Couldn't parse an address from the message history at /yes for conversation {conversation_id}")
             return jsonify({"message": "Couldn't parse address from history messages"}), 200
 
         session = Session()
         results = query_mi_wayne_detroit(session, address, sunit)
         if not results:
-            logger.error(f"Query returned empty results. Extra: address: {address} sunit: {sunit}")
+            logger.error(f"Query returned no results at /yes for conversation {conversation_id}")
             return "", 200
 
         query_result = owner_query_engine_without_sunit(str(results[0]))
@@ -164,7 +157,7 @@ def yes():
 
     except Exception as e:
         print(f"An error occurred at lookup /yes: {traceback.format_exc()}")
-        logger.error(e)
+        logger.error(f"Lookup /yes failed: {type(e).__name__}")
         return jsonify({"error": str(e)}), 200
 
 
@@ -193,7 +186,7 @@ def more():
 
     except Exception as e:
         print(f"An error occurred at lookup /more: {traceback.format_exc()}")
-        logger.error("", e)
+        logger.error(f"Lookup /more failed: {type(e).__name__}")
         return jsonify({"error": str(e)}), 200
 
 
@@ -246,8 +239,8 @@ def get_conversation(conversation_id):
         ), 200
 
     except Exception as e:
-        logger.error(
-            {'error occurred at getting conversation summary /conversations/<conversation_id>': traceback.format_exc()})
+        print(f"An error occurred at /conversations: {traceback.format_exc()}")
+        logger.error(f"Getting the conversation summary failed: {type(e).__name__}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -291,7 +284,7 @@ def refresh_conversation_summary(conversation_id):
         get_conversation_data(conversation_id, reference)
         print(f"Successfully refreshed summary for conversation: {conversation_id}")
     except Exception as e:
-        print(f"Error refreshing summary for conversation {conversation_id}: {str(e)}")
+        print(f"Error refreshing summary for conversation {conversation_id}: {traceback.format_exc()}")
 
     return jsonify({"message": f"Refreshing conversation summary for: {conversation_id}"}), 200
 

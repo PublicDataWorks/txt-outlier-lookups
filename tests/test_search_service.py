@@ -17,7 +17,7 @@ with patch.object(database, "Session") as stub_session:
     )
     import configs.query_engine.text_summary  # noqa: F401
 
-from services.services import search_service  # noqa: E402
+from services.services import query_mi_wayne_detroit, search_service  # noqa: E402
 
 PHONE = "+15550001234"
 
@@ -73,3 +73,23 @@ def test_every_parse_failure_lands_in_one_sentry_issue(sentry_events):
     assert [(event["level"], event["fingerprint"], event["message"]) for event in sentry_events] == [
         ("warning", ["lookup-parse-failure"], "Couldn't parse an address from a lookup text"),
     ] * 2
+
+
+def test_lookups_with_no_match_log_without_the_text_and_phone_number(logs):
+    with patch("services.services.extract_address_information_with_llm", return_value=("1111 E Jefferson Ave", None)), \
+            patch("services.services.query_mi_wayne_detroit", return_value=[]), \
+            patch("services.services.handle_no_match", return_value=({}, 200)), \
+            patch("services.services.Session", MagicMock()):
+        search_service(query="1111 E. Jefferson please", conversation_id="conversation-1", to_phone=PHONE)
+
+    logged = " ".join(record["message"] for record in logs)
+    assert logged and "Jefferson" not in logged and PHONE[2:] not in logged
+
+
+def test_property_queries_log_the_result_count_without_the_address(logs):
+    session = MagicMock()
+    session.query.return_value.outerjoin.return_value.filter.return_value.all.return_value = [("owner", "row")]
+
+    query_mi_wayne_detroit(session, "1111 E Jefferson Ave", None)
+
+    assert [record["message"] for record in logs] == ["[query_mi_wayne_detroit] 1 results"]
