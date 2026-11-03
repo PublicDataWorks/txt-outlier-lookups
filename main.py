@@ -37,7 +37,10 @@ load_dotenv(override=True)
 
 init_sentry()
 
-logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
+# Loguru's default handler annotates tracebacks with local variable values, such as residents' phone numbers,
+# and printed every line a second time next to this one.
+logger.remove(0)
+logger.add(sys.stderr, format="{time} {level} {name}:{function}:{line} {message}", level="INFO", diagnose=False)
 
 SUMMARY_CONVO_SIDEBAR_ADDRESS = os.getenv('SUMMARY_CONVO_SIDEBAR_ADDRESS')
 if not SUMMARY_CONVO_SIDEBAR_ADDRESS:

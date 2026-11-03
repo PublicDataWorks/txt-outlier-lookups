@@ -57,13 +57,14 @@ app.test_client().post("/search", json=json.load(sys.stdin))
 print(json.dumps([event for event in sent if event.get("type") != "transaction"], default=str))
 """
 
-SIDEBAR_REQUESTS_TO_THE_APP = CAPTURE_SENTRY + """
-import types
+IMPORT_THE_APP = """
+import json, sys, types
 from unittest.mock import patch
 
 import configs.llm
 from configs import database
 
+# text_summary reads max_tokens from the database at import.
 with patch.object(database, "Session") as stub_session:
     stub_session.return_value.query.return_value.filter.return_value.first.return_value = types.SimpleNamespace(
         content="1000"
@@ -71,7 +72,9 @@ with patch.object(database, "Session") as stub_session:
     import configs.query_engine.text_summary
 
 import main
+"""
 
+SIDEBAR_REQUESTS_TO_THE_APP = CAPTURE_SENTRY + IMPORT_THE_APP + """
 phone = json.load(sys.stdin)["message"]["from_field"]["id"]
 client = main.app.test_client()
 with patch.object(main, "get_conversation_data", side_effect=RuntimeError(f"no summary for {phone}")):
@@ -82,11 +85,14 @@ print(json.dumps(sent, default=str))
 """
 
 
+def run_with_sentry(script):
+    return subprocess.run([sys.executable, "-c", script], input=json.dumps(WEBHOOK), cwd=REPO,
+                          env={**os.environ, "SENTRY_DNS": "http://public@127.0.0.1:1/1"},
+                          capture_output=True, text=True, timeout=60, check=True)
+
+
 def sentry_payloads(script):
-    app = subprocess.run([sys.executable, "-c", script], input=json.dumps(WEBHOOK), cwd=REPO,
-                         env={**os.environ, "SENTRY_DNS": "http://public@127.0.0.1:1/1"},
-                         capture_output=True, text=True, timeout=60, check=True)
-    return json.loads(app.stdout.strip().splitlines()[-1])
+    return json.loads(run_with_sentry(script).stdout.strip().splitlines()[-1])
 
 
 def assert_no_resident_data(payloads):
@@ -111,6 +117,49 @@ def test_sidebar_requests_send_no_phone_number_to_sentry_in_urls_breadcrumbs_or_
 
     assert {payload.get("type", "error") for payload in payloads} == {"error", "transaction"}
     assert_no_resident_data(payloads)
+
+
+def test_sidebar_errors_keep_their_traceback_in_the_container_log():
+    app = run_with_sentry(SIDEBAR_REQUESTS_TO_THE_APP)
+
+    assert "in get_conversation" in app.stdout and "RuntimeError" in app.stdout
+
+
+A_LOGGED_EXCEPTION_IN_THE_APP = IMPORT_THE_APP + """
+from loguru import logger
+
+def look_up(to_phone):
+    try:
+        raise ValueError(f"lookup failed after {len(to_phone)} characters")
+    except ValueError:
+        logger.exception("Lookup failed")
+
+logger.info("Lookup started")
+look_up(json.load(sys.stdin)["message"]["from_field"]["id"])
+"""
+
+
+def app_stderr(script, directory):
+    # Run from a file: loguru only annotates variables when it can read the source lines.
+    app_file = directory / "app.py"
+    app_file.write_text(f"import sys\nsys.path.insert(0, {str(REPO)!r})\n{script}")
+    env = {key: value for key, value in os.environ.items() if key != "SENTRY_DNS"}
+    app = subprocess.run([sys.executable, str(app_file)], input=json.dumps(WEBHOOK), cwd=REPO, env=env,
+                         capture_output=True, text=True, timeout=60, check=True)
+    return app.stderr
+
+
+def test_the_container_log_shows_tracebacks_without_variable_values(tmp_path):
+    log = app_stderr(A_LOGGED_EXCEPTION_IN_THE_APP, tmp_path)
+
+    assert "ValueError: lookup failed" in log and PHONE[2:] not in log
+
+
+def test_the_container_log_prints_each_line_once_with_its_code_location(tmp_path):
+    log = app_stderr(A_LOGGED_EXCEPTION_IN_THE_APP, tmp_path)
+
+    [started] = [line for line in log.splitlines() if "Lookup started" in line]
+    assert "INFO __main__:<module>:" in started
 
 
 @pytest.fixture
