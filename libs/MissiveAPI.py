@@ -12,8 +12,19 @@ from constants.urls import (
     CREATE_MESSAGE_URL,
     CREATE_POST_URL,
 )
+from libs.missive_sender import OrderedSender
 
 load_dotenv(override=True)
+
+
+def post_draft(body):
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {os.environ['MISSIVE_SECRET']}"}
+    return requests.post(CREATE_MESSAGE_URL, headers=headers, data=json.dumps(body), timeout=30)
+
+
+# Module level, not per MissiveAPI instance: several modules build their own MissiveAPI, and every
+# lookup SMS in a process has to go through one queue to keep its order.
+sms_sender = OrderedSender(post_draft)
 
 
 class MissiveAPI:
@@ -65,33 +76,24 @@ class MissiveAPI:
             add_label_list = []
         if remove_label_list is None:
             remove_label_list = []
-        try:
-            body = {
-                "drafts": {
-                    "body": str(message),
-                    "from_field": {"phone_number": self.phone_number},
-                    "organization": self.organization,
-                    "to_fields": [{"phone_number": to_phone}],
-                    "add_shared_labels": add_label_list,
-                    "remove_shared_labels": remove_label_list,
-                    "send": True,  # Send right away
-                },
-            }
+        body = {
+            "drafts": {
+                "body": str(message),
+                "from_field": {"phone_number": self.phone_number},
+                "organization": self.organization,
+                "to_fields": [{"phone_number": to_phone}],
+                "add_shared_labels": add_label_list,
+                "remove_shared_labels": remove_label_list,
+                "send": True,  # Send right away
+            },
+        }
 
-            if conversation_id is not None:
-                body["drafts"]["conversation"] = conversation_id
+        if conversation_id is not None:
+            body["drafts"]["conversation"] = conversation_id
 
-            response = requests.post(
-                CREATE_MESSAGE_URL, headers=self.headers, data=json.dumps(body)
-            )
-            response.raise_for_status()  # Raise exception if not a 2xx response
-            return response
-
-        except requests.exceptions.RequestException:
-            logger.error(
-                f"Missive send message failed with status code {response.status_code}: {response.text}\n{body}"
-            )
-            return None
+        # Queued rather than sent here: Missive rate limits us on broadcast evenings, and waiting
+        # out a 15-minute window inside the request would hold a gunicorn worker the whole time.
+        sms_sender.submit(body)
 
     def send_post_sync(self, markdowns, conversation_id):
         attachments = [
