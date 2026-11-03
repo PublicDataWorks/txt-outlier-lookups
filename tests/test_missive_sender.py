@@ -13,7 +13,7 @@ import sentry_sdk
 from loguru import logger
 from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 
-from libs.MissiveAPI import MissiveAPI, post_draft
+from libs.MissiveAPI import MissiveAPI, post_draft, sms_sender
 from libs.missive_sender import OrderedSender
 
 QUARTER_HOUR = 15 * 60
@@ -404,6 +404,15 @@ def test_drafts_are_posted_with_the_token_and_a_timeout(monkeypatch):
     assert (post.call_args.kwargs["headers"]["Authorization"], post.call_args.kwargs["timeout"]) == (
         "Bearer test-secret", 30
     )
+
+
+def test_send_sms_sync_reaches_missive_through_the_shared_sender(monkeypatch):
+    monkeypatch.setenv("MISSIVE_SECRET", "test-secret")
+    with patch("libs.MissiveAPI.requests.post", return_value=missive_response(201)) as post:
+        MissiveAPI().send_sms_sync("answer", PHONE, conversation_id="conversation-1")
+        sms_sender.drain_then_report_unsent(timeout=5)
+
+    assert json.loads(post.call_args.kwargs["data"])["drafts"]["body"] == "answer"
 
 
 EXITING_WORKER = """
