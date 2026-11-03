@@ -14,3 +14,10 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
+    # Longer than gunicorn's 30 s graceful timeout, which the Missive sender's 5 s exit drain runs within.
+    stop_grace_period: 40s
+    # journald keeps the logs when the container is recreated on a deploy; json-file loses them.
+    logging:
+      driver: journald
+      options:
+        tag: outlier-lookup
