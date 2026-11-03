@@ -48,7 +48,7 @@ class OrderedSender:
         self._start_lock = threading.Lock()
         self._last_post_at = float("-inf")
         self._failed_at = {}
-        atexit.register(self.drain_then_report_unsent)
+        self._exit_hook_registered = False
 
     def submit(self, body):
         # Handlers wrapped in async_long_running submit from their own threads, so two may race to start.
@@ -77,6 +77,11 @@ class OrderedSender:
         self._jobs = queue.Queue()
         self._unsent = 0
         threading.Thread(target=self._run, args=(self._jobs,), name="missive-sender", daemon=True).start()
+        # Registered here, not in __init__: the sender is built before main.py sets up Sentry, and atexit runs
+        # hooks in reverse order, so an earlier hook would run after Sentry has shut down and lose the report.
+        if not self._exit_hook_registered:
+            atexit.register(self.drain_then_report_unsent)
+            self._exit_hook_registered = True
 
     def _run(self, jobs):
         while True:

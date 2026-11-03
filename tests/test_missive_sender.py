@@ -434,6 +434,37 @@ def test_a_worker_exiting_with_a_stuck_reply_reports_it_before_docker_would_kill
     assert "Worker exited with lookup SMS still queued for Missive" in worker.stderr
 
 
+SENTRY_SET_UP_AFTER_THE_SENDER = """
+import atexit, json, threading
+import sentry_sdk
+from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
+from sentry_sdk.transport import Transport
+from libs.missive_sender import OrderedSender
+
+sent = []
+atexit.register(lambda: print(json.dumps(sent)))
+
+class Capture(Transport):
+    def capture_envelope(self, envelope):
+        sent.extend(item.payload.json for item in envelope.items if item.type == "event")
+
+# As in the app: libs.MissiveAPI builds its sender when main.py imports it, before Sentry is set up.
+stuck = threading.Event()
+sender = OrderedSender(lambda body: stuck.wait())
+sentry_sdk.init(dsn="http://public@127.0.0.1:1/1", transport=Capture,
+                integrations=[LoguruIntegration(level=LoggingLevels.INFO.value, event_level=LoggingLevels.ERROR.value)])
+sender.submit({"drafts": {"body": "answer", "conversation": "conversation-1"}})
+"""
+
+
+def test_the_exit_report_reaches_sentry_although_sentry_was_set_up_after_the_sender():
+    worker = subprocess.run([sys.executable, "-c", SENTRY_SET_UP_AFTER_THE_SENDER], cwd=REPO, capture_output=True,
+                            text=True, timeout=15)
+
+    events = json.loads(worker.stdout.strip().splitlines()[-1])
+    assert "Worker exited with lookup SMS still queued for Missive" in json.dumps(events)
+
+
 def test_exiting_worker_sends_replies_already_in_flight_and_exits_quietly(logs):
     sent = []
 
