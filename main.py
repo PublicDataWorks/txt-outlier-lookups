@@ -284,7 +284,7 @@ def refresh_conversation_summary(conversation_id):
         get_conversation_data(conversation_id, reference)
         print(f"Successfully refreshed summary for conversation: {conversation_id}")
     except Exception as e:
-        print(f"Error refreshing summary for conversation {conversation_id}: {str(e)}")
+        print(f"Error refreshing summary for conversation {conversation_id}: {traceback.format_exc()}")
 
     return jsonify({"message": f"Refreshing conversation summary for: {conversation_id}"}), 200
 

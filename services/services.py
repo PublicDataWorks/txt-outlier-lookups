@@ -477,6 +477,7 @@ def update_author_and_missive(phone_number, email, zipcode):
         session.rollback()
         error_type = "email" if email else "zipcode"
         error_message = f"Failed to update {error_type}: {traceback.format_exc()}"
+        print(f"An error occurred while updating contact email/zipcode: {error_message}")
         logger.error(f"Error occurred while updating contact email/zipcode: {type(e).__name__}")
         return {"type": error_type, "msg": error_message}, 500
 
