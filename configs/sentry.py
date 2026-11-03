@@ -11,6 +11,13 @@ def message_only(record):
     return "{message}"
 
 
+def drop_request_details(event, hint):
+    # The sidebar puts the resident's phone number in the URL: /contacts/<phone> and ?reference=<phone>.
+    if "request" in event:
+        event["request"] = {"method": event["request"].get("method")}
+    return event
+
+
 def init_sentry(**options):
     sentry_sdk.init(
         dsn=os.environ.get("SENTRY_DNS"),
@@ -26,5 +33,7 @@ def init_sentry(**options):
         # Webhook bodies and frame locals hold residents' texts and phone numbers.
         max_request_body_size="never",
         include_local_variables=False,
+        before_send=drop_request_details,
+        before_send_transaction=drop_request_details,
         **options,
     )

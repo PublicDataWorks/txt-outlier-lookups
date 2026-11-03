@@ -83,12 +83,12 @@ def async_long_running(f):
 
 @app.before_request
 def log_request_info():
-    logger.info(f'Request: {request.path}')
+    logger.info(f'Request: {request.url_rule}')
 
 
 @app.after_request
 def log_response_info(response):
-    logger.info(f'Response Status: {response.status_code} for {request.path}')
+    logger.info(f'Response Status: {response.status_code} for {request.url_rule}')
     return response
 
 
@@ -236,8 +236,7 @@ def get_conversation(conversation_id):
         ), 200
 
     except Exception as e:
-        logger.error(
-            {'error occurred at getting conversation summary /conversations/<conversation_id>': traceback.format_exc()})
+        logger.error(f"Getting the conversation summary failed: {type(e).__name__}")
         return jsonify({'error': str(e)}), 500
 
 

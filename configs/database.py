@@ -18,7 +18,9 @@ engine = create_engine(
         "keepalives_interval": 10,
         "keepalives_count": 5,
     },
-    pool_recycle=3600
+    pool_recycle=3600,
+    # Query parameters (phone numbers, emails) would otherwise appear in every SQLAlchemy error message.
+    hide_parameters=True,
 )
 
 Session = sessionmaker(bind=engine)

@@ -385,7 +385,7 @@ def get_conversation_data(conversation_id, query_phone_number):
             return conversation_summary
 
     except Exception as e:
-        logger.error(f"Error occurred while retrieving conversation summary: {traceback.format_exc()}")
+        logger.error(f"Error occurred while retrieving conversation summary: {type(e).__name__}")
         raise
 
 
@@ -457,7 +457,7 @@ def get_conversation_data_with_cache(comments, messages, conversation_id, query_
             return conversation_summary
 
     except Exception as e:
-        logger.error(f"Error occurred while generating LLM summary: {traceback.format_exc()}")
+        logger.error(f"Error occurred while generating LLM summary: {type(e).__name__}")
         raise
 
 
@@ -477,7 +477,7 @@ def update_author_and_missive(phone_number, email, zipcode):
         session.rollback()
         error_type = "email" if email else "zipcode"
         error_message = f"Failed to update {error_type}: {traceback.format_exc()}"
-        logger.error(f"Error occurred while updating contact email/zipcode: {traceback.format_exc()}")
+        logger.error(f"Error occurred while updating contact email/zipcode: {type(e).__name__}")
         return {"type": error_type, "msg": error_message}, 500
 
 

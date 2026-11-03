@@ -19,21 +19,34 @@ WEBHOOK = {"conversation": {"id": "conversation-1"},
 REPO = Path(__file__).resolve().parents[1]
 
 # Sentry's loguru integration installs its handlers once per process, so another test's Sentry setup
-# would decide the format here. Each run gets a fresh process, as the app does.
-APP_IN_A_FRESH_PROCESS = """
+# would decide the format here. Each run gets a fresh process, as the app does. A capturing transport
+# stands in for Sentry so that the app's own before_send hooks still run.
+CAPTURE_SENTRY = """
 import json, sys
+from sentry_sdk.transport import Transport
+import configs.sentry
+
+sent = []
+
+class Capture(Transport):
+    def capture_envelope(self, envelope):
+        sent.extend(item.payload.json for item in envelope.items if item.type in ("event", "transaction"))
+
+# main.py calls init_sentry() itself, so every call gets the capturing transport.
+real_init_sentry = configs.sentry.init_sentry
+configs.sentry.init_sentry = lambda **options: real_init_sentry(transport=Capture, **options)
+configs.sentry.init_sentry()
+"""
+
+LOGGED_EXCEPTION_IN_A_WEBHOOK = CAPTURE_SENTRY + """
 from flask import Flask, request
 from loguru import logger
-from configs.sentry import init_sentry
 
-events = []
-init_sentry(before_send=lambda event, hint: events.append(event))
 app = Flask(__name__)
 
 @app.route("/search", methods=["POST"])
 def search():
     to_phone = request.get_json()["message"]["from_field"]["id"]
-    logger.info(f"Lookup started for conversation {request.get_json()['conversation']['id']}")
     try:
         raise ValueError("lookup failed")
     except ValueError:
@@ -41,30 +54,63 @@ def search():
     return "", 200
 
 app.test_client().post("/search", json=json.load(sys.stdin))
-print(json.dumps(events, default=str))
+print(json.dumps([event for event in sent if event.get("type") != "transaction"], default=str))
+"""
+
+SIDEBAR_REQUESTS_TO_THE_APP = CAPTURE_SENTRY + """
+import types
+from unittest.mock import patch
+
+import configs.llm
+from configs import database
+
+with patch.object(database, "Session") as stub_session:
+    stub_session.return_value.query.return_value.filter.return_value.first.return_value = types.SimpleNamespace(
+        content="1000"
+    )
+    import configs.query_engine.text_summary
+
+import main
+
+phone = json.load(sys.stdin)["message"]["from_field"]["id"]
+client = main.app.test_client()
+with patch.object(main, "get_conversation_data", side_effect=RuntimeError(f"no summary for {phone}")):
+    client.get(f"/conversations/conversation-1?reference={phone[1:]}")
+with patch.object(main, "update_author_and_missive", side_effect=RuntimeError("update failed")):
+    client.patch(f"/contacts/%2B{phone[1:]}", json={"zipcode": "48207"})
+print(json.dumps(sent, default=str))
 """
 
 
-def sentry_events_for_a_failing_webhook():
-    app = subprocess.run([sys.executable, "-c", APP_IN_A_FRESH_PROCESS], input=json.dumps(WEBHOOK), cwd=REPO,
+def sentry_payloads(script):
+    app = subprocess.run([sys.executable, "-c", script], input=json.dumps(WEBHOOK), cwd=REPO,
                          env={**os.environ, "SENTRY_DNS": "http://public@127.0.0.1:1/1"},
                          capture_output=True, text=True, timeout=60, check=True)
     return json.loads(app.stdout.strip().splitlines()[-1])
 
 
-def test_sentry_events_from_a_webhook_leave_out_the_phone_number_and_text():
-    events = sentry_events_for_a_failing_webhook()
+def assert_no_resident_data(payloads):
+    sent = json.dumps(payloads)
+    assert payloads and PHONE[2:] not in sent and "Jefferson" not in sent
 
-    sent = json.dumps(events)
-    assert events and PHONE not in sent and "Jefferson" not in sent
+
+def test_sentry_events_from_a_webhook_leave_out_the_phone_number_and_text():
+    assert_no_resident_data(sentry_payloads(LOGGED_EXCEPTION_IN_A_WEBHOOK))
 
 
 def test_sentry_events_keep_the_exception_and_the_logged_text_alone():
-    [event] = sentry_events_for_a_failing_webhook()
+    [event] = sentry_payloads(LOGGED_EXCEPTION_IN_A_WEBHOOK)
 
     assert (event["logentry"]["message"], event["exception"]["values"][0]["type"]) == (
         "Lookup failed for a 12 character number", "ValueError"
     )
+
+
+def test_sidebar_requests_send_no_phone_number_to_sentry_in_urls_breadcrumbs_or_errors():
+    payloads = sentry_payloads(SIDEBAR_REQUESTS_TO_THE_APP)
+
+    assert {payload.get("type", "error") for payload in payloads} == {"error", "transaction"}
+    assert_no_resident_data(payloads)
 
 
 @pytest.fixture

@@ -11,7 +11,5 @@ def owner_query_engine_without_sunit(result):
     prompt = f"{city_stats_text}\n{result}"
 
     human_readable_result = function_llm.complete(prompt)
-    logger.info(
-        f"[owner_query_engine_without_sunit] {result}: {human_readable_result}"
-    )
+    logger.info("[owner_query_engine_without_sunit] summarized the owner record")
     return human_readable_result
