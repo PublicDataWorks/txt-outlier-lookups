@@ -14,7 +14,7 @@ GIVE_UP_AFTER_SECONDS = 30 * 60
 DEFAULT_RETRY_AFTER_SECONDS = 60
 # The answer and its follow-up must reach the phone in order, and back-to-back sends can arrive swapped.
 GAP_BETWEEN_SENDS_SECONDS = 2
-# docker stop sends SIGKILL after 10 s, so a worker exiting on a deploy waits well under that.
+# A worker's exit must fit inside gunicorn's 30 s graceful timeout, after its last request finishes.
 EXIT_DRAIN_SECONDS = 5
 # One lookup queues all its SMS within about 8 s; the quickest resident retry seen was 84 s later.
 SAME_LOOKUP_SECONDS = 30
