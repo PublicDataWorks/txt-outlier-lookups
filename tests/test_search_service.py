@@ -1,4 +1,3 @@
-import sys
 import types
 from unittest.mock import MagicMock, patch
 
@@ -6,9 +5,17 @@ import pytest
 import sentry_sdk
 from loguru import logger
 
-# text_summary reads max_tokens from the database at import and exits without it. search_service
-# doesn't summarise anything, so these tests stand it in rather than depend on database contents.
-sys.modules.setdefault("configs.query_engine.text_summary", types.SimpleNamespace(generate_text_summary=None))
+import configs.llm  # noqa: F401
+from configs import database
+
+# text_summary reads max_tokens from the database at import and exits without it. Only that read is
+# stubbed, and only while text_summary imports: its other dependencies are imported above with the
+# real Session, so nothing else keeps the stub.
+with patch.object(database, "Session") as stub_session:
+    stub_session.return_value.query.return_value.filter.return_value.first.return_value = types.SimpleNamespace(
+        content="1000"
+    )
+    import configs.query_engine.text_summary  # noqa: F401
 
 from services.services import search_service  # noqa: E402
 
