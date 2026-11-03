@@ -236,6 +236,7 @@ def get_conversation(conversation_id):
         ), 200
 
     except Exception as e:
+        print(f"An error occurred at /conversations: {traceback.format_exc()}")
         logger.error(f"Getting the conversation summary failed: {type(e).__name__}")
         return jsonify({'error': str(e)}), 500
 
