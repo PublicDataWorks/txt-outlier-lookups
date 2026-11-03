@@ -83,7 +83,7 @@ def test_lookups_with_no_match_log_without_the_text_and_phone_number(logs):
         search_service(query="1111 E. Jefferson please", conversation_id="conversation-1", to_phone=PHONE)
 
     logged = " ".join(record["message"] for record in logs)
-    assert logged and "Jefferson" not in logged and PHONE not in logged
+    assert logged and "Jefferson" not in logged and PHONE[2:] not in logged
 
 
 def test_property_queries_log_the_result_count_without_the_address(logs):

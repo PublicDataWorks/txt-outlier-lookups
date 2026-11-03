@@ -35,11 +35,11 @@ class Capture(Transport):
 # main.py calls init_sentry() itself, so every call gets the capturing transport.
 real_init_sentry = configs.sentry.init_sentry
 configs.sentry.init_sentry = lambda **options: real_init_sentry(transport=Capture, **options)
-configs.sentry.init_sentry()
 """
 
 LOGGED_EXCEPTION_IN_A_WEBHOOK = CAPTURE_SENTRY + """
 from flask import Flask, request
+configs.sentry.init_sentry()
 from loguru import logger
 
 app = Flask(__name__)
