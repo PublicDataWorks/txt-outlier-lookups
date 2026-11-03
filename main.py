@@ -5,17 +5,16 @@ import traceback
 from functools import wraps
 from urllib.parse import unquote
 
-import sentry_sdk
 from dotenv import load_dotenv
 from flask import jsonify, request, copy_current_request_context
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from loguru import logger
-from sentry_sdk.integrations.loguru import LoggingLevels, LoguruIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from configs.cache_template import app
 from configs.database import Session
+from configs.sentry import init_sentry
 from configs.query_engine.owner_information_without_sunit import owner_query_engine_without_sunit
 from configs.supabase import run_websocket_listener
 from exceptions import APIException
@@ -36,16 +35,7 @@ from services.services import (
 
 load_dotenv(override=True)
 
-sentry_loguru = LoguruIntegration(
-    level=LoggingLevels.INFO.value,  # Capture info and above as breadcrumbs
-    event_level=LoggingLevels.ERROR.value,  # Send errors as events
-)
-
-sentry_sdk.init(
-    dsn=os.environ.get("SENTRY_DNS"),
-    enable_tracing=True,
-    integrations=[sentry_loguru],
-)
+init_sentry()
 
 logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 
@@ -123,7 +113,7 @@ def search():
 
     except Exception as e:
         print(f"An error occurred at lookup /search: {traceback.format_exc()}")
-        logger.error(e)
+        logger.error(f"Lookup /search failed: {type(e).__name__}")
         return jsonify({"error": str(e)}), 200
 
 
@@ -140,18 +130,18 @@ def yes():
                 conversation_id=conversation_id,
                 to_phone=to_phone,
             )
-            logger.error(f"There was a problem getting message history. Data: {data}", )
+            logger.error(f"There was a problem getting message history at /yes for conversation {conversation_id}")
             return jsonify({"message": "There was a problem getting message history"}), 200
 
         address, sunit = extract_address_information_with_llm(messages)
         if not address:
-            logger.error(f"Couldn't parse address from history messages at /yes: {messages}. Data: {data}", )
+            logger.error(f"Couldn't parse an address from the message history at /yes for conversation {conversation_id}")
             return jsonify({"message": "Couldn't parse address from history messages"}), 200
 
         session = Session()
         results = query_mi_wayne_detroit(session, address, sunit)
         if not results:
-            logger.error(f"Query returned empty results. Extra: address: {address} sunit: {sunit}")
+            logger.error(f"Query returned no results at /yes for conversation {conversation_id}")
             return "", 200
 
         query_result = owner_query_engine_without_sunit(str(results[0]))
@@ -164,7 +154,7 @@ def yes():
 
     except Exception as e:
         print(f"An error occurred at lookup /yes: {traceback.format_exc()}")
-        logger.error(e)
+        logger.error(f"Lookup /yes failed: {type(e).__name__}")
         return jsonify({"error": str(e)}), 200
 
 
@@ -193,7 +183,7 @@ def more():
 
     except Exception as e:
         print(f"An error occurred at lookup /more: {traceback.format_exc()}")
-        logger.error("", e)
+        logger.error(f"Lookup /more failed: {type(e).__name__}")
         return jsonify({"error": str(e)}), 200
 
 

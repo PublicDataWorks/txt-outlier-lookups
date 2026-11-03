@@ -48,9 +48,7 @@ class MissiveAPI:
             return response.json()
 
         except requests.exceptions.RequestException:
-            logger.error(
-                f"MissiveAPI get conversations failed with status code {response.status_code}: {response.text}\n"
-            )
+            logger.error(f"MissiveAPI get conversations failed with status code {response.status_code}")
             return None
 
     def extract_preview_content(self, conversation_id):
@@ -114,9 +112,7 @@ class MissiveAPI:
             CREATE_POST_URL, headers=self.headers, data=json.dumps(body)
         )
         if not response.ok:
-            logger.error(
-                f"Create Missive post failed with status code {response.status_code}: {response.text}\n{body}"
-            )
+            logger.error(f"Create Missive post failed with status code {response.status_code}")
             return None
 
         return response

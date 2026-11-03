@@ -1,5 +1,4 @@
 import json
-import traceback
 
 from loguru import logger
 
@@ -22,12 +21,8 @@ def extract_address_information_with_llm(addresses):
         parsed_data = json.loads(response.text)
         address = parsed_data["address"]
         sunit = parsed_data["sunit"]
-        logger.info(
-            f"[extract_address_information_with_llm] address: '{address}', sunit: '{sunit}'"
-        )
+        logger.info(f"[extract_address_information_with_llm] parsed an address: {bool(address)}")
         return address, sunit
     except Exception as e:
-        logger.error(
-            f"An error occurred at extract_address_information_with_llm {e}: {traceback.format_exc()}. Data: {addresses}"
-        )
+        logger.error(f"The address parser failed: {type(e).__name__}")
         return None, None
