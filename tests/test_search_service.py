@@ -43,8 +43,9 @@ def sentry_events():
     sentry_sdk.init()
 
 
-def search_unparseable(query, conversation_id="conversation-1"):
+def search_unparseable(query, conversation_id="conversation-1", reason="outside_detroit"):
     with patch("services.services.extract_address_information_with_llm", return_value=(None, None)), \
+            patch("services.services.classify_unparseable_text", return_value=reason), \
             patch("services.services.Session", MagicMock()):
         return search_service(query=query, conversation_id=conversation_id, to_phone=PHONE)
 
@@ -73,6 +74,36 @@ def test_every_parse_failure_lands_in_one_sentry_issue(sentry_events):
     assert [(event["level"], event["fingerprint"], event["message"]) for event in sentry_events] == [
         ("warning", ["lookup-parse-failure"], "Couldn't parse an address from a lookup text"),
     ] * 2
+
+
+def test_each_parse_failure_is_tagged_with_its_reason_and_conversation(sentry_events):
+    search_unparseable("26184 Princeton St. Inkster", conversation_id="conversation-1", reason="outside_detroit")
+    search_unparseable("313-555-0100 Joe", conversation_id="conversation-2", reason="contact_info")
+
+    assert [event["tags"] for event in sentry_events] == [
+        {"reason": "outside_detroit", "conversation_id": "conversation-1"},
+        {"reason": "contact_info", "conversation_id": "conversation-2"},
+    ]
+
+
+def test_the_parse_failure_reason_is_worked_out_from_the_resident_text():
+    with patch("services.services.extract_address_information_with_llm", return_value=(None, None)), \
+            patch("services.services.classify_unparseable_text", return_value="other") as classify, \
+            patch("services.services.Session", MagicMock()):
+        search_service(query="313-555-0100 Joe", conversation_id="conversation-1", to_phone=PHONE)
+
+    classify.assert_called_once_with("313-555-0100 Joe")
+
+
+def test_a_parsed_lookup_skips_the_reason_model_call():
+    with patch("services.services.extract_address_information_with_llm", return_value=("1111 E Jefferson Ave", None)), \
+            patch("services.services.classify_unparseable_text") as classify, \
+            patch("services.services.query_mi_wayne_detroit", return_value=[]), \
+            patch("services.services.handle_no_match", return_value=({}, 200)), \
+            patch("services.services.Session", MagicMock()):
+        search_service(query="1111 E. Jefferson please", conversation_id="conversation-1", to_phone=PHONE)
+
+    classify.assert_not_called()
 
 
 def test_lookups_with_no_match_log_without_the_text_and_phone_number(logs):
