@@ -141,8 +141,8 @@ def yes():
             logger.error(f"Couldn't parse an address from the message history at /yes for conversation {conversation_id}")
             return jsonify({"message": "Couldn't parse address from history messages"}), 200
 
-        session = Session()
-        results = query_mi_wayne_detroit(session, address, sunit)
+        with Session() as session:
+            results = query_mi_wayne_detroit(session, address, sunit)
         if not results:
             logger.error(f"Query returned no results at /yes for conversation {conversation_id}")
             return "", 200

@@ -8,13 +8,12 @@ from configs.database import Session
 from models import LookupTemplate
 from templates.templates import templates
 
-session = Session()
 cache = Cache()
 
 
 def get_lookup_templates():
-    lookup_templates = session.query(LookupTemplate).all()
-    return [template.__dict__ for template in lookup_templates]
+    with Session() as session:
+        return [template.__dict__ for template in session.query(LookupTemplate).all()]
 
 
 def init_lookup_templates_cache():

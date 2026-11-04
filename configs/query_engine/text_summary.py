@@ -4,9 +4,8 @@ from configs.database import Session
 from configs.llm import build_llm
 from models import LookupTemplate
 
-session = Session()
-
-llm_configs = session.query(LookupTemplate.content).filter(LookupTemplate.name == 'max_tokens').first()
+with Session() as session:
+    llm_configs = session.query(LookupTemplate.content).filter(LookupTemplate.name == 'max_tokens').first()
 try:
     max_tokens = int(llm_configs.content)
 except (ValueError, AttributeError) as error:

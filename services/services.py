@@ -41,7 +41,6 @@ CACHE_TTL = 24 * 60 * 60
 
 def search_service(query, conversation_id, to_phone):
     logger.info(f"[search_service] conversation_id={conversation_id}")
-    session = Session()
     address, sunit = extract_address_information_with_llm([query])
     if not address:
         # Mostly phone numbers, survey answers and suburban addresses, not app errors. One Sentry issue
@@ -52,7 +51,8 @@ def search_service(query, conversation_id, to_phone):
         )
         return {"message": "Couldn't parse address from query"}, 200
 
-    results = query_mi_wayne_detroit(session, address, sunit)
+    with Session() as session:
+        results = query_mi_wayne_detroit(session, address, sunit)
     display_address = address if not sunit else address + " " + sunit
 
     if not results:
@@ -110,8 +110,8 @@ def more_search_service(conversation_id, to_phone):
         return jsonify({"message": "Couldn't parse address from history messages"}), 200
 
     address, sunit = extract_address_information_with_llm(messages)
-    session = Session()
-    results = query_mi_wayne_detroit(session, address, sunit)
+    with Session() as session:
+        results = query_mi_wayne_detroit(session, address, sunit)
 
     display_address = address if not sunit else address + " " + sunit
 
@@ -390,14 +390,14 @@ def get_conversation_data(conversation_id, query_phone_number):
 
 
 def extract_address_messages_from_supabase(phone):
-    session = Session()
-    query = (
-        session.query(TwilioMessage.preview, TwilioMessage.delivered_at)
-        .filter(or_(TwilioMessage.from_field == phone, TwilioMessage.to_field == phone))
-        .order_by(TwilioMessage.delivered_at.desc())
-        .limit(30)
-        .all()
-    )
+    with Session() as session:
+        query = (
+            session.query(TwilioMessage.preview, TwilioMessage.delivered_at)
+            .filter(or_(TwilioMessage.from_field == phone, TwilioMessage.to_field == phone))
+            .order_by(TwilioMessage.delivered_at.desc())
+            .limit(30)
+            .all()
+        )
 
     return [(row[0], str(row[1])) for row in query]
 
