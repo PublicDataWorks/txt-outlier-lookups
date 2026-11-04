@@ -46,7 +46,13 @@ def database():
 # Each run is a fresh app process, because the sessions under test are created when modules import.
 DATABASE_PROBES = """
 import gc, os
+import dotenv
 from sqlalchemy import create_engine, text
+
+# The app loads .env with override=True, which would swap a developer's own DATABASE_URL in for the
+# disposable one. Keep .env for anything else, but never let it replace what run_app sets.
+load_dotenv = dotenv.load_dotenv
+dotenv.load_dotenv = lambda *args, **kwargs: load_dotenv(*args, **{**kwargs, "override": False})
 
 # On production a lookup's connection stayed open in its transaction for 8 hours after the response,
 # so the garbage collector can't be relied on to close what the app leaves open.
