@@ -90,10 +90,8 @@ def test_get_rental_message():
 
 def test_run_websocket_listener():
     with patch('configs.supabase.asyncio.new_event_loop') as mock_new_event_loop, \
-            patch('configs.supabase.asyncio.set_event_loop') as mock_set_event_loop, \
-            patch('configs.supabase.asyncio.get_event_loop') as mock_get_event_loop, \
-            patch('configs.supabase.connect_to_supabase') as mock_connect_to_supabase:
+            patch('configs.supabase.asyncio.set_event_loop'), \
+            patch('configs.supabase.connect_to_supabase', new_callable=MagicMock) as mock_connect_to_supabase:
         loop_mock = mock_new_event_loop.return_value
         run_websocket_listener()
-        mock_connect_to_supabase.assert_called_once()
-        loop_mock.run_forever.assert_called_once()
+        loop_mock.run_until_complete.assert_called_once_with(mock_connect_to_supabase.return_value)

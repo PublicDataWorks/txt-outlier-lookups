@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import json
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from middlewares.missive_middleware import AuthMiddleware
 from utils.address_normalizer import (
@@ -44,45 +44,25 @@ def test_map_keys_to_result_with_empty_result():
 
 
 def test_check_property_status_registered_no_tax_debt():
-    response = Mock()
-    response.metadata = {
-        "result": [["John Doe", "IS", "OK", 0]],
-        "col_keys": ["owner_name", "rental_status", "tax_status", "tax_due"],
-    }
-    tax_status, rental_status = check_property_status(response)
+    tax_status, rental_status = check_property_status("IS", "OK", 0)
     assert tax_status == "NO_TAX_DEBT"
     assert rental_status == "REGISTERED"
 
 
 def test_check_property_status_unregistered_forfeited():
-    response = Mock()
-    response.metadata = {
-        "result": [["John Doe", "IS NOT", "FORFEITED", 0]],
-        "col_keys": ["owner_name", "rental_status", "tax_status", "tax_due"],
-    }
-    tax_status, rental_status = check_property_status(response)
+    tax_status, rental_status = check_property_status("IS NOT", "FORFEITED", 0)
     assert tax_status == "FORFEITED"
     assert rental_status == "UNREGISTERED"
 
 
 def test_check_property_status_registered_tax_debt():
-    response = Mock()
-    response.metadata = {
-        "result": [["John Doe", "IS", "UNKNOWN", 100]],
-        "col_keys": ["owner_name", "rental_status", "tax_status", "tax_due"],
-    }
-    tax_status, rental_status = check_property_status(response)
+    tax_status, rental_status = check_property_status("IS", "UNKNOWN", 100)
     assert tax_status == "TAX_DEBT"
     assert rental_status == "REGISTERED"
 
 
 def test_check_property_status_unknown_no_tax_debt():
-    response = Mock()
-    response.metadata = {
-        "result": [["John Doe", "IS NOT", "OK", 100]],
-        "col_keys": ["owner_name", "rental_status", "tax_status", "tax_due"],
-    }
-    tax_status, rental_status = check_property_status(response)
+    tax_status, rental_status = check_property_status("IS NOT", "OK", 100)
     assert tax_status == "NO_TAX_DEBT"
     assert rental_status == "UNREGISTERED"
 
