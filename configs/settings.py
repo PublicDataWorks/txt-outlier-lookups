@@ -1,3 +1,12 @@
+PARSE_FAILURE_REASONS = (
+    "outside_detroit",
+    "incomplete_address",
+    "contact_info",
+    "not_an_address",
+    "gibberish",
+)
+
+
 def get_address_parser_prompt(addresses):
     return (
         "You are given a list of potential addresses along with their timestamps. For each address:\n"
@@ -24,5 +33,24 @@ def get_address_parser_prompt(addresses):
         "{\n"
         " 'address': null,\n"
         " 'sunit': null\n"
+        "}"
+    )
+
+
+def get_parse_failure_reason_prompt(text):
+    return (
+        "A resident of Detroit, MI texted the message below to a property lookup service, and no street "
+        "address could be read from it. Pick the one reason that fits best:\n"
+        "- outside_detroit: a complete street address in a city other than Detroit. Some Detroit streets "
+        "share a name with another city, so pick this only when the message names a city other than Detroit\n"
+        "- incomplete_address: part of an address, such as a house number alone, a street name alone, or "
+        "house numbers with no street\n"
+        "- contact_info: a phone number or email address, with or without a name, and no street address\n"
+        "- not_an_address: readable conversation, such as an answer, a comment, a question or a menu choice\n"
+        "- gibberish: random characters, a joke or fake address, profanity, or an empty message\n\n"
+        f"Message:\n{text}\n\n"
+        "Return exactly one JSON object in the format:\n"
+        "{\n"
+        " 'reason': '[ONE OF THE REASONS ABOVE]'\n"
         "}"
     )

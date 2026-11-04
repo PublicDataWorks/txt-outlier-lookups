@@ -4,7 +4,7 @@ import traceback
 from loguru import logger
 
 from configs.llm import build_llm
-from configs.settings import get_address_parser_prompt
+from configs.settings import PARSE_FAILURE_REASONS, get_address_parser_prompt, get_parse_failure_reason_prompt
 
 
 def extract_address_information_with_llm(addresses):
@@ -28,3 +28,23 @@ def extract_address_information_with_llm(addresses):
         print(f"An error occurred at extract_address_information_with_llm: {traceback.format_exc()}")
         logger.error(f"The address parser failed: {type(e).__name__}")
         return None, None
+
+
+def classify_unparseable_text(text):
+    function_llm = build_llm(
+        "search_model",
+        temperature=0.1,
+        additional_kwargs={
+            "response_format": {
+                "type": "json_object"
+            }
+        }
+    )
+    try:
+        response = function_llm.complete(get_parse_failure_reason_prompt(text))
+        reason = json.loads(response.text).get("reason")
+    except Exception as e:
+        logger.error(f"Classifying a parse failure failed: {type(e).__name__}")
+        return "other"
+    # The reason goes to Sentry, so anything off the list could be the resident's own words.
+    return reason if reason in PARSE_FAILURE_REASONS else "other"

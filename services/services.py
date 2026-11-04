@@ -18,7 +18,7 @@ from configs.database import Session
 from configs.query_engine.owner_information_without_sunit import owner_query_engine_without_sunit
 from configs.query_engine.text_summary import generate_text_summary
 from constants.following_message import FollowingMessageType
-from helpers import extract_address_information_with_llm
+from helpers import classify_unparseable_text, extract_address_information_with_llm
 from libs.MissiveAPI import MissiveAPI
 from models import (
     Author,
@@ -45,10 +45,15 @@ def search_service(query, conversation_id, to_phone):
     address, sunit = extract_address_information_with_llm([query])
     if not address:
         # Mostly phone numbers, survey answers and suburban addresses, not app errors. One Sentry issue
-        # keeps them countable without alerting on each, and without the resident's text or number.
-        logger.info(f"Couldn't parse an address from the lookup text for conversation {conversation_id}")
+        # keeps them countable without alerting on each, and without the resident's text or number. The
+        # reason tag says why; the conversation tag leads to the text in Missive.
+        reason = classify_unparseable_text(query)
+        logger.info(f"Couldn't parse an address from the lookup text for conversation {conversation_id}: {reason}")
         sentry_sdk.capture_message(
-            "Couldn't parse an address from a lookup text", level="warning", fingerprint=["lookup-parse-failure"]
+            "Couldn't parse an address from a lookup text",
+            level="warning",
+            fingerprint=["lookup-parse-failure"],
+            tags={"reason": reason, "conversation_id": conversation_id},
         )
         return {"message": "Couldn't parse address from query"}, 200
 
