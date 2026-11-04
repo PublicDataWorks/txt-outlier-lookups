@@ -45,6 +45,7 @@ def classify_unparseable_text(text):
         reason = json.loads(response.text).get("reason")
     except Exception as e:
         logger.error(f"Classifying a parse failure failed: {type(e).__name__}")
-        return "other"
-    # The reason goes to Sentry, so anything off the list could be the resident's own words.
-    return reason if reason in PARSE_FAILURE_REASONS else "other"
+        return "unknown"
+    # The reason goes to Sentry, so anything off the list could be the resident's own words. Unknown
+    # is ours, not the model's: a run of them means the classifier is broken.
+    return reason if reason in PARSE_FAILURE_REASONS else "unknown"

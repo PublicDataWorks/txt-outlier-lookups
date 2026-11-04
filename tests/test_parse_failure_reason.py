@@ -21,22 +21,22 @@ def test_a_listed_reason_is_kept(reason):
     assert classify(json.dumps({"reason": reason})) == reason
 
 
-def test_a_reason_off_the_list_becomes_other():
-    assert classify(json.dumps({"reason": "Southfield is not in Detroit"})) == "other"
+def test_a_reason_off_the_list_becomes_unknown():
+    assert classify(json.dumps({"reason": "Southfield is not in Detroit"})) == "unknown"
 
 
-def test_a_reply_that_is_not_json_becomes_other():
-    assert classify("The resident sent an address in Southfield") == "other"
+def test_a_reply_that_is_not_json_becomes_unknown():
+    assert classify("The resident sent an address in Southfield") == "unknown"
 
 
-def test_a_reply_without_a_reason_becomes_other():
-    assert classify(json.dumps(["outside_detroit"])) == "other"
+def test_a_reply_without_a_reason_becomes_unknown():
+    assert classify(json.dumps(["outside_detroit"])) == "unknown"
 
 
-def test_a_failed_model_call_becomes_other():
+def test_a_failed_model_call_becomes_unknown():
     with patch("helpers.build_llm") as build_llm:
         build_llm.return_value.complete.side_effect = RuntimeError(f"model refused: {RESIDENT_TEXT}")
-        assert classify_unparseable_text(RESIDENT_TEXT) == "other"
+        assert classify_unparseable_text(RESIDENT_TEXT) == "unknown"
 
 
 def test_a_failed_model_call_logs_the_error_type_only():
