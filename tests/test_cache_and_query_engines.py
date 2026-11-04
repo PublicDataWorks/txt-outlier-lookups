@@ -27,10 +27,10 @@ cache = Cache(app, config={"CACHE_TYPE": "SimpleCache"})
 
 
 def test_get_lookup_templates():
-    with patch('configs.cache_template.session') as mock_session:
+    with patch('configs.cache_template.Session') as mock_session_factory:
         mock_query = MagicMock()
         mock_query.all.return_value = [type('Template', (object,), template) for template in mock_templates]
-        mock_session.query.return_value = mock_query
+        mock_session_factory.return_value.__enter__.return_value.query.return_value = mock_query
 
         templates = get_lookup_templates()
         assert len(templates) == len(mock_templates)

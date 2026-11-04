@@ -9,13 +9,13 @@ from models import LookupTemplate
 from services.analytics.config import BROADCAST_SOURCE_PHONE_NUMBER
 from templates.templates import templates
 
-session = Session()
 logger = logging.getLogger(__name__)
 
 
 def generate_report_summary(messages_history):
     try:
-        lookup_template = session.query(LookupTemplate).filter_by(name="sms_history_summary").first()
+        with Session() as session:
+            lookup_template = session.query(LookupTemplate).filter_by(name="sms_history_summary").first()
         if lookup_template:
             text = lookup_template.content
         else:

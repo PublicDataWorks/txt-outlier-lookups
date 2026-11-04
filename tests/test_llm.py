@@ -97,9 +97,10 @@ def test_weekly_report_only_calls_configured_models(fake_openai):
                       "sender_name": "Staff", "sender_email": "staff@example.com"}]
         for i in range(3)
     }
-    with patch("configs.query_engine.weekly_report_trend_summary.session") as mock_session, \
+    with patch("configs.query_engine.weekly_report_trend_summary.Session") as mock_session_factory, \
             patch("configs.llm.get_template_content_by_name", return_value="gpt-6-luna"):
-        mock_session.query.return_value.filter_by.return_value.first.return_value = MagicMock(content="Summarize")
+        session = mock_session_factory.return_value.__enter__.return_value
+        session.query.return_value.filter_by.return_value.first.return_value = MagicMock(content="Summarize")
         generate_report_summary(messages_history)
 
     assert set(fake_openai.requested_models) == {"gpt-6-luna", EMBEDDING_MODEL}
