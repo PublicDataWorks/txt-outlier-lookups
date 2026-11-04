@@ -31,18 +31,22 @@ def extract_address_information_with_llm(addresses):
 
 
 def classify_unparseable_text(text):
-    function_llm = build_llm(
-        "search_model",
-        temperature=0.1,
-        additional_kwargs={
-            "response_format": {
-                "type": "json_object"
-            }
-        }
-    )
     try:
+        # /search answers the Missive webhook only after this, and the reason is just a tag, so it
+        # gets less time and fewer retries than the parser (llama-index defaults: 60 s, 3 retries).
+        function_llm = build_llm(
+            "search_model",
+            temperature=0.1,
+            timeout=20,
+            max_retries=1,
+            additional_kwargs={
+                "response_format": {
+                    "type": "json_object"
+                }
+            }
+        )
         response = function_llm.complete(get_parse_failure_reason_prompt(text))
-        reason = json.loads(response.text).get("reason")
+        reason = str(json.loads(response.text).get("reason")).strip().lower()
     except Exception as e:
         logger.error(f"Classifying a parse failure failed: {type(e).__name__}")
         return "unknown"
