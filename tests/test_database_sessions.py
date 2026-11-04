@@ -121,8 +121,8 @@ print(open_transactions())
     assert left_open == "0"
 
 
-def test_a_gunicorn_worker_does_not_share_the_masters_database_connection():
-    shares = run_app("""
+def test_a_gunicorn_worker_gets_its_own_connection_and_leaves_the_masters_open():
+    connections = run_app("""
 import os, runpy
 import main
 from configs.database import Session
@@ -131,6 +131,7 @@ def server_pid():
     with Session() as session:
         return session.execute(text("select pg_backend_pid()")).scalar()
 
+master = server_pid()
 gunicorn_config = runpy.run_path("gunicorn.conf.py")
 read, write = os.pipe()
 if os.fork() == 0:
@@ -138,18 +139,22 @@ if os.fork() == 0:
     os.write(write, str(server_pid()).encode())
     os._exit(0)
 os.wait()
-print(int(os.read(read, 32)) == server_pid())
+worker = int(os.read(read, 32))
+print({"worker uses the master connection": worker == master, "master connection kept": server_pid() == master})
 """)
 
-    assert shares == "False"
+    assert connections == "{'worker uses the master connection': False, 'master connection kept': True}"
 
 
 LOOKUP_ROUTES = """
 from unittest.mock import patch
 import main
 
+property_queries = []
+
 def property_query(session, address, sunit):
     # The real query needs PostGIS and pg_trgm; any query on the session the route hands over will do.
+    property_queries.append(address)
     session.execute(text("select 1"))
     return []
 
@@ -162,12 +167,12 @@ with patch("services.services.extract_address_information_with_llm", return_valu
         patch.object(main, "query_mi_wayne_detroit", property_query), \\
         patch("services.services.missive_client"):
     main.app.test_client().post("%s", json=webhook)
-print(open_transactions() - before)
+print({"property queries": len(property_queries), "left open": open_transactions() - before})
 """
 
 
 @pytest.mark.parametrize("route", ["/search", "/yes", "/more"])
 def test_a_lookup_leaves_no_transaction_open(route):
-    left_open = run_app(LOOKUP_ROUTES % (LOOKUP_TAG, PHONE, route))
+    lookup = run_app(LOOKUP_ROUTES % (LOOKUP_TAG, PHONE, route))
 
-    assert left_open == "0"
+    assert lookup == "{'property queries': 1, 'left open': 0}"
