@@ -12,7 +12,7 @@ from flask_jwt_extended import JWTManager
 from loguru import logger
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from configs.cache_template import app, cache
+from configs.cache_template import app
 from configs.database import Session
 from configs.sentry import init_sentry
 from configs.query_engine.owner_information_without_sunit import owner_query_engine_without_sunit
@@ -20,6 +20,7 @@ from configs.supabase import run_websocket_listener
 from exceptions import APIException
 from helpers import extract_address_information_with_llm
 from libs.MissiveAPI import MissiveAPI, sms_sender
+from libs.webhook_claims import claim_webhook
 from middlewares.jwt_middleware import require_authentication
 from services.analytics.service import AnalyticsService
 from services import lookup_failures
@@ -104,22 +105,6 @@ def health_check():
     return "OK"
 
 
-# Missive retries a webhook that gets no answer within 15 seconds, up to 5 times over 8 minutes, and a
-# lookup's LLM calls can take longer than that. Retries arrive 15+ seconds apart, so a plain add is enough.
-SEARCH_DEDUPE_SECONDS = 15 * 60
-
-
-def first_time_seen(message_id):
-    if not message_id:
-        return True
-    try:
-        # The file cache is shared by every gunicorn worker in the container.
-        return bool(cache.add(f"search-msg:{message_id}", 1, timeout=SEARCH_DEDUPE_SECONDS))
-    except Exception as error:
-        logger.error(f"Checking for a repeated /search webhook failed: {type(error).__name__}")
-        return True
-
-
 @async_long_running
 @app.route("/search", methods=["POST"])
 # @require_authentication
@@ -129,7 +114,8 @@ def search():
     try:
         data = request.get_json()
         message_id = data.get("message", {}).get("id")
-        if not first_time_seen(message_id):
+        # Missive retries a webhook that takes over 15 seconds; a lookup must only run once.
+        if not claim_webhook(message_id):
             logger.info(f"Skipping a repeated /search webhook for message {message_id}")
             return jsonify({"message": "Already handled"}), 200
         conversation_id = data.get("conversation", {}).get("id")

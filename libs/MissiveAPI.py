@@ -12,7 +12,7 @@ from constants.urls import (
     CREATE_MESSAGE_URL,
     CREATE_POST_URL,
 )
-from libs.missive_sender import ANSWER, OrderedSender
+from libs.missive_sender import ANSWER, REQUEST_TIMEOUT_SECONDS, OrderedSender
 
 load_dotenv(override=True)
 
@@ -20,7 +20,7 @@ load_dotenv(override=True)
 def post_draft(body):
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {os.environ['MISSIVE_SECRET']}"}
     url = CREATE_POST_URL if "posts" in body else CREATE_MESSAGE_URL
-    return requests.post(url, headers=headers, data=json.dumps(body), timeout=30)
+    return requests.post(url, headers=headers, data=json.dumps(body), timeout=REQUEST_TIMEOUT_SECONDS)
 
 
 # Module level, not per MissiveAPI instance: several modules build their own MissiveAPI, and every

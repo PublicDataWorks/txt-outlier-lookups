@@ -11,6 +11,8 @@ from sentry_sdk.scope import use_isolation_scope, use_scope
 # Missive allows 900 requests per fixed 15-minute window. On broadcast evenings the broadcast drains
 # every window, so a reply may have to wait out one window and then compete for the next.
 GIVE_UP_AFTER_SECONDS = 30 * 60
+# How long one request to Missive may take before requests gives up on it.
+REQUEST_TIMEOUT_SECONDS = 30
 DEFAULT_RETRY_AFTER_SECONDS = 60
 # The answer and its follow-up must reach the phone in order, and back-to-back sends can arrive swapped.
 GAP_BETWEEN_SENDS_SECONDS = 2
@@ -155,8 +157,10 @@ class OrderedSender:
         response = self._post_after_gap(body)
         while response.status_code == 429:
             wait = retry_after_seconds(response)
-            if self._clock() + wait - queued_at > GIVE_UP_AFTER_SECONDS:
-                self._drop_post(conversation, "still rate limited 30 minutes after it was queued")
+            # The retry itself must also finish in time: an SMS queued just after this post shares its
+            # deadline, and the worker only reaches that SMS once the post's request returns.
+            if self._clock() + wait + REQUEST_TIMEOUT_SECONDS - queued_at > GIVE_UP_AFTER_SECONDS:
+                self._drop_post(conversation, "its retry couldn't finish within 30 minutes of being queued")
                 return
             self._sleep(wait)
             response = self._post_after_gap(body)

@@ -2,6 +2,8 @@ import json
 import os
 import subprocess
 import sys
+import threading
+import time
 import types
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
@@ -25,6 +27,7 @@ from constants.urls import CREATE_MESSAGE_URL, CREATE_POST_URL  # noqa: E402
 from libs.MissiveAPI import MissiveAPI, post_draft  # noqa: E402
 from helpers import extract_address_information_with_llm  # noqa: E402
 from libs.missive_sender import ANSWER, FALLBACK, FOLLOW_UP, OrderedSender  # noqa: E402
+from libs.webhook_claims import CLAIM_SECONDS, claim_webhook, sweep_expired_claims  # noqa: E402
 from services import lookup_failures  # noqa: E402
 from services.services import search_service  # noqa: E402
 from templates.templates import templates  # noqa: E402
@@ -117,6 +120,8 @@ def test_an_empty_owner_answer_leaves_a_post_and_texts_the_resident(missive):
     ]
     assert options["add_label_list"] == [FAILED_TAG]
     assert resident_sms(missive) == [call(LOOKUP_ERROR_SMS, PHONE, "conversation-1", role=FALLBACK)]
+    # No blank answer and no follow-up.
+    missive.replies.send_sms_sync.assert_not_called()
 
 
 @pytest.mark.parametrize("rows, template_name", [([], "no_match"), ([ROW, ROW], "closest_match")],
@@ -430,6 +435,31 @@ def test_a_post_gets_the_same_30_minutes_from_queueing_as_an_sms(logs, queued_ag
     assert_no_resident_data(" ".join(record["message"] for record in logs))
 
 
+def test_a_slow_post_retry_does_not_make_the_sms_behind_it_miss_its_deadline():
+    # Each request takes 25 s. The post's second 429 asks for 870 s, which would put its retry's answer
+    # past the 30 minutes of the SMS queued one second after it.
+    clock, sent = FakeClock(now=0), []
+    post_responses = iter([
+        status(429, {"error": {"params": {"retry_after": 880}}}),
+        status(429, {"error": {"params": {"retry_after": 870}}}),
+        ok(None),
+    ])
+
+    def post(body):
+        clock.now += 25
+        if "posts" in body:
+            return next(post_responses)
+        sent.append(clock())
+        return ok(body)
+
+    sender = OrderedSender(post, clock=clock, sleep=clock.sleep)
+    sender.deliver(queued_post(), queued_at=0)
+    sender.deliver(draft("answer"), queued_at=1)
+
+    assert clock.waits[0] == 880
+    assert len(sent) == 1 and sent[0] - 1 <= 30 * 60
+
+
 # What a dropped SMS means depends on what it was.
 
 def test_a_dropped_follow_up_is_only_logged(missive, logs):
@@ -509,6 +539,76 @@ def test_the_weekly_report_post_keeps_its_title_and_has_no_label(monkeypatch):
     body = json.loads(post.call_args.kwargs["data"])["posts"]
     assert body["notification"] == {"title": "Weekly Report", "body": "Summary"}
     assert "add_shared_labels" not in body
+
+
+# Claims on webhook message ids, so a webhook Missive retries is looked up once.
+
+def test_only_one_of_many_simultaneous_claims_on_a_message_wins(tmp_path):
+    start = threading.Barrier(16)
+    results = []
+
+    def claim():
+        start.wait()
+        results.append(claim_webhook("message-1", directory=tmp_path))
+
+    threads = [threading.Thread(target=claim) for _ in range(16)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert sorted(results) == [False] * 15 + [True]
+
+
+def test_claims_in_separate_processes_on_the_same_message_let_one_win(tmp_path):
+    script = "import sys; from libs.webhook_claims import claim_webhook; print(claim_webhook('message-1', sys.argv[1]))"
+    runs = [subprocess.Popen([sys.executable, "-c", script, str(tmp_path)], cwd=REPO, stdout=subprocess.PIPE,
+                             text=True) for _ in range(4)]
+
+    assert sorted(run.communicate(timeout=60)[0].strip() for run in runs) == ["False"] * 3 + ["True"]
+
+
+def test_an_expired_claim_can_be_claimed_again(tmp_path):
+    assert claim_webhook("message-1", directory=tmp_path)
+    assert not claim_webhook("message-1", directory=tmp_path)
+
+    later = time.time() + CLAIM_SECONDS + 1
+    assert claim_webhook("message-1", directory=tmp_path, clock=lambda: later)
+    # The new claim starts its own 15 minutes.
+    assert not claim_webhook("message-1", directory=tmp_path)
+
+
+def test_a_claim_file_name_cannot_be_chosen_by_the_message_id(tmp_path):
+    claims = tmp_path / "claims"
+
+    assert claim_webhook("../../escape", directory=claims)
+
+    [claim] = list(claims.iterdir())
+    assert len(claim.name) == 64 and not (tmp_path / "escape").exists()
+
+
+def test_a_message_without_an_id_is_never_claimed(tmp_path):
+    assert claim_webhook(None, directory=tmp_path) and claim_webhook(None, directory=tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_claim_that_cannot_be_checked_lets_the_lookup_run(tmp_path, logs):
+    blocked = tmp_path / "file"
+    blocked.write_text("")
+
+    assert claim_webhook("message-1", directory=blocked / "claims")
+    assert errors_in(logs) == ["Checking for a repeated webhook failed: NotADirectoryError"]
+
+
+def test_the_sweep_removes_only_expired_claims(tmp_path):
+    claim_webhook("old", directory=tmp_path)
+    [old] = list(tmp_path.iterdir())
+    os.utime(old, (time.time() - CLAIM_SECONDS - 1,) * 2)
+    claim_webhook("new", directory=tmp_path)
+
+    sweep_expired_claims(tmp_path)
+
+    assert len(list(tmp_path.iterdir())) == 1 and not old.exists()
 
 
 # /search itself, in a fresh process as the app runs (main.py sets up Sentry and logging at import).
