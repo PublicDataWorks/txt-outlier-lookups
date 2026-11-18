@@ -8,9 +8,9 @@ import sentry_sdk
 from loguru import logger
 from sentry_sdk.scope import use_isolation_scope, use_scope
 
-# Missive allows 900 requests per fixed 15-minute window. On broadcast evenings the broadcast drains
-# every window, so a reply may have to wait out one window and then compete for the next.
-GIVE_UP_AFTER_SECONDS = 30 * 60
+# Missive allows 900 requests per fixed 15-minute window. On broadcast evenings the broadcast can drain
+# every window for hours, so a reply keeps retrying at each reset. A late answer still helps the resident.
+GIVE_UP_AFTER_SECONDS = 4 * 60 * 60
 DEFAULT_RETRY_AFTER_SECONDS = 60
 # The answer and its follow-up must reach the phone in order, and back-to-back sends can arrive swapped.
 GAP_BETWEEN_SENDS_SECONDS = 2
@@ -102,14 +102,14 @@ class OrderedSender:
             logger.warning(f"Skipping the SMS for conversation {conversation}: an earlier SMS of this lookup failed")
             return
         if self._clock() - queued_at > GIVE_UP_AFTER_SECONDS:
-            self._drop(conversation, queued_at, "waited over 30 minutes behind rate limited SMS")
+            self._drop(conversation, queued_at, "waited over 4 hours behind rate limited SMS")
             return
 
         response = self._post_after_gap(body)
         while response.status_code == 429:
             wait = retry_after_seconds(response)
             if self._clock() + wait - queued_at > GIVE_UP_AFTER_SECONDS:
-                self._drop(conversation, queued_at, "still rate limited 30 minutes after it was queued")
+                self._drop(conversation, queued_at, "still rate limited 4 hours after it was queued")
                 return
             logger.warning(f"Missive rate limited the SMS for conversation {conversation}, retrying in {wait}s")
             self._sleep(wait)

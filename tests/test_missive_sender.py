@@ -17,6 +17,7 @@ from libs.MissiveAPI import MissiveAPI, post_draft, sms_sender
 from libs.missive_sender import OrderedSender
 
 QUARTER_HOUR = 15 * 60
+FOUR_HOURS = 4 * 60 * 60
 PHONE = "+15550001234"
 RESIDENT_TEXT = "We don't have info for 1111 E. Jefferson"
 REPO = Path(__file__).resolve().parents[1]
@@ -109,7 +110,8 @@ def logs():
     (6 * QUARTER_HOUR, "body"),
     (6 * QUARTER_HOUR, "header"),
     (7 * QUARTER_HOUR, "body"),
-], ids=["next window", "retry-after header", "window after next"])
+    (20 * QUARTER_HOUR, "body"),
+], ids=["next window", "retry-after header", "window after next", "broadcast lasting over 3 hours"])
 def test_reply_is_sent_as_soon_as_the_rate_limit_window_resets(busy_until, retry_after_in):
     clock, missive, sender = rate_limited_until(busy_until, retry_after_in)
 
@@ -118,8 +120,8 @@ def test_reply_is_sent_as_soon_as_the_rate_limit_window_resets(busy_until, retry
     assert missive.sent == [(busy_until + 1, "answer")]
 
 
-def test_reply_that_would_go_out_after_30_minutes_is_dropped_instead():
-    clock, missive, sender = rate_limited_until(8 * QUARTER_HOUR)
+def test_reply_that_would_go_out_after_4_hours_is_dropped_instead():
+    clock, missive, sender = rate_limited_until(22 * QUARTER_HOUR)
 
     sender.deliver(draft("answer"), queued_at=clock())
 
@@ -127,10 +129,10 @@ def test_reply_that_would_go_out_after_30_minutes_is_dropped_instead():
 
 
 @pytest.mark.parametrize("retry_after, expected", [
-    (29 * 60 + 59, ("sent", [29 * 60 + 59])),
-    (30 * 60 + 1, ("dropped", [])),
-], ids=["29:59", "30:01"])
-def test_the_30_minute_limit_is_checked_before_waiting(retry_after, expected):
+    (FOUR_HOURS - 1, ("sent", [FOUR_HOURS - 1])),
+    (FOUR_HOURS + 1, ("dropped", [])),
+], ids=["3:59:59", "4:00:01"])
+def test_the_4_hour_limit_is_checked_before_waiting(retry_after, expected):
     clock = FakeClock(now=0)
     waits = []
     responses = [rate_limited(retry_after), missive_response(201)]
@@ -144,15 +146,15 @@ def test_the_30_minute_limit_is_checked_before_waiting(retry_after, expected):
     assert ("sent" if not responses else "dropped", waits) == expected
 
 
-def test_reply_that_waited_behind_others_for_30_minutes_is_dropped_without_a_send():
+def test_reply_that_waited_behind_others_for_4_hours_is_dropped_without_a_send():
     clock, missive, sender = rate_limited_until(0)
 
-    sender.deliver(draft("follow-up"), queued_at=clock() - 31 * 60)
+    sender.deliver(draft("follow-up"), queued_at=clock() - FOUR_HOURS - 60)
 
     assert missive.sent == []
 
 
-def test_the_30_minutes_count_from_when_the_reply_was_queued():
+def test_the_4_hours_count_from_when_the_reply_was_queued():
     clock = FakeClock(now=0)
     sent = []
     attempts = []
@@ -160,8 +162,8 @@ def test_the_30_minutes_count_from_when_the_reply_was_queued():
     def post(body):
         text = body["drafts"]["body"]
         attempts.append(text)
-        if text == "first conversation" and clock() < 25 * 60:
-            return rate_limited(25 * 60 - clock())
+        if text == "first conversation" and clock() < 235 * 60:
+            return rate_limited(235 * 60 - clock())
         if attempts.count("second conversation") == 1:
             return rate_limited(10 * 60)
         sent.append(text)
@@ -176,8 +178,8 @@ def test_the_30_minutes_count_from_when_the_reply_was_queued():
 
 
 def test_follow_up_is_dropped_when_its_answer_was():
-    clock = FakeClock(now=1700)
-    missive = FakeMissive(clock, busy_until=2 * QUARTER_HOUR + 1)
+    clock = FakeClock(now=FOUR_HOURS - 100)
+    missive = FakeMissive(clock, busy_until=16 * QUARTER_HOUR + 1)
     sender = OrderedSender(missive.post, clock=clock, sleep=clock.sleep)
 
     sender.deliver(draft("answer"), queued_at=0)
@@ -187,38 +189,38 @@ def test_follow_up_is_dropped_when_its_answer_was():
 
 
 def test_a_resident_retry_is_still_sent_after_their_first_lookup_was_dropped():
-    clock = FakeClock(now=1700)
-    missive = FakeMissive(clock, busy_until=2 * QUARTER_HOUR + 1)
+    clock = FakeClock(now=FOUR_HOURS - 100)
+    missive = FakeMissive(clock, busy_until=16 * QUARTER_HOUR + 1)
     sender = OrderedSender(missive.post, clock=clock, sleep=clock.sleep)
 
     sender.deliver(draft("answer"), queued_at=0)
     sender.deliver(draft("retry answer"), queued_at=84)
 
-    assert missive.sent == [(2 * QUARTER_HOUR + 1, "retry answer")]
+    assert missive.sent == [(16 * QUARTER_HOUR + 1, "retry answer")]
 
 
 def test_a_dropped_reply_does_not_hold_back_other_conversations():
-    clock = FakeClock(now=1700)
-    missive = FakeMissive(clock, busy_until=2 * QUARTER_HOUR + 1)
+    clock = FakeClock(now=FOUR_HOURS - 100)
+    missive = FakeMissive(clock, busy_until=16 * QUARTER_HOUR + 1)
     sender = OrderedSender(missive.post, clock=clock, sleep=clock.sleep)
 
     sender.deliver(draft("answer"), queued_at=0)
     sender.deliver(draft("other answer", conversation="conversation-2"), queued_at=2)
 
-    assert missive.sent == [(2 * QUARTER_HOUR + 1, "other answer")]
+    assert missive.sent == [(16 * QUARTER_HOUR + 1, "other answer")]
 
 
 def test_dropping_a_reply_logs_one_fixed_error_for_sentry_to_group(logs):
-    clock, _, sender = rate_limited_until(9 * QUARTER_HOUR)
+    clock, _, sender = rate_limited_until(23 * QUARTER_HOUR)
 
     sender.deliver(draft("answer"), queued_at=clock())
-    sender.deliver(draft("follow-up", conversation="conversation-2"), queued_at=clock() - 31 * 60)
+    sender.deliver(draft("follow-up", conversation="conversation-2"), queued_at=clock() - FOUR_HOURS - 60)
 
     assert errors(logs) == ["Dropped a lookup SMS held up by Missive rate limits"] * 2
 
 
 def test_rate_limit_logs_leave_out_the_phone_number_and_message(logs):
-    clock, _, sender = rate_limited_until(9 * QUARTER_HOUR)
+    clock, _, sender = rate_limited_until(23 * QUARTER_HOUR)
 
     sender.deliver(draft(RESIDENT_TEXT), queued_at=clock())
 
