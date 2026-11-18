@@ -20,6 +20,7 @@ from configs.query_engine.text_summary import generate_text_summary
 from constants.following_message import FollowingMessageType
 from helpers import classify_unparseable_text, extract_address_information_with_llm
 from libs.MissiveAPI import MissiveAPI
+from libs.missive_sender import FOLLOW_UP
 from services.lookup_failures import (
     EMPTY_ANSWER,
     MISSING_TEMPLATE,
@@ -47,7 +48,8 @@ CACHE_TTL = 24 * 60 * 60
 
 def search_service(query, conversation_id, to_phone):
     logger.info(f"[search_service] conversation_id={conversation_id}")
-    address, sunit = extract_address_information_with_llm([query])
+    # A parser error raises to /search's catch-all, which texts the resident: it's ours, not theirs.
+    address, sunit = extract_address_information_with_llm([query], raise_errors=True)
     if not address:
         # Mostly phone numbers, survey answers and suburban addresses, not app errors. One Sentry issue
         # keeps them countable without alerting on each, and without the resident's text or number. The
@@ -100,7 +102,8 @@ def search_service(query, conversation_id, to_phone):
 
     query_result = owner_query_engine_without_sunit(str(results[0]))
 
-    if not query_result:
+    # The engine returns a CompletionResponse, which is truthy even when its text is empty.
+    if not str(query_result).strip():
         logger.error(f"[search_service] Query returned no results for conversation {conversation_id}")
         report_lookup_failure(conversation_id, to_phone, EMPTY_ANSWER, notify_resident=True)
         return "", 200
@@ -193,7 +196,7 @@ def handle_match(
     if rental_status == "IS":
         response += "It is registered as a residential rental property"
 
-    # Missive API -> Send SMS template
+    # Missive API -> Send SMS template. Everything after this first SMS is a follow-up to it.
     missive_client.send_sms_sync(
         response,
         conversation_id=conversation_id,
@@ -209,6 +212,7 @@ def handle_match(
             conversation_id=conversation_id,
             to_phone=to_phone,
             add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
+            role=FOLLOW_UP,
         )
         time.sleep(2)
 
@@ -218,6 +222,7 @@ def handle_match(
             conversation_id=conversation_id,
             to_phone=to_phone,
             add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
+            role=FOLLOW_UP,
         )
         time.sleep(2)
 
@@ -226,6 +231,7 @@ def handle_match(
         conversation_id=conversation_id,
         to_phone=to_phone,
         add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
+        role=FOLLOW_UP,
     )
 
     return {"result": str(response)}, 200

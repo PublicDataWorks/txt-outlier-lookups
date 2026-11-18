@@ -12,7 +12,7 @@ from constants.urls import (
     CREATE_MESSAGE_URL,
     CREATE_POST_URL,
 )
-from libs.missive_sender import OrderedSender
+from libs.missive_sender import ANSWER, OrderedSender
 
 load_dotenv(override=True)
 
@@ -70,6 +70,7 @@ class MissiveAPI:
         conversation_id=None,
         add_label_list=None,
         remove_label_list=None,
+        role=ANSWER,
     ):
         if add_label_list is None:
             add_label_list = []
@@ -92,7 +93,7 @@ class MissiveAPI:
 
         # Queued rather than sent here: Missive rate limits us on broadcast evenings, and waiting
         # out a 15-minute window inside the request would hold a gunicorn worker the whole time.
-        sms_sender.submit(body)
+        sms_sender.submit(body, role)
 
     def post_body(self, markdowns, conversation_id, notification_title="Weekly Report", add_label_list=None):
         attachments = [

@@ -7,7 +7,9 @@ from configs.llm import build_llm
 from configs.settings import PARSE_FAILURE_REASONS, get_address_parser_prompt, get_parse_failure_reason_prompt
 
 
-def extract_address_information_with_llm(addresses):
+def extract_address_information_with_llm(addresses, raise_errors=False):
+    """Returns (None, None) when no address is found. With raise_errors, a failure of the model call or
+    its answer is raised instead of looking like "no address", so /search can treat it as our error."""
     function_llm = build_llm(
         "search_model",
         temperature=0.1,
@@ -27,6 +29,8 @@ def extract_address_information_with_llm(addresses):
     except Exception as e:
         print(f"An error occurred at extract_address_information_with_llm: {traceback.format_exc()}")
         logger.error(f"The address parser failed: {type(e).__name__}")
+        if raise_errors:
+            raise
         return None, None
 
 
