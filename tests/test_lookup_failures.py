@@ -35,8 +35,8 @@ FAILED_TAG = "lookup-failed-tag"
 LOOKUP_TAG = "lookup-tag"
 # Not the code template: a test can't depend on what a lookup_template row says.
 LOOKUP_ERROR_SMS = "Sorry, test lookup error text."
-ON_ITS_WAY = ("A text telling the resident a reporter will follow up is on its way. "
-              "If Missive drops it, another note will say so.")
+ON_ITS_WAY = ("A text telling the resident a reporter will follow up was queued, but delivery isn't confirmed. "
+              "If Missive drops it, another note may follow.")
 REPO = Path(__file__).resolve().parents[1]
 # One property row: owner, address, rental_status, tax_status, zip_code, tax_due.
 ROW = ("JANE OWNER", "1111 E JEFFERSON AVE", "IS NOT", "OK", "48207", "0")

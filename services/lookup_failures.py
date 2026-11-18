@@ -37,8 +37,8 @@ def report_lookup_failure(conversation_id, to_phone, kind, notify_resident, deta
 
     texted = notify_resident and _text_resident(conversation_id, to_phone)
     follow_up = (
-        "A text telling the resident a reporter will follow up is on its way. If Missive drops it, another note "
-        "will say so." if texted else "The resident wasn't texted."
+        "A text telling the resident a reporter will follow up was queued, but delivery isn't confirmed. If "
+        "Missive drops it, another note may follow." if texted else "The resident wasn't texted."
     )
     markdown = f"Automatic address lookup didn't reply: {reason}. {follow_up} Please follow up by hand."
 
@@ -79,7 +79,7 @@ FALLBACK_DROPPED = "The text telling the resident a reporter will follow up didn
 def report_dropped_reply(conversation_id, role=ANSWER):
     """Called by the SMS queue for each SMS Missive never took."""
     if role == FALLBACK:
-        # The lookup was already reported; this only corrects that report's "on its way". No label: the
+        # The lookup was already reported; this only corrects that report's "was queued". No label: the
         # first report added it.
         try:
             missive_client.queue_post([FALLBACK_DROPPED], conversation_id, notification_title="Address lookup failed")
