@@ -168,6 +168,8 @@ Stores comments and tasks related to conversations:
 - `MISSIVE_SECRET`: A secret key for authenticating with the Missive API.
 - `MISSIVE_ORGANIZATION`: The organization identifier for your Missive account.
 - `MISSIVE_WEEKLY_REPORT_CONVERSATION_ID`: The ID of a specific conversation in Missive for weekly reports.
+- `MISSIVE_LOOKUP_TAG_ID`: The ID of the Missive shared label added to conversations that got a lookup answer.
+- `MISSIVE_LOOKUP_FAILED_TAG_ID`: The ID of the Missive shared label "address lookup failed". `/search` adds it, with a post for staff, when a lookup can't reply. If unset, the post is still made without the label.
 - `SFTP_HOST`: The hostname or IP address of the SFTP server(Detroit rental property data)
 - `SFTP_USERNAME`: The username for authenticating with the SFTP server.
 - `SFTP_PASSWORD`: The password for authenticating with the SFTP server.

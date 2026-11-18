@@ -20,6 +20,10 @@ EXIT_DRAIN_SECONDS = 5
 SAME_LOOKUP_SECONDS = 30
 
 
+def is_post(body):
+    return "posts" in body
+
+
 def retry_after_seconds(response):
     try:
         seconds = int(response.json()["error"]["params"]["retry_after"])
@@ -30,7 +34,7 @@ def retry_after_seconds(response):
 
 
 class OrderedSender:
-    """Sends Missive drafts one at a time, in the order they were submitted, waiting out 429s.
+    """Sends Missive drafts and posts one at a time, in the order they were submitted, waiting out 429s.
 
     Gunicorn forks its workers after main.py is imported, and a thread does not survive a fork,
     so each process starts its own queue and sending thread the first time it submits.
@@ -38,10 +42,14 @@ class OrderedSender:
     Each failure logs a WARNING with the details and an ERROR with fixed text, so Sentry groups one
     issue per kind of failure. Nothing is logged with exception info: Sentry and loguru would record
     the frame locals, which hold the resident's phone number, the SMS and the API token.
+
+    `on_dropped(conversation_id)` is called once for each lookup whose SMS Missive never took, so staff
+    can be told. main.py sets it, because the note it leaves belongs to the lookup, not the sender.
     """
 
-    def __init__(self, post, clock=time.monotonic, sleep=time.sleep):
+    def __init__(self, post, clock=time.monotonic, sleep=time.sleep, on_dropped=None):
         self._post = post
+        self.on_dropped = on_dropped
         self._clock = clock
         self._sleep = sleep
         self._pid = None
@@ -90,12 +98,18 @@ class OrderedSender:
                 try:
                     self.deliver(body, queued_at)
                 except Exception as error:
-                    self._failed(body["drafts"].get("conversation"), queued_at)
-                    logger.error(f"Missive sender failed to send a lookup SMS: {type(error).__name__}")
+                    if is_post(body):
+                        logger.error(f"Missive sender failed to send a lookup post: {type(error).__name__}")
+                    else:
+                        self._failed(body["drafts"].get("conversation"), queued_at)
+                        logger.error(f"Missive sender failed to send a lookup SMS: {type(error).__name__}")
             with self._lock:
                 self._unsent -= 1
 
     def deliver(self, body, queued_at):
+        if is_post(body):
+            self._deliver_post(body, queued_at)
+            return
         conversation = body["drafts"].get("conversation")
         # A follow-up that arrives without its answer only confuses the resident.
         if queued_at - self._failed_at.get(conversation, float("-inf")) <= SAME_LOOKUP_SECONDS:
@@ -120,6 +134,23 @@ class OrderedSender:
             logger.warning(f"Missive rejected the SMS for conversation {conversation}")
             logger.error(f"Missive send message failed with status code {response.status_code}")
 
+    def _deliver_post(self, body, queued_at):
+        # A post is the note telling staff a reply went missing, so it is never skipped for an earlier
+        # failure, and its own failure is only logged: there is nowhere left to report it.
+        conversation = body["posts"].get("conversation")
+        response = self._post_after_gap(body)
+        while response.status_code == 429:
+            wait = retry_after_seconds(response)
+            if self._clock() + wait - queued_at > GIVE_UP_AFTER_SECONDS:
+                logger.warning(f"Dropping the post for conversation {conversation}: still rate limited after 30 minutes")
+                logger.error("Dropped a lookup post held up by Missive rate limits")
+                return
+            self._sleep(wait)
+            response = self._post_after_gap(body)
+        if not response.ok:
+            logger.warning(f"Missive rejected the post for conversation {conversation}")
+            logger.error(f"Missive create post failed with status code {response.status_code}")
+
     def _post_after_gap(self, body):
         wait = self._last_post_at + GAP_BETWEEN_SENDS_SECONDS - self._clock()
         if wait > 0:
@@ -128,8 +159,16 @@ class OrderedSender:
         return self._post(body)
 
     def _failed(self, conversation, queued_at):
-        if conversation is not None:
-            self._failed_at[conversation] = queued_at
+        # The SMS after this one in the same lookup are skipped, not failed, so this runs once a lookup.
+        if conversation is None:
+            return
+        self._failed_at[conversation] = queued_at
+        if self.on_dropped is None:
+            return
+        try:
+            self.on_dropped(conversation)
+        except Exception as error:
+            logger.error(f"Reporting a dropped lookup SMS failed: {type(error).__name__}")
 
     def _drop(self, conversation, queued_at, reason):
         self._failed(conversation, queued_at)

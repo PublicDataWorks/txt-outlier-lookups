@@ -19,9 +19,11 @@ from configs.query_engine.owner_information_without_sunit import owner_query_eng
 from configs.supabase import run_websocket_listener
 from exceptions import APIException
 from helpers import extract_address_information_with_llm
-from libs.MissiveAPI import MissiveAPI
+from libs.MissiveAPI import MissiveAPI, sms_sender
 from middlewares.jwt_middleware import require_authentication
 from services.analytics.service import AnalyticsService
+from services import lookup_failures
+from services.lookup_failures import SYSTEM_ERROR, report_dropped_reply, report_lookup_failure
 from services.services import (
     extract_address_messages_from_supabase,
     get_conversation_data,
@@ -69,6 +71,8 @@ def handle_invalid_usage(error):
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 missive_client = MissiveAPI()
+# The SMS queue tells staff in Missive when it gives up on a lookup reply.
+sms_sender.on_dropped = report_dropped_reply
 
 
 def async_long_running(f):
@@ -104,6 +108,8 @@ def health_check():
 @app.route("/search", methods=["POST"])
 # @require_authentication
 def search():
+    conversation_id = to_phone = None
+    reported = lookup_failures.reported.set(False)
     try:
         data = request.get_json()
         conversation_id = data.get("conversation", {}).get("id")
@@ -117,7 +123,12 @@ def search():
     except Exception as e:
         print(f"An error occurred at lookup /search: {traceback.format_exc()}")
         logger.error(f"Lookup /search failed: {type(e).__name__}")
+        if not lookup_failures.reported.get():
+            report_lookup_failure(conversation_id, to_phone, SYSTEM_ERROR, notify_resident=True,
+                                  detail=type(e).__name__)
         return jsonify({"error": str(e)}), 200
+    finally:
+        lookup_failures.reported.reset(reported)
 
 
 @app.route("/yes", methods=["POST"])

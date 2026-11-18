@@ -19,7 +19,8 @@ load_dotenv(override=True)
 
 def post_draft(body):
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {os.environ['MISSIVE_SECRET']}"}
-    return requests.post(CREATE_MESSAGE_URL, headers=headers, data=json.dumps(body), timeout=30)
+    url = CREATE_POST_URL if "posts" in body else CREATE_MESSAGE_URL
+    return requests.post(url, headers=headers, data=json.dumps(body), timeout=30)
 
 
 # Module level, not per MissiveAPI instance: several modules build their own MissiveAPI, and every
@@ -93,7 +94,7 @@ class MissiveAPI:
         # out a 15-minute window inside the request would hold a gunicorn worker the whole time.
         sms_sender.submit(body)
 
-    def send_post_sync(self, markdowns, conversation_id):
+    def post_body(self, markdowns, conversation_id, notification_title="Weekly Report", add_label_list=None):
         attachments = [
             {"markdown": markdown, "color": "good"} for markdown in markdowns
         ]
@@ -101,12 +102,18 @@ class MissiveAPI:
             "posts": {
                 "conversation": conversation_id,
                 "organization": self.organization,
-                "notification": {"title": "Weekly Report", "body": "Summary"},
+                "notification": {"title": notification_title, "body": "Summary"},
                 "username": "TXT Outlier",
                 "username_icon": "https://s3.amazonaws.com/missive-assets/missive-avatar.png",
                 "attachments": attachments,
             },
         }
+        if add_label_list:
+            body["posts"]["add_shared_labels"] = add_label_list
+        return body
+
+    def send_post_sync(self, markdowns, conversation_id, notification_title="Weekly Report"):
+        body = self.post_body(markdowns, conversation_id, notification_title)
 
         response = requests.post(
             CREATE_POST_URL, headers=self.headers, data=json.dumps(body)
@@ -116,3 +123,8 @@ class MissiveAPI:
             return None
 
         return response
+
+    def queue_post(self, markdowns, conversation_id, notification_title, add_label_list=None):
+        # Through the SMS queue, so the post waits out Missive's rate limit like the SMS do. A post
+        # sent straight after a reply was dropped for rate limiting would only be rate limited too.
+        sms_sender.submit(self.post_body(markdowns, conversation_id, notification_title, add_label_list))

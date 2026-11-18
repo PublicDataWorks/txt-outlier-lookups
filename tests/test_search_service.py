@@ -22,6 +22,13 @@ from services.services import query_mi_wayne_detroit, search_service  # noqa: E4
 PHONE = "+15550001234"
 
 
+@pytest.fixture(autouse=True)
+def no_missive():
+    # Parse failures now leave a post in Missive; keep it off the real API.
+    with patch("services.lookup_failures.missive_client"):
+        yield
+
+
 @pytest.fixture
 def logs():
     records = []
