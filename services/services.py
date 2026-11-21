@@ -20,6 +20,13 @@ from configs.query_engine.text_summary import generate_text_summary
 from constants.following_message import FollowingMessageType
 from helpers import classify_unparseable_text, extract_address_information_with_llm
 from libs.MissiveAPI import MissiveAPI
+from libs.missive_sender import FOLLOW_UP
+from services.lookup_failures import (
+    EMPTY_ANSWER,
+    MISSING_TEMPLATE,
+    PARSE_FAILURE,
+    report_lookup_failure,
+)
 from models import (
     Author,
     Comments,
@@ -41,7 +48,8 @@ CACHE_TTL = 24 * 60 * 60
 
 def search_service(query, conversation_id, to_phone):
     logger.info(f"[search_service] conversation_id={conversation_id}")
-    address, sunit = extract_address_information_with_llm([query])
+    # A parser error raises to /search's catch-all, which texts the resident: it's ours, not theirs.
+    address, sunit = extract_address_information_with_llm([query], raise_errors=True)
     if not address:
         # Mostly phone numbers, survey answers and suburban addresses, not app errors. One Sentry issue
         # keeps them countable without alerting on each, and without the resident's text or number. The
@@ -54,6 +62,8 @@ def search_service(query, conversation_id, to_phone):
             fingerprint=["lookup-parse-failure"],
             tags={"reason": reason, "conversation_id": conversation_id},
         )
+        # Staff only: a "we couldn't find that address" text would confuse someone answering a survey.
+        report_lookup_failure(conversation_id, to_phone, PARSE_FAILURE, notify_resident=False, detail=reason)
         return {"message": "Couldn't parse address from query"}, 200
 
     with Session() as session:
@@ -62,7 +72,7 @@ def search_service(query, conversation_id, to_phone):
 
     if not results:
         logger.info(f"No results found for the lookup in conversation {conversation_id}")
-        return handle_no_match(display_address, conversation_id, to_phone)
+        return reply_or_report(handle_no_match, "no_match", display_address, conversation_id, to_phone)
 
     owner, address, rental_status, tax_status, zip_code, tax_due = results[0]
     if not tax_status and tax_due and int(tax_due) > 0:
@@ -88,12 +98,14 @@ def search_service(query, conversation_id, to_phone):
         )
 
     if len(results) > 1:
-        return handle_ambiguous(display_address, conversation_id, to_phone)
+        return reply_or_report(handle_ambiguous, "closest_match", display_address, conversation_id, to_phone)
 
     query_result = owner_query_engine_without_sunit(str(results[0]))
 
-    if not query_result:
+    # The engine returns a CompletionResponse, which is truthy even when its text is empty.
+    if not str(query_result).strip():
         logger.error(f"[search_service] Query returned no results for conversation {conversation_id}")
+        report_lookup_failure(conversation_id, to_phone, EMPTY_ANSWER, notify_resident=True)
         return "", 200
 
     following_messages = []
@@ -101,6 +113,15 @@ def search_service(query, conversation_id, to_phone):
         if "LAND BANK" in owner.upper():
             following_messages.append(get_template_content_by_name(FollowingMessageType.LAND_BANK.value))
     return handle_match(query_result, conversation_id, to_phone, rental_status, following_messages, tax_status)
+
+
+def reply_or_report(handle, template_name, display_address, conversation_id, to_phone):
+    response, status = handle(display_address, conversation_id, to_phone)
+    if status != 500:
+        return response, status
+    report_lookup_failure(conversation_id, to_phone, MISSING_TEMPLATE, notify_resident=True, detail=template_name)
+    # 200, not 500: Missive retries a failed webhook up to 5 times, and each retry would post and text again.
+    return response, 200
 
 
 def more_search_service(conversation_id, to_phone):
@@ -175,7 +196,7 @@ def handle_match(
     if rental_status == "IS":
         response += "It is registered as a residential rental property"
 
-    # Missive API -> Send SMS template
+    # Missive API -> Send SMS template. Everything after this first SMS is a follow-up to it.
     missive_client.send_sms_sync(
         response,
         conversation_id=conversation_id,
@@ -191,6 +212,7 @@ def handle_match(
             conversation_id=conversation_id,
             to_phone=to_phone,
             add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
+            role=FOLLOW_UP,
         )
         time.sleep(2)
 
@@ -200,6 +222,7 @@ def handle_match(
             conversation_id=conversation_id,
             to_phone=to_phone,
             add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
+            role=FOLLOW_UP,
         )
         time.sleep(2)
 
@@ -208,6 +231,7 @@ def handle_match(
         conversation_id=conversation_id,
         to_phone=to_phone,
         add_label_list=[os.environ.get("MISSIVE_LOOKUP_TAG_ID")],
+        role=FOLLOW_UP,
     )
 
     return {"result": str(response)}, 200

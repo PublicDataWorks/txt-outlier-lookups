@@ -11,6 +11,8 @@ from sentry_sdk.scope import use_isolation_scope, use_scope
 # Missive allows 900 requests per fixed 15-minute window. On broadcast evenings the broadcast drains
 # every window, so a reply may have to wait out one window and then compete for the next.
 GIVE_UP_AFTER_SECONDS = 30 * 60
+# How long one request to Missive may take before requests gives up on it.
+REQUEST_TIMEOUT_SECONDS = 30
 DEFAULT_RETRY_AFTER_SECONDS = 60
 # The answer and its follow-up must reach the phone in order, and back-to-back sends can arrive swapped.
 GAP_BETWEEN_SENDS_SECONDS = 2
@@ -18,6 +20,16 @@ GAP_BETWEEN_SENDS_SECONDS = 2
 EXIT_DRAIN_SECONDS = 5
 # One lookup queues all its SMS within about 8 s; the quickest resident retry seen was 84 s later.
 SAME_LOOKUP_SECONDS = 30
+
+
+# What a queued SMS is to its lookup, which decides what a drop means:
+ANSWER = "answer"        # the reply itself; dropping it leaves the resident with nothing
+FOLLOW_UP = "follow_up"  # sent after an answer; the resident already has the answer
+FALLBACK = "fallback"    # the lookup_error text sent because the lookup failed
+
+
+def is_post(body):
+    return "posts" in body
 
 
 def retry_after_seconds(response):
@@ -30,7 +42,7 @@ def retry_after_seconds(response):
 
 
 class OrderedSender:
-    """Sends Missive drafts one at a time, in the order they were submitted, waiting out 429s.
+    """Sends Missive drafts and posts one at a time, in the order they were submitted, waiting out 429s.
 
     Gunicorn forks its workers after main.py is imported, and a thread does not survive a fork,
     so each process starts its own queue and sending thread the first time it submits.
@@ -38,10 +50,14 @@ class OrderedSender:
     Each failure logs a WARNING with the details and an ERROR with fixed text, so Sentry groups one
     issue per kind of failure. Nothing is logged with exception info: Sentry and loguru would record
     the frame locals, which hold the resident's phone number, the SMS and the API token.
+
+    `on_dropped(conversation_id, role)` is called for each SMS Missive never took (not for those skipped
+    after it), so staff can be told. main.py sets it, because the note belongs to the lookup, not the sender.
     """
 
-    def __init__(self, post, clock=time.monotonic, sleep=time.sleep):
+    def __init__(self, post, clock=time.monotonic, sleep=time.sleep, on_dropped=None):
         self._post = post
+        self.on_dropped = on_dropped
         self._clock = clock
         self._sleep = sleep
         self._pid = None
@@ -50,13 +66,14 @@ class OrderedSender:
         self._failed_at = {}
         self._exit_hook_registered = False
 
-    def submit(self, body):
+    def submit(self, body, role=ANSWER):
         # Handlers wrapped in async_long_running submit from their own threads, so two may race to start.
         with self._start_lock:
             if self._pid != os.getpid():
                 self._start_for_this_process()
         # The thread outlives the request, so each job carries the scopes of the request that queued it.
-        job = (self._clock(), body, sentry_sdk.get_isolation_scope().fork(), sentry_sdk.get_current_scope().fork())
+        job = (self._clock(), body, role, sentry_sdk.get_isolation_scope().fork(),
+               sentry_sdk.get_current_scope().fork())
         with self._lock:
             self._unsent += 1
         self._jobs.put(job)
@@ -85,40 +102,71 @@ class OrderedSender:
 
     def _run(self, jobs):
         while True:
-            queued_at, body, isolation_scope, current_scope = jobs.get()
+            queued_at, body, role, isolation_scope, current_scope = jobs.get()
             with use_isolation_scope(isolation_scope), use_scope(current_scope):
                 try:
-                    self.deliver(body, queued_at)
+                    self.deliver(body, queued_at, role)
                 except Exception as error:
-                    self._failed(body["drafts"].get("conversation"), queued_at)
-                    logger.error(f"Missive sender failed to send a lookup SMS: {type(error).__name__}")
+                    # A post has no "drafts"; reading it would raise here and end this thread for good.
+                    if is_post(body):
+                        logger.error(f"Missive sender failed to send a lookup post: {type(error).__name__}")
+                    else:
+                        self._failed(body["drafts"].get("conversation"), queued_at, role)
+                        logger.error(f"Missive sender failed to send a lookup SMS: {type(error).__name__}")
             with self._lock:
                 self._unsent -= 1
 
-    def deliver(self, body, queued_at):
+    def deliver(self, body, queued_at, role=ANSWER):
+        if is_post(body):
+            self._deliver_post(body, queued_at)
+            return
         conversation = body["drafts"].get("conversation")
-        # A follow-up that arrives without its answer only confuses the resident.
-        if queued_at - self._failed_at.get(conversation, float("-inf")) <= SAME_LOOKUP_SECONDS:
+        # A follow-up that arrives without its answer only confuses the resident. The fallback text stands
+        # on its own: it is sent because the lookup already failed.
+        recently_failed = queued_at - self._failed_at.get(conversation, float("-inf")) <= SAME_LOOKUP_SECONDS
+        if role != FALLBACK and recently_failed:
             logger.warning(f"Skipping the SMS for conversation {conversation}: an earlier SMS of this lookup failed")
             return
         if self._clock() - queued_at > GIVE_UP_AFTER_SECONDS:
-            self._drop(conversation, queued_at, "waited over 30 minutes behind rate limited SMS")
+            self._drop(conversation, queued_at, role, "waited over 30 minutes behind rate limited SMS")
             return
 
         response = self._post_after_gap(body)
         while response.status_code == 429:
             wait = retry_after_seconds(response)
             if self._clock() + wait - queued_at > GIVE_UP_AFTER_SECONDS:
-                self._drop(conversation, queued_at, "still rate limited 30 minutes after it was queued")
+                self._drop(conversation, queued_at, role, "still rate limited 30 minutes after it was queued")
                 return
             logger.warning(f"Missive rate limited the SMS for conversation {conversation}, retrying in {wait}s")
             self._sleep(wait)
             response = self._post_after_gap(body)
 
         if not response.ok:
-            self._failed(conversation, queued_at)
+            self._failed(conversation, queued_at, role)
             logger.warning(f"Missive rejected the SMS for conversation {conversation}")
             logger.error(f"Missive send message failed with status code {response.status_code}")
+
+    def _deliver_post(self, body, queued_at):
+        # A post is the note telling staff a reply went missing, so it is never skipped for an earlier
+        # failure, and its own failure is only logged: there is nowhere left to report it. It keeps the
+        # same 30 minutes from being queued as an SMS, so it can't hold the SMS behind it past theirs.
+        conversation = body["posts"].get("conversation")
+        if self._clock() - queued_at > GIVE_UP_AFTER_SECONDS:
+            self._drop_post(conversation, "waited over 30 minutes behind rate limited SMS")
+            return
+        response = self._post_after_gap(body)
+        while response.status_code == 429:
+            wait = retry_after_seconds(response)
+            # The retry itself must also finish in time: an SMS queued just after this post shares its
+            # deadline, and the worker only reaches that SMS once the post's request returns.
+            if self._clock() + wait + REQUEST_TIMEOUT_SECONDS - queued_at > GIVE_UP_AFTER_SECONDS:
+                self._drop_post(conversation, "its retry couldn't finish within 30 minutes of being queued")
+                return
+            self._sleep(wait)
+            response = self._post_after_gap(body)
+        if not response.ok:
+            logger.warning(f"Missive rejected the post for conversation {conversation}")
+            logger.error(f"Missive create post failed with status code {response.status_code}")
 
     def _post_after_gap(self, body):
         wait = self._last_post_at + GAP_BETWEEN_SENDS_SECONDS - self._clock()
@@ -127,11 +175,23 @@ class OrderedSender:
         self._last_post_at = self._clock()
         return self._post(body)
 
-    def _failed(self, conversation, queued_at):
-        if conversation is not None:
-            self._failed_at[conversation] = queued_at
+    def _drop_post(self, conversation, reason):
+        logger.warning(f"Dropping the post for conversation {conversation}: {reason}")
+        logger.error("Dropped a lookup post held up by Missive rate limits")
 
-    def _drop(self, conversation, queued_at, reason):
-        self._failed(conversation, queued_at)
+    def _failed(self, conversation, queued_at, role=ANSWER):
+        # The follow-ups after a failed SMS are skipped, not failed, so they aren't reported again.
+        if conversation is None:
+            return
+        self._failed_at[conversation] = queued_at
+        if self.on_dropped is None:
+            return
+        try:
+            self.on_dropped(conversation, role)
+        except Exception as error:
+            logger.error(f"Reporting a dropped lookup SMS failed: {type(error).__name__}")
+
+    def _drop(self, conversation, queued_at, role, reason):
+        self._failed(conversation, queued_at, role)
         logger.warning(f"Dropping the SMS for conversation {conversation}: {reason}")
         logger.error("Dropped a lookup SMS held up by Missive rate limits")

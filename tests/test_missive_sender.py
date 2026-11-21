@@ -393,7 +393,7 @@ def test_send_sms_sync_queues_the_same_draft_it_used_to_post(monkeypatch):
             "send": True,
             "conversation": "conversation-1",
         },
-    })
+    }, "answer")
 
 
 def test_drafts_are_posted_with_the_token_and_a_timeout(monkeypatch):
