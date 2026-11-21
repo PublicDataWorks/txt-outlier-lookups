@@ -62,7 +62,8 @@ def missive(monkeypatch):
             patch("services.lookup_failures.get_template_content_by_name",
                   side_effect={"lookup_error": LOOKUP_ERROR_SMS}.get), \
             patch("services.services.missive_client") as replies, \
-            patch("services.services.time.sleep"):
+            patch("services.services.time.sleep"), \
+            patch("services.lookup_retries.sleep"):
         yield types.SimpleNamespace(reports=reports, replies=replies)
 
 
@@ -632,7 +633,10 @@ configs.sentry.init_sentry = lambda **options: None
 
 import main
 from libs.MissiveAPI import sms_sender
-from services import lookup_failures
+from services import lookup_failures, lookup_retries
+
+# Retries still happen, just without the real waits between them.
+lookup_retries.BACKOFF_SECONDS = (0, 0)
 
 lookup_failures.get_template_content_by_name = {"lookup_error": "Sorry, test lookup error text."}.get
 
@@ -686,6 +690,7 @@ openai_down = MagicMock()
 openai_down.complete.side_effect = TimeoutError("OpenAI timed out")
 with patch("helpers.build_llm", return_value=openai_down):
     run("address parser error")
+results["address parser error"]["parser calls"] = openai_down.complete.call_count
 print(json.dumps(results))
 """
 
@@ -716,6 +721,9 @@ def test_an_error_in_search_leaves_a_post_and_texts_the_resident(search_route):
 
 def test_an_address_parser_error_is_reported_as_ours_not_as_unreadable_text(search_route):
     results, _ = search_route
+
+    # Tried three times before the resident hears we had an error (OUT-423).
+    assert results["address parser error"]["parser calls"] == 3
 
     assert results["address parser error"]["posts"] == [[
         "Automatic address lookup didn't reply: system error (TimeoutError). "

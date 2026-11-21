@@ -27,6 +27,7 @@ from services.lookup_failures import (
     PARSE_FAILURE,
     report_lookup_failure,
 )
+from services.lookup_retries import LookupRetries
 from models import (
     Author,
     Comments,
@@ -48,8 +49,12 @@ CACHE_TTL = 24 * 60 * 60
 
 def search_service(query, conversation_id, to_phone):
     logger.info(f"[search_service] conversation_id={conversation_id}")
-    # A parser error raises to /search's catch-all, which texts the resident: it's ours, not theirs.
-    address, sunit = extract_address_information_with_llm([query], raise_errors=True)
+    retries = LookupRetries(conversation_id)
+    # A parser error is ours, not the resident's: it is retried, then raises to /search's catch-all, which texts
+    # the resident.
+    address, sunit = retries.run(
+        "address parser", lambda: extract_address_information_with_llm([query], raise_errors=True)
+    )
     if not address:
         # Mostly phone numbers, survey answers and suburban addresses, not app errors. One Sentry issue
         # keeps them countable without alerting on each, and without the resident's text or number. The
@@ -66,8 +71,7 @@ def search_service(query, conversation_id, to_phone):
         report_lookup_failure(conversation_id, to_phone, PARSE_FAILURE, notify_resident=False, detail=reason)
         return {"message": "Couldn't parse address from query"}, 200
 
-    with Session() as session:
-        results = query_mi_wayne_detroit(session, address, sunit)
+    results = retries.run("property query", lambda: query_property(address, sunit))
     display_address = address if not sunit else address + " " + sunit
 
     if not results:
@@ -75,6 +79,46 @@ def search_service(query, conversation_id, to_phone):
         return reply_or_report(handle_no_match, "no_match", display_address, conversation_id, to_phone)
 
     owner, address, rental_status, tax_status, zip_code, tax_due = results[0]
+    record_lookup_history(address, zip_code, rental_status, tax_status, tax_due, conversation_id)
+
+    if len(results) > 1:
+        return reply_or_report(handle_ambiguous, "closest_match", display_address, conversation_id, to_phone)
+
+    query_result = retries.run(
+        "owner summary",
+        lambda: owner_query_engine_without_sunit(str(results[0])),
+        # The engine returns a CompletionResponse, which is truthy even when its text is empty.
+        is_empty=lambda answer: not str(answer).strip(),
+    )
+
+    if not str(query_result).strip():
+        logger.error(f"[search_service] Query returned no results for conversation {conversation_id}")
+        report_lookup_failure(conversation_id, to_phone, EMPTY_ANSWER, notify_resident=True)
+        return "", 200
+
+    following_messages = []
+    if owner:
+        if "LAND BANK" in owner.upper():
+            following_messages.append(get_template_content_by_name(FollowingMessageType.LAND_BANK.value))
+    return handle_match(query_result, conversation_id, to_phone, rental_status, following_messages, tax_status)
+
+
+def query_property(address, sunit):
+    # A session per try: a retry after a dropped connection gets a fresh one.
+    with Session() as session:
+        return query_mi_wayne_detroit(session, address, sunit)
+
+
+def record_lookup_history(address, zip_code, rental_status, tax_status, tax_due, conversation_id):
+    """Best effort: the history is only for reports, so failing to save it must not cost the resident their
+    answer."""
+    try:
+        _record_lookup_history(address, zip_code, rental_status, tax_status, tax_due)
+    except Exception as error:
+        logger.error(f"Saving the lookup history failed for conversation {conversation_id}: {type(error).__name__}")
+
+
+def _record_lookup_history(address, zip_code, rental_status, tax_status, tax_due):
     if not tax_status and tax_due and int(tax_due) > 0:
         add_data_lookup_to_db(
             address,
@@ -96,23 +140,6 @@ def search_service(query, conversation_id, to_phone):
             tax_status,
             rental_status,
         )
-
-    if len(results) > 1:
-        return reply_or_report(handle_ambiguous, "closest_match", display_address, conversation_id, to_phone)
-
-    query_result = owner_query_engine_without_sunit(str(results[0]))
-
-    # The engine returns a CompletionResponse, which is truthy even when its text is empty.
-    if not str(query_result).strip():
-        logger.error(f"[search_service] Query returned no results for conversation {conversation_id}")
-        report_lookup_failure(conversation_id, to_phone, EMPTY_ANSWER, notify_resident=True)
-        return "", 200
-
-    following_messages = []
-    if owner:
-        if "LAND BANK" in owner.upper():
-            following_messages.append(get_template_content_by_name(FollowingMessageType.LAND_BANK.value))
-    return handle_match(query_result, conversation_id, to_phone, rental_status, following_messages, tax_status)
 
 
 def reply_or_report(handle, template_name, display_address, conversation_id, to_phone):

@@ -9,11 +9,11 @@ templates = {
         "REPORTER. We’ll get back to you and see what’s going on. If you want to try again just enter an address in "
         "this format “1111 E. Jefferson” or “231 Main St.”"
     ),
-    # PENDING Outlier's approval of the wording (OUT-416). A lookup_template row named lookup_error
+    # Approved word for word by Kate (Outlier), Nov 18 (OUT-416). A lookup_template row named lookup_error
     # replaces this text without a deploy.
     "lookup_error": (
-        "Sorry, we had trouble looking up that address. A reporter will follow up, usually within 48 hours. "
-        "You can also text MENU for more options."
+        "Sorry, we had an error. A reporter will follow up, usually within 48 hours. "
+        "You can try another address or text MENU for more options."
     ),
     "closest_match": (
         "This is the address we think is correct: {address}. Type YES if "
